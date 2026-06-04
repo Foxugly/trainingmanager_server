@@ -53,7 +53,11 @@ echo "=== 5/8 Install root-only env-fetch script + systemd units + sudoers ==="
 # django-writable tree. Install it root:root 0755 from the committed git blob.
 sudo install -o root -g root -m 0755 "$APP_DIR/deploy/fetch-env-from-ssm.sh" /usr/local/sbin/tm-env-fetch.sh
 
-sudo cp "$APP_DIR/deploy/systemd/"*.service /etc/systemd/system/
+# Install units by explicit path (NOT a glob): the glob would be expanded by
+# the unprivileged shell, which can't traverse the 750 django tree — only the
+# subsequent `sudo` runs as root. Explicit paths are read by root directly.
+sudo install -o root -g root -m 0644 "$APP_DIR/deploy/systemd/tm-env-fetch.service" /etc/systemd/system/
+sudo install -o root -g root -m 0644 "$APP_DIR/deploy/systemd/tm-gunicorn.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # sudoers (validate before install so a typo can't break sudo for everyone).
@@ -76,12 +80,13 @@ sudo -u "$APP_USER" bash -c "set -a; . /run/tm/.env; set +a; \
 sudo chown -R "$APP_USER":"$APP_GROUP" "$APP_DIR"
 sudo chmod -R g-w,o-rwx "$APP_DIR"
 
-echo "=== 8/8 nginx vhost + TLS + start service ==="
-sudo cp "$APP_DIR/deploy/nginx/tm-api.conf" /etc/nginx/sites-available/tm-api.conf
+echo "=== 8/8 nginx vhost (wildcard TLS, no certbot) + start service ==="
+# TLS = existing *.foxugly.com wildcard cert (referenced in tm-api.conf). No
+# per-domain certbot — the vhost already has its 443 block.
+sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-api.conf" /etc/nginx/sites-available/tm-api.conf
 sudo ln -sf /etc/nginx/sites-available/tm-api.conf /etc/nginx/sites-enabled/tm-api.conf
 sudo nginx -t
 sudo systemctl reload nginx
-sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL"
 sudo systemctl enable --now tm-gunicorn
 
 echo ""
