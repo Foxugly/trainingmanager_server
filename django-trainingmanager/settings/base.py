@@ -224,6 +224,14 @@ if not DEBUG:
 # hardcoded local override for the Angular dev server convenience.
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
+# Allow the Sentry distributed-tracing headers on cross-origin API calls. The
+# frontend SDK (browserTracingIntegration with tracePropagationTargets → tm-api)
+# attaches `sentry-trace` + `baggage` to every request; without them in the
+# allowlist the browser CORS-preflight-blocks EVERY call (login/register/…).
+from corsheaders.defaults import default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
