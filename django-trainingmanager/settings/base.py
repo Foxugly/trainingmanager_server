@@ -91,9 +91,30 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "django-trainingmanager.wsgi.application"
 
-DATABASES = {
-    "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3"),
+# Database — fleet DB_* 6-var convention (OPERATIONS.md §3.13). Prod reads the
+# six bare DB_* names from SSM → /run/tm/.env; the engine alias accepts the
+# short "postgresql"/"postgres". When DB_ENGINE is unset (local dev / CI /
+# pytest) we fall back to DATABASE_URL (default sqlite) — the ical-style override.
+_DB_ENGINE_ALIASES = {
+    "sqlite3": "django.db.backends.sqlite3",
+    "postgresql": "django.db.backends.postgresql",
+    "postgres": "django.db.backends.postgresql",
 }
+if env("DB_ENGINE", default=""):
+    DATABASES = {
+        "default": {
+            "ENGINE": _DB_ENGINE_ALIASES.get(env("DB_ENGINE"), env("DB_ENGINE")),
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST"),
+            "PORT": env("DB_PORT"),
+        }
+    }
+else:
+    DATABASES = {
+        "default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3"),
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
