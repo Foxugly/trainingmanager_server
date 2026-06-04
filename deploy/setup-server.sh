@@ -75,22 +75,21 @@ if ! sudo systemctl start tm-env-fetch; then
     exit 1
 fi
 
-echo "=== 7/8 Initial migrate + collectstatic ==="
-sudo -u "$APP_USER" bash -c "set -a; . /run/tm/.env; set +a; \
-    export DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod; \
-    '$APP_DIR/.venv/bin/python' '$APP_DIR/manage.py' migrate --noinput && \
-    '$APP_DIR/.venv/bin/python' '$APP_DIR/manage.py' collectstatic --noinput"
-sudo chown -R "$APP_USER":"$APP_GROUP" "$APP_DIR"
-sudo chmod -R g-w,o-rwx "$APP_DIR"
+echo "=== 7/8 First deploy (migrate + collectstatic + start gunicorn) ==="
+# Reuse deploy.sh — it loads /run/tm/.env with LITERAL key=value parsing (never
+# `source`: SECRET_KEY & co. contain shell-special chars like ()$# that `.`
+# would choke on, §3.11), runs migrate + collectstatic, normalises perms, and
+# (re)starts tm-gunicorn via the sudoers grant. Enable first so it survives boot.
+sudo systemctl enable tm-gunicorn
+sudo -u "$APP_USER" bash "$APP_DIR/deploy/deploy.sh"
 
-echo "=== 8/8 nginx vhost (wildcard TLS, no certbot) + start service ==="
+echo "=== 8/8 nginx vhost (wildcard TLS, no certbot) ==="
 # TLS = existing *.foxugly.com wildcard cert (referenced in tm-api.conf). No
 # per-domain certbot — the vhost already has its 443 block.
 sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-api.conf" /etc/nginx/sites-available/tm-api.conf
 sudo ln -sf /etc/nginx/sites-available/tm-api.conf /etc/nginx/sites-enabled/tm-api.conf
 sudo nginx -t
 sudo systemctl reload nginx
-sudo systemctl enable --now tm-gunicorn
 
 echo ""
 echo "=== Setup complete ==="
