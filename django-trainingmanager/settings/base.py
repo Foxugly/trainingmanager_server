@@ -328,3 +328,34 @@ ANTHROPIC_MAX_TOKENS_DEFAULT = env.int("ANTHROPIC_MAX_TOKENS_DEFAULT", default=2
 # ping) keep the smaller default.
 ANTHROPIC_MAX_TOKENS_PLAN = env.int("ANTHROPIC_MAX_TOKENS_PLAN", default=20000)
 ANTHROPIC_TIMEOUT_SECONDS = env.int("ANTHROPIC_TIMEOUT_SECONDS", default=60)
+
+# --- Sentry (error tracking / performance) — OPERATIONS.md §3.8 -------------
+# Only active under prod (STATE=PROD): even with a DSN present in dev/test we
+# never send DEV/INT/TEST events (they would pollute the dashboard). The SDK
+# auto-enables its Django integration when importable, so a bare init suffices.
+# DSN + STATE come from SSM /tm/prod/*.
+_SENTRY_PROD_ACTIVE = STATE.strip().upper() == "PROD"
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN and _SENTRY_PROD_ACTIVE:
+    import sentry_sdk
+    from django.core.exceptions import DisallowedHost
+
+    def _sentry_before_send(event, hint):
+        # Drop public-endpoint noise: bots hitting the API with a bad Host header
+        # raise DisallowedHost (a handled 400, not a real bug).
+        exc = (hint.get("exc_info") or (None, None, None))[1]
+        if isinstance(exc, DisallowedHost):
+            return None
+        if str(event.get("logger", "")).startswith("django.security.DisallowedHost"):
+            return None
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=STATE,
+        release=env("SENTRY_RELEASE", default=""),
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        profiles_sample_rate=env.float("SENTRY_PROFILES_SAMPLE_RATE", default=0.0),
+        send_default_pii=env.bool("SENTRY_SEND_PII", default=False),
+        before_send=_sentry_before_send,
+    )

@@ -1,0 +1,14 @@
+# Training Manager deploy.sh privileges — restart the app unit + nginx control
+# as root only. Installed by root out-of-band at /etc/sudoers.d/tm-deploy,
+# 0440 root:root, validated with `visudo -c -f` before install (OPERATIONS.md §3.7).
+#
+# Paths are matched literally by sudo (no symlink resolution despite usrmerge) —
+# keep /bin/systemctl and /usr/sbin/nginx exactly as written. No cp-unit grant:
+# units are installed by root from the committed git blob, never copied from the
+# django-writable tree (§3.10).
+Cmnd_Alias TM_CTRL = \
+    /bin/systemctl restart tm-gunicorn, \
+    /usr/sbin/nginx -t, \
+    /bin/systemctl reload nginx
+django ALL=(root) NOPASSWD: TM_CTRL
+Defaults!TM_CTRL !setenv, !env_keep

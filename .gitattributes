@@ -1,0 +1,9 @@
+# Deploy artifacts run on Linux — force LF regardless of the committer's OS,
+# so a CRLF checkout can never break a bash shebang / systemd unit / nginx conf.
+deploy/**/*.sh        text eol=lf
+deploy/**/*.service   text eol=lf
+deploy/**/*.conf      text eol=lf
+deploy/sudoers/*      text eol=lf
+.github/workflows/*   text eol=lf
+# PowerShell seed helper is Windows-only.
+deploy/*.ps1          text eol=crlf

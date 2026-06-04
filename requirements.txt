@@ -14,3 +14,7 @@ django-modeltranslation==0.20.3
 bleach==6.3.0
 anthropic==0.97.0
 psycopg[binary]>=3.2,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
+
+# --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
+gunicorn==23.0.0
+sentry-sdk==2.20.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)

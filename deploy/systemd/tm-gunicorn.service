@@ -1,0 +1,25 @@
+[Unit]
+Description=Training Manager API — Gunicorn (django-trainingmanager.wsgi)
+After=network.target tm-env-fetch.service
+# Hard dependency: without the SSM-fetched env, refuse to start.
+Requires=tm-env-fetch.service
+
+[Service]
+User=django
+Group=www-data
+UMask=0027
+WorkingDirectory=/var/www/django_websites/trainingmanager_server
+# Settings package is named with a hyphen ("django-trainingmanager"); wsgi.py
+# defaults to .settings.dev, so prod must be selected explicitly here.
+Environment=DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod
+EnvironmentFile=/run/tm/.env
+ExecStart=/var/www/django_websites/trainingmanager_server/.venv/bin/gunicorn django-trainingmanager.wsgi:application -c /var/www/django_websites/trainingmanager_server/deploy/gunicorn.conf.py
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
