@@ -36,15 +36,18 @@ sudo mkdir -p "$APP_DIR" /var/log/tm
 sudo chown "$APP_USER":"$APP_GROUP" "$APP_DIR" /var/log/tm
 
 echo "=== 3/8 Clone repository ==="
-if [ ! -d "$APP_DIR/.git" ]; then
-    sudo -u "$APP_USER" git clone "$REPO" "$APP_DIR"
-else
+# Existence tests run as ROOT (sudo test): the unprivileged shell can't traverse
+# the 750 django tree, so a plain `[ -d $APP_DIR/.git ]` would wrongly report
+# "missing" and retry the clone over an existing dir.
+if sudo test -d "$APP_DIR/.git"; then
     sudo -u "$APP_USER" git -C "$APP_DIR" fetch origin main
     sudo -u "$APP_USER" git -C "$APP_DIR" reset --hard origin/main
+else
+    sudo -u "$APP_USER" git clone "$REPO" "$APP_DIR"
 fi
 
 echo "=== 4/8 Python venv + dependencies ==="
-[ -d "$APP_DIR/.venv" ] || sudo -u "$APP_USER" python3 -m venv "$APP_DIR/.venv"
+sudo test -d "$APP_DIR/.venv" || sudo -u "$APP_USER" python3 -m venv "$APP_DIR/.venv"
 sudo -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install --upgrade pip
 sudo -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 
