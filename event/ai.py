@@ -120,7 +120,12 @@ def build_user_prompt(
     language_label = resolve_language_label(language)
 
     cat_modalities = "\n".join(f"  {m['id']}: {m['name']}" for m in modalities_catalog)
-    cat_segments = "\n".join(f"  {s['id']}: {s['abv']}" for s in energysegments_catalog)
+
+    def _segment_line(s):
+        desc = (s.get("description") or "").strip()
+        return f"  {s['id']}: {s['abv']} — {desc}" if desc else f"  {s['id']}: {s['abv']}"
+
+    cat_segments = "\n".join(_segment_line(s) for s in energysegments_catalog)
 
     # Localized name/description: modeltranslation returns the active-language
     # value (the prompt resolves the team language above).
@@ -128,15 +133,20 @@ def build_user_prompt(
     if team and team.level:
         level_line = f"- Team skill level: {team.level.name} — {team.level.description}\n"
 
+    program_line = ""
+    if event.refer_program and (event.refer_program.description or "").strip():
+        program_line = f"- Program objective: {event.refer_program.description}\n"
+
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
         f"- Goal: {event.goal or '(not specified)'}\n"
         f"{level_line}"
+        f"{program_line}"
         f"- Planned date: {event.date.isoformat() if event.date else '(not specified)'}\n"
         f"- Target total distance: {event.total or 0} meters\n\n"
         f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
-        f"Authorized energysegments catalog (id: abv):\n{cat_segments}\n\n"
+        f"Authorized energysegments catalog (id: abv — description):\n{cat_segments}\n\n"
         f"IMPORTANT instructions:\n"
         f"- The 'Session name' and 'Goal' above are provided by the coach in "
         f"{language_label}. They may contain indications about intensity, "
@@ -181,7 +191,13 @@ def generate_training(*, event, user=None, additional_prompt=""):
 
     modalities_qs = Modality.objects.filter(sport=sport) if sport else Modality.objects.all()
     modalities = list(modalities_qs.values("id", "name"))
-    energysegments = list(EnergySegment.objects.values("id", "abv"))
+    # Iterate the queryset (not .values) so modeltranslation resolves the
+    # description in the active language; the view sets the team's language
+    # before calling generate_training.
+    energysegments = [
+        {"id": seg.id, "abv": seg.abv, "description": seg.description or ""}
+        for seg in EnergySegment.objects.all()
+    ]
 
     if not modalities:
         raise AIServiceError(_("No modalities defined for this sport. Cannot generate."))

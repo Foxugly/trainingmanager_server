@@ -214,6 +214,73 @@ def test_event_ai_prompt_includes_level(db):
     assert "Team skill level: Perfectionnement — Maîtrise" in prompt
 
 
+def test_event_ai_prompt_includes_energysegment_description(db):
+    from event.ai import build_user_prompt
+    from tests.factories import EventFactory
+
+    team = TeamFactory()
+    program = ProgramFactory(team=team)
+    event = EventFactory(refer_program=program, name="Séance", goal="Vitesse")
+    prompt = build_user_prompt(
+        event=event,
+        modalities_catalog=[{"id": 1, "name": "Crawl"}],
+        energysegments_catalog=[
+            {"id": 12, "abv": "Z2", "description": "Endurance fondamentale aérobie"}
+        ],
+        team=team,
+    )
+    assert "12: Z2 — Endurance fondamentale aérobie" in prompt
+
+
+def test_event_ai_prompt_omits_dash_when_segment_description_empty(db):
+    from event.ai import build_user_prompt
+    from tests.factories import EventFactory
+
+    team = TeamFactory()
+    program = ProgramFactory(team=team)
+    event = EventFactory(refer_program=program, name="Séance", goal="Vitesse")
+    prompt = build_user_prompt(
+        event=event,
+        modalities_catalog=[{"id": 1, "name": "Crawl"}],
+        energysegments_catalog=[{"id": 12, "abv": "Z2", "description": ""}],
+        team=team,
+    )
+    assert "12: Z2" in prompt
+    assert "12: Z2 —" not in prompt
+
+
+def test_event_ai_prompt_includes_program_objective(db):
+    from event.ai import build_user_prompt
+    from tests.factories import EventFactory
+
+    team = TeamFactory()
+    program = ProgramFactory(team=team, description="Préparer le 400m 4 nages en 8 semaines")
+    event = EventFactory(refer_program=program, name="Séance", goal="Vitesse")
+    prompt = build_user_prompt(
+        event=event,
+        modalities_catalog=[{"id": 1, "name": "Crawl"}],
+        energysegments_catalog=[{"id": 1, "abv": "A1"}],
+        team=team,
+    )
+    assert "Program objective: Préparer le 400m 4 nages en 8 semaines" in prompt
+
+
+def test_event_ai_prompt_omits_program_objective_when_empty(db):
+    from event.ai import build_user_prompt
+    from tests.factories import EventFactory
+
+    team = TeamFactory()
+    program = ProgramFactory(team=team, description="")
+    event = EventFactory(refer_program=program, name="Séance", goal="Vitesse")
+    prompt = build_user_prompt(
+        event=event,
+        modalities_catalog=[{"id": 1, "name": "Crawl"}],
+        energysegments_catalog=[{"id": 1, "abv": "A1"}],
+        team=team,
+    )
+    assert "Program objective" not in prompt
+
+
 def test_program_ai_prompt_includes_level(db):
     from program.ai import build_user_prompt
 
