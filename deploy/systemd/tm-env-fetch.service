@@ -11,7 +11,7 @@ Before=tm-gunicorn.service
 # To pick up changed SSM values: `sudo systemctl restart tm-env-fetch`.
 Type=oneshot
 RemainAfterExit=yes
-# Force authentication via the EC2 instance role (quizonline-ec2) over IMDS by
+# Force authentication via the EC2 instance role (foxugly-fleet-ec2) over IMDS by
 # blanking the credentials/config files — otherwise root's static certbot-route53
 # keys in /root/.aws would shadow the instance role. Keeps "no AWS keys on disk".
 Environment=AWS_SHARED_CREDENTIALS_FILE=/dev/null

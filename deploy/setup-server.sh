@@ -8,7 +8,7 @@
 # Run as 'ubuntu' (needs sudo), AFTER:
 #   - DNS A record  tm-api.foxugly.com → EC2 public IP
 #   - SSM /tm/prod/* seeded (deploy/seed-parameter-store.sh) and the instance
-#     role quizonline-ec2 granted ssm:GetParametersByPath on /tm/prod(/*)
+#     role foxugly-fleet-ec2 granted ssm:GetParametersByPath on /tm/prod(/*)
 #   - the §3.10 root-only fetch script installed (see "=== 5/8" note)
 #
 #   bash /var/www/django_websites/trainingmanager_server/deploy/setup-server.sh
