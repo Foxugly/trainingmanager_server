@@ -4065,6 +4065,38 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{id}/stats/:
+    get:
+      operationId: teams_stats_retrieve
+      description: Read-only aggregated statistics for the team's events whose `date`
+        falls in the window [today - weeks*7 days, today]. Owner/manager only. `weeks`
+        defaults to 12; weeks=0 (or absent) uses the default; values are clamped to
+        [1, 520].
+      summary: Team statistics (attendance, volume, intensity)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: query
+        name: weeks
+        schema:
+          type: integer
+        description: Window size in weeks (default 12). 0 or absent -> 12; clamped
+          to [1, 520].
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStats'
+          description: ''
   /api/v1/teams/{team_id}/ai-usage/:
     get:
       operationId: teams_ai_usage_retrieve
@@ -8021,6 +8053,163 @@ components:
       - created_at
       - id
       - slug
+    StatsAttendance:
+      type: object
+      properties:
+        team_rate:
+          type: number
+          format: double
+          nullable: true
+          description: Overall present / expected across the period (null if no expected
+            slots).
+        by_session:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsAttendanceBySession'
+        by_member:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsAttendanceByMember'
+      required:
+      - by_member
+      - by_session
+      - team_rate
+    StatsAttendanceByMember:
+      type: object
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        present:
+          type: integer
+        total:
+          type: integer
+        rate:
+          type: number
+          format: double
+          nullable: true
+        last_present_date:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - last_present_date
+      - member_id
+      - name
+      - present
+      - rate
+      - total
+    StatsAttendanceBySession:
+      type: object
+      properties:
+        event_id:
+          type: integer
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        present:
+          type: integer
+        total:
+          type: integer
+        rate:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - date
+      - event_id
+      - name
+      - present
+      - rate
+      - total
+    StatsIntensity:
+      type: object
+      properties:
+        by_segment:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsIntensityBySegment'
+      required:
+      - by_segment
+    StatsIntensityBySegment:
+      type: object
+      properties:
+        abv:
+          type: string
+        label:
+          type: string
+          nullable: true
+          description: Localized segment description.
+        distance:
+          type: integer
+      required:
+      - abv
+      - distance
+      - label
+    StatsPeriod:
+      type: object
+      properties:
+        to:
+          type: string
+          format: date
+          description: Window end (inclusive, = today).
+        weeks:
+          type: integer
+          description: Number of weeks the window spans.
+        from:
+          type: string
+          format: date
+          description: Window start (inclusive).
+      required:
+      - from
+      - to
+      - weeks
+    StatsVolume:
+      type: object
+      properties:
+        total_distance:
+          type: integer
+        by_week:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsVolumeByWeek'
+        by_member:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsVolumeByMember'
+      required:
+      - by_member
+      - by_week
+      - total_distance
+    StatsVolumeByMember:
+      type: object
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        distance:
+          type: integer
+      required:
+      - distance
+      - member_id
+      - name
+    StatsVolumeByWeek:
+      type: object
+      properties:
+        week_start:
+          type: string
+          format: date
+          description: Monday (ISO) of the bucketed week.
+        distance:
+          type: integer
+      required:
+      - distance
+      - week_start
     Team:
       type: object
       properties:
@@ -8345,6 +8534,29 @@ components:
       - can_create
       - max
       - used
+    TeamStats:
+      type: object
+      description: |-
+        Top-level read-only team statistics payload.
+
+        Aggregates attendance, training volume and intensity for the team's
+        events whose date falls within the requested window. Output-only:
+        the view assembles a plain dict and passes it through this serializer
+        for a clean, typed OpenAPI schema.
+      properties:
+        period:
+          $ref: '#/components/schemas/StatsPeriod'
+        attendance:
+          $ref: '#/components/schemas/StatsAttendance'
+        volume:
+          $ref: '#/components/schemas/StatsVolume'
+        intensity:
+          $ref: '#/components/schemas/StatsIntensity'
+      required:
+      - attendance
+      - intensity
+      - period
+      - volume
     TokenObtainPairResponse:
       type: object
       properties:

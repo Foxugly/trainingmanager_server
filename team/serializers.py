@@ -364,6 +364,101 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
         return " ".join(parts) if parts else ""
 
 
+# ---------------------------------------------------------------------
+# Team statistics (read-only aggregation) — GET /api/v1/teams/{id}/stats/
+# These serializers exist purely to give drf-spectacular a clean,
+# explicit schema for the aggregated payload assembled in
+# TeamViewSet.stats(); they are never used to deserialize input.
+# ---------------------------------------------------------------------
+
+
+class StatsPeriodSerializer(serializers.Serializer):
+    # `from` is a Python keyword, so the field is declared as `from_` and
+    # sourced from the dict key "from"; the schema/output key is remapped to
+    # "from" in get_fields().
+    from_ = serializers.DateField(source="from", help_text="Window start (inclusive).")
+    to = serializers.DateField(help_text="Window end (inclusive, = today).")
+    weeks = serializers.IntegerField(help_text="Number of weeks the window spans.")
+
+    def get_fields(self):
+        fields = super().get_fields()
+        field = fields.pop("from_")
+        # Clear the now-redundant source assertion: after rekeying to "from",
+        # source == field_name, which DRF forbids declaring explicitly.
+        field.source = None
+        fields["from"] = field
+        return fields
+
+
+class StatsAttendanceBySessionSerializer(serializers.Serializer):
+    event_id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.DateField(allow_null=True)
+    present = serializers.IntegerField()
+    total = serializers.IntegerField()
+    rate = serializers.FloatField(allow_null=True)
+
+
+class StatsAttendanceByMemberSerializer(serializers.Serializer):
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    present = serializers.IntegerField()
+    total = serializers.IntegerField()
+    rate = serializers.FloatField(allow_null=True)
+    last_present_date = serializers.DateField(allow_null=True)
+
+
+class StatsAttendanceSerializer(serializers.Serializer):
+    team_rate = serializers.FloatField(
+        allow_null=True,
+        help_text="Overall present / expected across the period (null if no expected slots).",
+    )
+    by_session = StatsAttendanceBySessionSerializer(many=True)
+    by_member = StatsAttendanceByMemberSerializer(many=True)
+
+
+class StatsVolumeByWeekSerializer(serializers.Serializer):
+    week_start = serializers.DateField(help_text="Monday (ISO) of the bucketed week.")
+    distance = serializers.IntegerField()
+
+
+class StatsVolumeByMemberSerializer(serializers.Serializer):
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    distance = serializers.IntegerField()
+
+
+class StatsVolumeSerializer(serializers.Serializer):
+    total_distance = serializers.IntegerField()
+    by_week = StatsVolumeByWeekSerializer(many=True)
+    by_member = StatsVolumeByMemberSerializer(many=True)
+
+
+class StatsIntensityBySegmentSerializer(serializers.Serializer):
+    abv = serializers.CharField()
+    label = serializers.CharField(allow_null=True, help_text="Localized segment description.")
+    distance = serializers.IntegerField()
+
+
+class StatsIntensitySerializer(serializers.Serializer):
+    by_segment = StatsIntensityBySegmentSerializer(many=True)
+
+
+class TeamStatsSerializer(serializers.Serializer):
+    """Top-level read-only team statistics payload.
+
+    Aggregates attendance, training volume and intensity for the team's
+    events whose date falls within the requested window. Output-only:
+    the view assembles a plain dict and passes it through this serializer
+    for a clean, typed OpenAPI schema.
+    """
+
+    period = StatsPeriodSerializer()
+    attendance = StatsAttendanceSerializer()
+    volume = StatsVolumeSerializer()
+    intensity = StatsIntensitySerializer()
+
+
 class CompleteInvitationSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(write_only=True, min_length=8)
