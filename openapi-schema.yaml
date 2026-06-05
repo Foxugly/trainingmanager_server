@@ -365,6 +365,49 @@ paths:
           description: Access token missing or invalid.
         '429':
           description: Too Many Requests (rate limit hit).
+  /api/v1/auth/password/change/:
+    post:
+      operationId: auth_password_change_create
+      description: |-
+        POST /api/v1/auth/password/change/ — authenticated: change own password.
+
+        Body: {current_password, new_password}. The caller must prove they
+        still know `current_password`; `new_password` is validated against
+        Django's configured password validators (with the user as context) and
+        must differ from the current one. On success the password is updated
+        and a localized {detail} body is returned — NO tokens are issued. The
+        short-lived access token (and any outstanding refresh) remain valid
+        until they expire; this keeps the flow minimal for a user who is
+        already authenticated and merely rotating their password.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordChangeResponse'
+          description: Password updated. Returns {detail}. No tokens are issued.
+        '400':
+          description: current_password wrong (code=current_password_invalid), new_password
+            equal to current (code=password_unchanged), or new_password rejected by
+            validators (fields.new_password).
+        '401':
+          description: Access token missing or invalid.
   /api/v1/auth/password/reset/:
     post:
       operationId: auth_password_reset_create
@@ -6130,6 +6173,34 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Team'
+    PasswordChange:
+      type: object
+      description: |-
+        Body of POST /api/v1/auth/password/change/ (authenticated).
+
+        The caller proves they still know `current_password` and supplies a
+        `new_password` validated against Django's configured validators with
+        the authenticated user as context. The view performs the
+        `check_password` comparison and the equality check — the serializer
+        only enforces field shapes and the password strength rules.
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - current_password
+      - new_password
+    PasswordChangeResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     PasswordResetConfirm:
       type: object
       description: |-

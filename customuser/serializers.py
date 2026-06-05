@@ -198,6 +198,25 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, min_length=8)
 
 
+class PasswordChangeSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/password/change/ (authenticated).
+
+    The caller proves they still know `current_password` and supplies a
+    `new_password` validated against Django's configured validators with
+    the authenticated user as context. The view performs the
+    `check_password` comparison and the equality check — the serializer
+    only enforces field shapes and the password strength rules."""
+
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_new_password(self, value):
+        # `user` is injected via the serializer context by the view so that
+        # username/email-similarity validators have the right subject.
+        validate_password(value, user=self.context.get("request").user)
+        return value
+
+
 class LogoutSerializer(serializers.Serializer):
     """Body of POST /api/v1/auth/logout/.
 

@@ -141,6 +141,15 @@ msgstr "Si un compte correspond à cet email, un message de réinitialisation a 
 msgid "Invalid or expired password reset token."
 msgstr "Lien de réinitialisation invalide ou expiré."
 
+msgid "Current password is incorrect."
+msgstr "Le mot de passe actuel est incorrect."
+
+msgid "The new password must be different from the current one."
+msgstr "Le nouveau mot de passe doit être différent de l'actuel."
+
+msgid "Password updated."
+msgstr "Mot de passe mis à jour."
+
 msgid "No modalities defined for this sport. Cannot generate."
 msgstr "Aucune modalité définie pour ce sport. Génération impossible."
 

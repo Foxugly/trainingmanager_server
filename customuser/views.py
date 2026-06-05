@@ -31,6 +31,7 @@ from .serializers import (
     EmailResendSerializer,
     LogoutSerializer,
     MeSerializer,
+    PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     RegisterSerializer,
@@ -518,6 +519,68 @@ class PasswordResetConfirmView(APIView):
             BlacklistedToken.objects.get_or_create(token=token)
 
         return Response({**_jwt_pair(user), "user": _user_payload(user)})
+
+
+class PasswordChangeView(APIView):
+    """POST /api/v1/auth/password/change/ — authenticated: change own password.
+
+    Body: {current_password, new_password}. The caller must prove they
+    still know `current_password`; `new_password` is validated against
+    Django's configured password validators (with the user as context) and
+    must differ from the current one. On success the password is updated
+    and a localized {detail} body is returned — NO tokens are issued. The
+    short-lived access token (and any outstanding refresh) remain valid
+    until they expire; this keeps the flow minimal for a user who is
+    already authenticated and merely rotating their password.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=PasswordChangeSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="PasswordChangeResponse",
+                    fields={"detail": drf_serializers.CharField()},
+                ),
+                description="Password updated. Returns {detail}. No tokens are issued.",
+            ),
+            400: OpenApiResponse(
+                description=(
+                    "current_password wrong (code=current_password_invalid), "
+                    "new_password equal to current (code=password_unchanged), "
+                    "or new_password rejected by validators (fields.new_password)."
+                )
+            ),
+            401: OpenApiResponse(description="Access token missing or invalid."),
+        },
+    )
+    def post(self, request):
+        serializer = PasswordChangeSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        current_password = serializer.validated_data["current_password"]
+        new_password = serializer.validated_data["new_password"]
+        user = request.user
+
+        if not user.check_password(current_password):
+            raise drf_serializers.ValidationError(
+                {"detail": _("Current password is incorrect.")},
+                code="current_password_invalid",
+            )
+
+        if new_password == current_password:
+            raise drf_serializers.ValidationError(
+                {"detail": _("The new password must be different from the current one.")},
+                code="password_unchanged",
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response({"detail": _("Password updated.")})
 
 
 class LogoutView(APIView):

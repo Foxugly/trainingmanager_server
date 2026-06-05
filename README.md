@@ -102,6 +102,7 @@ locale/       # Translations (fr complet, nl/it/es à compléter)
 |---|---|---|---|
 | POST | `/api/v1/auth/token/` | Public | JWT login |
 | GET, PATCH | `/api/v1/me/` | Auth | Profil user courant (incl. language) |
+| POST | `/api/v1/auth/password/change/` | Auth | Changer son mot de passe (current + new) |
 | GET, POST | `/api/v1/teams/` | Auth | Liste / créer team |
 | GET, POST | `/api/v1/programs/` | Auth | Programs |
 | POST | `/api/v1/programs/{id}/generate-events/` | Manager | Génération plan IA |

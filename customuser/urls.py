@@ -4,6 +4,7 @@ from .views import (
     ConfirmEmailView,
     LogoutView,
     MeView,
+    PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
     RegisterView,
@@ -25,5 +26,10 @@ urlpatterns = [
         "auth/password/reset/confirm/",
         PasswordResetConfirmView.as_view(),
         name="auth_password_reset_confirm",
+    ),
+    path(
+        "auth/password/change/",
+        PasswordChangeView.as_view(),
+        name="password-change",
     ),
 ]
