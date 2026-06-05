@@ -471,6 +471,9 @@ msgstr "La vérification du captcha a échoué. Veuillez réessayer."
 msgid "You have reached your team quota. Soft-delete an existing team or contact an admin to raise your quota."
 msgstr "Vous avez atteint votre quota d'équipes. Supprimez (en mode soft) une équipe existante ou contactez un admin pour augmenter votre quota."
 
+msgid "Transfer or delete your teams before deleting your account."
+msgstr "Transférez ou supprimez vos équipes avant de supprimer votre compte."
+
 msgid "Validation failed."
 msgstr "Échec de la validation."
 

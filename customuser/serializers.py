@@ -217,6 +217,17 @@ class PasswordChangeSerializer(serializers.Serializer):
         return value
 
 
+class AccountDeleteSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/account/delete/ (authenticated).
+
+    The caller proves they still know `current_password` before their
+    account is irreversibly deleted. The view performs the `check_password`
+    comparison and the owned-teams safety guard — the serializer only
+    enforces that the confirmation password is present."""
+
+    current_password = serializers.CharField(write_only=True)
+
+
 class LogoutSerializer(serializers.Serializer):
     """Body of POST /api/v1/auth/logout/.
 

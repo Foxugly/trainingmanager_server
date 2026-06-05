@@ -260,6 +260,52 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/auth/account/delete/:
+    post:
+      operationId: auth_account_delete_create
+      description: |-
+        POST /api/v1/auth/account/delete/ — authenticated: delete own account.
+
+        Body: {current_password}. The caller must prove they still know their
+        password before the account is irreversibly removed. On success the user
+        row is deleted (memberships, athlete links, join requests, etc. cascade
+        per their FK on_delete) and 204 No Content is returned.
+
+        Safety guard: a user who still OWNS one or more teams (Team.owner ==
+        user) is REFUSED with 409 (code owns_teams). Team.owner is
+        on_delete=PROTECT, so the DB would raise ProtectedError on delete —
+        we surface a clean, localized error instead and never cascade-delete
+        teams. The guard intentionally counts ALL owned teams, not just
+        is_active ones: a soft-deleted (is_active=False) team still references
+        the user via the protected FK and would block the delete just the same.
+        The user must transfer ownership (or hard-delete those teams) first.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDelete'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AccountDelete'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AccountDelete'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: Account deleted. No content.
+        '400':
+          description: current_password missing (fields.current_password) or wrong
+            (code=current_password_invalid).
+        '401':
+          description: Access token missing or invalid.
+        '409':
+          description: The user still owns one or more teams (code=owns_teams). Transfer
+            ownership of those teams first; the account is NOT deleted.
   /api/v1/auth/email/confirm/:
     post:
       operationId: auth_email_confirm_create
@@ -4733,6 +4779,21 @@ components:
       - output_tokens
       - total_tokens
       - username
+    AccountDelete:
+      type: object
+      description: |-
+        Body of POST /api/v1/auth/account/delete/ (authenticated).
+
+        The caller proves they still know `current_password` before their
+        account is irreversibly deleted. The view performs the `check_password`
+        comparison and the owned-teams safety guard — the serializer only
+        enforces that the confirmation password is present.
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+      required:
+      - current_password
     ActionProposedEnum:
       enum:
       - accept

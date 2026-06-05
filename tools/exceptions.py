@@ -71,6 +71,18 @@ class TeamQuotaExceeded(APIException):
     default_code = "team_quota_exceeded"
 
 
+class OwnsTeams(APIException):
+    """409 raised when an authenticated user tries to delete their own
+    account while still owning one or more teams. Deletion is refused
+    (Team.owner is on_delete=PROTECT — even a soft-deleted team blocks it);
+    the user must first transfer ownership of those teams. Frontend matches
+    on `code == "owns_teams"`."""
+
+    status_code = 409
+    default_detail = _("Transfer or delete your teams before deleting your account.")
+    default_code = "owns_teams"
+
+
 def custom_exception_handler(exc, context):
     """Normalise every 4xx error to {code, detail, fields?}.
 

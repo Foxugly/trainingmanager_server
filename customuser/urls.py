@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AccountDeleteView,
     ConfirmEmailView,
     LogoutView,
     MeView,
@@ -31,5 +32,10 @@ urlpatterns = [
         "auth/password/change/",
         PasswordChangeView.as_view(),
         name="password-change",
+    ),
+    path(
+        "auth/account/delete/",
+        AccountDeleteView.as_view(),
+        name="account-delete",
     ),
 ]

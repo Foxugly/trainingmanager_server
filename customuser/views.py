@@ -15,7 +15,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from tools.exceptions import CaptchaFailed
+from tools.exceptions import CaptchaFailed, OwnsTeams
 from tools.throttling import (
     LoginThrottle,
     LogoutThrottle,
@@ -27,6 +27,7 @@ from tools.turnstile import get_remote_ip, verify_turnstile_token
 
 from .models import CustomUser
 from .serializers import (
+    AccountDeleteSerializer,
     EmailConfirmSerializer,
     EmailResendSerializer,
     LogoutSerializer,
@@ -581,6 +582,71 @@ class PasswordChangeView(APIView):
         user.save(update_fields=["password"])
 
         return Response({"detail": _("Password updated.")})
+
+
+class AccountDeleteView(APIView):
+    """POST /api/v1/auth/account/delete/ — authenticated: delete own account.
+
+    Body: {current_password}. The caller must prove they still know their
+    password before the account is irreversibly removed. On success the user
+    row is deleted (memberships, athlete links, join requests, etc. cascade
+    per their FK on_delete) and 204 No Content is returned.
+
+    Safety guard: a user who still OWNS one or more teams (Team.owner ==
+    user) is REFUSED with 409 (code owns_teams). Team.owner is
+    on_delete=PROTECT, so the DB would raise ProtectedError on delete —
+    we surface a clean, localized error instead and never cascade-delete
+    teams. The guard intentionally counts ALL owned teams, not just
+    is_active ones: a soft-deleted (is_active=False) team still references
+    the user via the protected FK and would block the delete just the same.
+    The user must transfer ownership (or hard-delete those teams) first.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="auth_account_delete_create",
+        request=AccountDeleteSerializer,
+        responses={
+            204: OpenApiResponse(description="Account deleted. No content."),
+            400: OpenApiResponse(
+                description=(
+                    "current_password missing (fields.current_password) or "
+                    "wrong (code=current_password_invalid)."
+                )
+            ),
+            401: OpenApiResponse(description="Access token missing or invalid."),
+            409: OpenApiResponse(
+                description=(
+                    "The user still owns one or more teams (code=owns_teams). "
+                    "Transfer ownership of those teams first; the account is "
+                    "NOT deleted."
+                )
+            ),
+        },
+    )
+    def post(self, request):
+        serializer = AccountDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        current_password = serializer.validated_data["current_password"]
+        user = request.user
+
+        if not user.check_password(current_password):
+            raise drf_serializers.ValidationError(
+                {"detail": _("Current password is incorrect.")},
+                code="current_password_invalid",
+            )
+
+        # Safety guard: refuse while the user still owns ANY team. We count
+        # all owned teams (not just is_active=True) because Team.owner is
+        # on_delete=PROTECT — even a soft-deleted team would raise
+        # ProtectedError and turn the delete into a 500. Refuse cleanly with
+        # 409 instead; never cascade-delete teams.
+        if user.owned_teams.exists():
+            raise OwnsTeams()
+
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LogoutView(APIView):
