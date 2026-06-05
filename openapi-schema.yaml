@@ -5941,6 +5941,11 @@ components:
           maxLength: 150
         language:
           $ref: '#/components/schemas/LanguageEnum'
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
         last_login:
           type: string
           format: date-time
@@ -5958,6 +5963,7 @@ components:
       - date_joined
       - email
       - id
+      - is_staff
       - last_login
       - team_quota
       - username
@@ -7069,6 +7075,11 @@ components:
           maxLength: 150
         language:
           $ref: '#/components/schemas/LanguageEnum'
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
         last_login:
           type: string
           format: date-time

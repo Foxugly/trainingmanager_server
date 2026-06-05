@@ -48,14 +48,20 @@ class MeSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "language",
+            "is_staff",
             "last_login",
             "date_joined",
             "team_quota",
         ]
+        # is_staff is exposed READ-ONLY so the SPA can gate its admin back-office
+        # (/admin referential CRUD). It is the user's own flag; server-side
+        # permissions still enforce every admin endpoint. is_superuser stays
+        # unexposed, and read_only prevents privilege escalation via PATCH.
         read_only_fields = [
             "id",
             "username",
             "email",
+            "is_staff",
             "last_login",
             "date_joined",
             "team_quota",

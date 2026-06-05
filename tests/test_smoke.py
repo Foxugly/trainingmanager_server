@@ -33,13 +33,15 @@ def test_GET_me_unauthenticated_returns_401(api_client):
     assert response.status_code == 401
 
 
-def test_GET_me_does_not_expose_privilege_flags(auth_client):
-    """is_staff / is_superuser are not part of the /me/ payload — the frontend
-    derives privilege via dedicated admin routes, not via the user profile."""
+def test_GET_me_exposes_is_staff_readonly_but_not_is_superuser(auth_client):
+    """is_staff is exposed READ-ONLY so the SPA can gate its admin back-office;
+    is_superuser is never exposed. Server-side permissions still enforce every
+    admin endpoint regardless of this flag."""
     response = auth_client.get("/api/v1/me/")
     assert response.status_code == 200
     body = response.json()
-    assert "is_staff" not in body
+    assert "is_staff" in body
+    assert body["is_staff"] is False
     assert "is_superuser" not in body
 
 
@@ -55,8 +57,10 @@ def test_PATCH_me_cannot_promote_to_staff(auth_client, authenticated_user):
     )
     assert response.status_code == 200
     body = response.json()
-    # privilege flags are no longer serialized; payload must not echo them back
-    assert "is_staff" not in body
+    # is_staff is exposed but READ-ONLY: the attempted promotion is silently
+    # ignored and the response still reports the original (non-staff) value.
+    assert body["is_staff"] is False
+    # is_superuser is never serialized.
     assert "is_superuser" not in body
     # first_name update should still go through (proves PATCH wasn't blocked
     # entirely; only the privileged fields were silently ignored).
