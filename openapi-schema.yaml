@@ -1396,6 +1396,95 @@ paths:
           description: Validation error (member or status)
         '403':
           description: Not a team manager
+  /api/v1/events/{event_pk}/roti/:
+    get:
+      operationId: events_roti_retrieve
+      description: Returns the aggregate ROTI for the event (average, count, distribution)
+        plus the caller's own score (my_score). Coaches and athlete-members of the
+        team may read.
+      summary: Get ROTI summary for an event (incl. my_score)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RotiSummary'
+          description: ''
+    put:
+      operationId: events_roti_update
+      description: 'Athlete-only: resolves the caller''s Member within the event''s
+        team and update_or_creates their Roti(event, member) with the given score.
+        Returns 403 if the team has roti_enabled=False or the caller is not an athlete-member;
+        400 if the score is out of range.'
+      summary: Upsert the caller's own ROTI score (1..5)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RotiUpsert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RotiUpsert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RotiUpsert'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotiSummary'
+          description: ''
+        '400':
+          description: Score out of range (1..5)
+        '403':
+          description: ROTI disabled or caller not an athlete-member
+  /api/v1/events/{event_pk}/roti/summary/:
+    get:
+      operationId: events_roti_summary
+      description: Same shape as GET .../roti/. Provided as an explicit endpoint for
+        the manager dashboard.
+      summary: ROTI aggregate summary for an event (managers)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotiSummary'
+          description: ''
   /api/v1/events/{id}/:
     get:
       operationId: events_retrieve
@@ -7457,6 +7546,14 @@ components:
           type: boolean
         is_public:
           type: boolean
+        logo:
+          type: string
+          description: Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...').
+            Stored inline in the DB; no file storage.
+        roti_enabled:
+          type: boolean
+          description: If True, athletes can submit a per-session difficulty rating
+            (ROTI, 1..5) for the team's events.
         chat_mode:
           allOf:
           - $ref: '#/components/schemas/ChatModeEnum'
@@ -7736,6 +7833,43 @@ components:
             minimum: 1
       required:
       - round_ids
+    RotiSummary:
+      type: object
+      description: |-
+        Aggregate ROTI for an event, plus the caller's own score.
+
+        `average`/`distribution` are only populated for team managers; an
+        athlete sees their own `my_score` (and the aggregate counts are still
+        returned, scoped to what the view chooses to expose).
+      properties:
+        average:
+          type: number
+          format: double
+          nullable: true
+        count:
+          type: integer
+        distribution:
+          type: object
+          additionalProperties:
+            type: integer
+        my_score:
+          type: integer
+          nullable: true
+      required:
+      - average
+      - count
+      - distribution
+      - my_score
+    RotiUpsert:
+      type: object
+      description: Request body for PUT .../roti/ — only the caller's own score.
+      properties:
+        score:
+          type: integer
+          maximum: 5
+          minimum: 1
+      required:
+      - score
     Round:
       type: object
       properties:
@@ -7932,6 +8066,14 @@ components:
           type: boolean
         is_public:
           type: boolean
+        logo:
+          type: string
+          description: Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...').
+            Stored inline in the DB; no file storage.
+        roti_enabled:
+          type: boolean
+          description: If True, athletes can submit a per-session difficulty rating
+            (ROTI, 1..5) for the team's events.
         chat_mode:
           allOf:
           - $ref: '#/components/schemas/ChatModeEnum'

@@ -83,6 +83,24 @@ class OwnsTeams(APIException):
     default_code = "owns_teams"
 
 
+class RotiDisabled(PermissionDenied):
+    """403 raised when an athlete tries to submit a ROTI on a team whose
+    `roti_enabled` toggle is False. Frontend matches on
+    `code == "roti_disabled"`."""
+
+    default_detail = _("ROTI is not enabled for this team.")
+    default_code = "roti_disabled"
+
+
+class NotAnAthleteMember(PermissionDenied):
+    """403 raised when the caller is not an active athlete-member of the
+    event's team and tries to submit a ROTI. Frontend matches on
+    `code == "not_an_athlete_member"`."""
+
+    default_detail = _("Only athlete-members of the team can submit a ROTI.")
+    default_code = "not_an_athlete_member"
+
+
 def custom_exception_handler(exc, context):
     """Normalise every 4xx error to {code, detail, fields?}.
 

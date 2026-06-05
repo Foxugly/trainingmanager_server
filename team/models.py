@@ -56,6 +56,22 @@ class Team(models.Model):
     )
     is_active = models.BooleanField(default=True)
     is_public = models.BooleanField(default=False)
+    logo = models.TextField(
+        blank=True,
+        default="",
+        help_text=_(
+            "Small base64 data-URL for the team logo "
+            "(e.g. 'data:image/png;base64,...'). Stored inline in the DB; "
+            "no file storage."
+        ),
+    )
+    roti_enabled = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, athletes can submit a per-session difficulty rating "
+            "(ROTI, 1..5) for the team's events."
+        ),
+    )
     chat_mode = models.CharField(
         max_length=20,
         choices=ChatMode.choices,

@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
@@ -10,6 +12,10 @@ from sport.models import Sport
 from sport.serializers import SportSerializer
 
 from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership
+
+# Accepted data-URL prefixes for the team logo and the max total length.
+LOGO_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|svg\+xml);base64,")
+LOGO_MAX_LENGTH = 500000  # ~375 KB once base64 is decoded
 
 
 class TeamMinimalSerializer(serializers.ModelSerializer):
@@ -61,6 +67,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "language",
             "is_active",
             "is_public",
+            "logo",
+            "roti_enabled",
             "chat_mode",
             "athlete_can_read_notes",
             "attendance_statuses",
@@ -70,6 +78,21 @@ class TeamSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "owner", "managers", "created_at", "updated_at"]
+
+    def validate_logo(self, value):
+        if not value:
+            return value
+        if len(value) > LOGO_MAX_LENGTH:
+            raise serializers.ValidationError(
+                _("Logo is too large (max %(max)d characters).") % {"max": LOGO_MAX_LENGTH},
+                code="logo_too_large",
+            )
+        if not LOGO_DATA_URL_RE.match(value):
+            raise serializers.ValidationError(
+                _("Logo must be a base64 data-URL of an image (png, jpeg, jpg, webp or svg+xml)."),
+                code="logo_invalid_format",
+            )
+        return value
 
 
 class TeamJoinRequestSerializer(serializers.ModelSerializer):

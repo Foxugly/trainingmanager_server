@@ -113,6 +113,8 @@ locale/       # Translations (fr complet, nl/it/es à compléter)
 | POST | `/api/v1/join-requests/` | Auth | Demander à rejoindre une team |
 | POST | `/api/v1/invitations/` | Trainer | Pré-inscrire un athlète |
 | GET, POST | `/api/v1/invitations/lookup/<token>/` | Public | Finaliser invitation |
+| GET, PUT | `/api/v1/events/{id}/roti/` | Auth (member/coach) | ROTI : résumé (incl. my_score) / upsert son propre score (1..5, si `roti_enabled`) |
+| GET | `/api/v1/events/{id}/roti/summary/` | Auth (member/coach) | Agrégat ROTI (average/count/distribution) |
 | POST | `/api/v1/ai/ping/` | Trainer | Test API Anthropic |
 | GET | `/api/v1/sports/` | Auth | Liste des sports |
 | GET | `/api/v1/sports/<id>/modalities/` | Auth | Modalities d'un sport |

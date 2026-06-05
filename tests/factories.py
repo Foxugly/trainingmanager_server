@@ -8,6 +8,7 @@ from exercise.models import EnergySegment, EnergySystem, Exercise, Modality
 from level.models import Level
 from member.models import Member
 from program.models import Program
+from roti.models import Roti
 from round.models import Round
 from sport.models import Sport
 from team.models import Team
@@ -103,6 +104,15 @@ class MemberFactory(DjangoModelFactory):
 
         for team in extracted:
             TeamMembership.objects.create(team=team, member=self)
+
+
+class RotiFactory(DjangoModelFactory):
+    class Meta:
+        model = Roti
+
+    event = factory.SubFactory("tests.factories.EventFactory")
+    member = factory.SubFactory(MemberFactory)
+    score = 3
 
 
 class ProgramFactory(DjangoModelFactory):
