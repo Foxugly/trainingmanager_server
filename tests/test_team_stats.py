@@ -150,15 +150,85 @@ def test_empty_team_returns_zeros(owner_client, team):
     assert body["volume"]["by_week"] == []
     assert body["volume"]["by_member"] == []
     assert body["intensity"]["by_segment"] == []
-    assert body["period"]["weeks"] == 12
+    assert body["member"] is None
+    # Default window: last 12 weeks (to=today, from=today-84d).
+    today = timezone.localdate()
+    assert body["period"]["to"] == str(today)
+    assert body["period"]["from"] == str(today - timedelta(days=84))
+    assert "weeks" not in body["period"]
 
 
-def test_weeks_param_clamping_and_default(owner_client, team):
-    assert owner_client.get(_url(team.pk)).json()["period"]["weeks"] == 12
-    assert owner_client.get(_url(team.pk) + "?weeks=0").json()["period"]["weeks"] == 12
-    assert owner_client.get(_url(team.pk) + "?weeks=4").json()["period"]["weeks"] == 4
-    assert owner_client.get(_url(team.pk) + "?weeks=99999").json()["period"]["weeks"] == 520
-    assert owner_client.get(_url(team.pk) + "?weeks=abc").json()["period"]["weeks"] == 12
+# =====================================================================
+# Date-range window (from / to)
+# =====================================================================
+
+
+def test_default_window_is_last_12_weeks(owner_client, team):
+    today = timezone.localdate()
+    body = owner_client.get(_url(team.pk)).json()
+    assert body["period"]["to"] == str(today)
+    assert body["period"]["from"] == str(today - timedelta(days=84))
+
+
+def test_explicit_range_filters_events(owner_client, team, program, present_status):
+    today = timezone.localdate()
+    m = _make_member(team, "Win", "Dow")
+
+    inside = Event.objects.create(
+        refer_program=program, name="inside", date=today - timedelta(days=5), total=500
+    )
+    # Outside the explicit [today-7, today] window.
+    Event.objects.create(
+        refer_program=program, name="old", date=today - timedelta(days=30), total=9999
+    )
+    Attendance.objects.create(event=inside, member=m, status=present_status)
+
+    date_from = (today - timedelta(days=7)).isoformat()
+    date_to = today.isoformat()
+    body = owner_client.get(
+        _url(team.pk) + f"?from={date_from}&to={date_to}"
+    ).json()
+    assert body["period"]["from"] == date_from
+    assert body["period"]["to"] == date_to
+    assert body["volume"]["total_distance"] == 500
+    assert [s["name"] for s in body["attendance"]["by_session"]] == ["inside"]
+
+
+def test_only_from_provided_defaults_to_today(owner_client, team):
+    today = timezone.localdate()
+    date_from = (today - timedelta(days=20)).isoformat()
+    body = owner_client.get(_url(team.pk) + f"?from={date_from}").json()
+    assert body["period"]["from"] == date_from
+    assert body["period"]["to"] == str(today)
+
+
+def test_only_to_provided_defaults_from_84d_back(owner_client, team):
+    date_to = (timezone.localdate() - timedelta(days=10)).isoformat()
+    body = owner_client.get(_url(team.pk) + f"?to={date_to}").json()
+    to_d = timezone.localdate() - timedelta(days=10)
+    assert body["period"]["to"] == date_to
+    assert body["period"]["from"] == str(to_d - timedelta(days=84))
+
+
+def test_malformed_date_returns_400(owner_client, team):
+    assert owner_client.get(_url(team.pk) + "?from=not-a-date").status_code == 400
+    assert owner_client.get(_url(team.pk) + "?to=2024-13-99").status_code == 400
+
+
+def test_from_after_to_returns_400(owner_client, team):
+    today = timezone.localdate()
+    date_from = today.isoformat()
+    date_to = (today - timedelta(days=5)).isoformat()
+    resp = owner_client.get(_url(team.pk) + f"?from={date_from}&to={date_to}")
+    assert resp.status_code == 400
+
+
+def test_span_clamped_to_two_years(owner_client, team):
+    today = timezone.localdate()
+    date_from = (today - timedelta(days=5000)).isoformat()
+    body = owner_client.get(_url(team.pk) + f"?from={date_from}").json()
+    # from is pulled forward to to-731d.
+    assert body["period"]["from"] == str(today - timedelta(days=731))
 
 
 # =====================================================================
@@ -263,7 +333,8 @@ def test_events_outside_window_excluded(owner_client, team, program, present_sta
     )
     Attendance.objects.create(event=inside, member=m, status=present_status)
 
-    body = owner_client.get(_url(team.pk) + "?weeks=4").json()
+    date_from = (today - timedelta(days=28)).isoformat()
+    body = owner_client.get(_url(team.pk) + f"?from={date_from}").json()
     assert body["volume"]["total_distance"] == 500
     assert [s["name"] for s in body["attendance"]["by_session"]] == ["inside"]
 
@@ -281,3 +352,126 @@ def test_other_team_events_excluded(owner_client, team, program, present_status)
     body = owner_client.get(_url(team.pk)).json()
     assert body["volume"]["total_distance"] == 0
     assert body["attendance"]["by_session"] == []
+
+
+# =====================================================================
+# Per-athlete scoping (?member=<id>)
+# =====================================================================
+
+
+@pytest.fixture
+def scoped_setup(team, program, present_status, absent_status):
+    """A team with two athletes (one with a user account) and two events.
+
+    Alice (has a user) is present at E1 only; Bob is present at both.
+    Returns the relevant handles for the per-member tests.
+    """
+    today = timezone.localdate()
+
+    # Alice has a linked user account so she can authenticate.
+    alice_user = User.objects.create_user(
+        username="alice_athlete", email="alice@local.test", password="pass"
+    )
+    m_alice = Member.objects.create(
+        firstname="Alice", lastname="Aaa", email="alice@x.test", user=alice_user
+    )
+    TeamMembership.objects.create(team=team, member=m_alice)
+    m_bob = _make_member(team, "Bob", "Bbb")
+
+    e1 = Event.objects.create(
+        refer_program=program, name="E1", date=today - timedelta(days=10), total=1000
+    )
+    e2 = Event.objects.create(
+        refer_program=program, name="E2", date=today - timedelta(days=3), total=2000
+    )
+
+    # Alice present at E1 only; Bob present at both.
+    Attendance.objects.create(event=e1, member=m_alice, status=present_status)
+    Attendance.objects.create(event=e2, member=m_alice, status=absent_status)
+    Attendance.objects.create(event=e1, member=m_bob, status=present_status)
+    Attendance.objects.create(event=e2, member=m_bob, status=present_status)
+
+    # Intensity on E1 (Alice present) + E2 (Alice absent).
+    seg_z2 = EnergySegmentFactory(abv="Z2", description="Endurance")
+    r1 = RoundFactory(count=2, event=e1)
+    ExerciseFactory(round=r1, distance=100, repetition=3, energysegment=seg_z2)  # 600
+    r2 = RoundFactory(count=1, event=e2)
+    ExerciseFactory(round=r2, distance=200, repetition=2, energysegment=seg_z2)  # 400
+
+    return {
+        "alice_user": alice_user,
+        "m_alice": m_alice,
+        "m_bob": m_bob,
+        "e1": e1,
+        "e2": e2,
+    }
+
+
+def test_manager_can_query_any_member_scoped(owner_client, team, scoped_setup):
+    m_alice = scoped_setup["m_alice"]
+    e1 = scoped_setup["e1"]
+    body = owner_client.get(_url(team.pk) + f"?member={m_alice.pk}").json()
+
+    # member object present + identifies the scope.
+    assert body["member"] == {"id": m_alice.pk, "name": "Alice Aaa"}
+
+    # attendance: Alice present at E1 only -> personal timeline (total 1/session).
+    att = body["attendance"]
+    by_session = {s["name"]: s for s in att["by_session"]}
+    assert by_session["E1"]["present"] == 1
+    assert by_session["E1"]["total"] == 1
+    assert by_session["E2"]["present"] == 0
+    assert by_session["E2"]["total"] == 1
+    assert att["team_rate"] == pytest.approx(0.5)  # 1 of 2 sessions
+    assert [m["member_id"] for m in att["by_member"]] == [m_alice.pk]
+
+    # volume: only E1 (where Alice was present) -> 1000.
+    vol = body["volume"]
+    assert vol["total_distance"] == 1000
+    assert sum(w["distance"] for w in vol["by_week"]) == 1000
+    assert [m["member_id"] for m in vol["by_member"]] == [m_alice.pk]
+    assert vol["by_member"][0]["distance"] == 1000
+
+    # intensity: only E1's exercises (Alice present) -> 600, not E2's 400.
+    seg = {s["abv"]: s for s in body["intensity"]["by_segment"]}
+    assert seg["Z2"]["distance"] == 600
+
+
+def test_athlete_can_query_own_member(api_client, team, scoped_setup):
+    alice_user = scoped_setup["alice_user"]
+    m_alice = scoped_setup["m_alice"]
+    api_client.force_authenticate(user=alice_user)
+    resp = api_client.get(_url(team.pk) + f"?member={m_alice.pk}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["member"]["id"] == m_alice.pk
+    assert body["volume"]["total_distance"] == 1000
+
+
+def test_athlete_cannot_query_other_member(api_client, team, scoped_setup):
+    alice_user = scoped_setup["alice_user"]
+    m_bob = scoped_setup["m_bob"]
+    api_client.force_authenticate(user=alice_user)
+    resp = api_client.get(_url(team.pk) + f"?member={m_bob.pk}")
+    assert resp.status_code == 403
+
+
+def test_athlete_cannot_query_team_aggregate(api_client, team, scoped_setup):
+    alice_user = scoped_setup["alice_user"]
+    api_client.force_authenticate(user=alice_user)
+    resp = api_client.get(_url(team.pk))  # no member -> aggregate
+    assert resp.status_code == 403
+
+
+def test_member_not_in_team_returns_404(owner_client, team, scoped_setup):
+    # A member that exists but is not a member of this team.
+    foreign_member = Member.objects.create(
+        firstname="No", lastname="Body", email="nobody@x.test"
+    )
+    resp = owner_client.get(_url(team.pk) + f"?member={foreign_member.pk}")
+    assert resp.status_code == 404
+
+
+def test_member_param_non_integer_returns_400(owner_client, team, scoped_setup):
+    resp = owner_client.get(_url(team.pk) + "?member=abc")
+    assert resp.status_code == 400

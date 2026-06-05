@@ -377,8 +377,7 @@ class StatsPeriodSerializer(serializers.Serializer):
     # sourced from the dict key "from"; the schema/output key is remapped to
     # "from" in get_fields().
     from_ = serializers.DateField(source="from", help_text="Window start (inclusive).")
-    to = serializers.DateField(help_text="Window end (inclusive, = today).")
-    weeks = serializers.IntegerField(help_text="Number of weeks the window spans.")
+    to = serializers.DateField(help_text="Window end (inclusive).")
 
     def get_fields(self):
         fields = super().get_fields()
@@ -444,6 +443,14 @@ class StatsIntensitySerializer(serializers.Serializer):
     by_segment = StatsIntensityBySegmentSerializer(many=True)
 
 
+class StatsMemberSerializer(serializers.Serializer):
+    """The athlete a per-member scoped payload is restricted to. Null on the
+    team-aggregate response (no ?member= query param)."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
 class TeamStatsSerializer(serializers.Serializer):
     """Top-level read-only team statistics payload.
 
@@ -451,9 +458,16 @@ class TeamStatsSerializer(serializers.Serializer):
     events whose date falls within the requested window. Output-only:
     the view assembles a plain dict and passes it through this serializer
     for a clean, typed OpenAPI schema.
+
+    `member` is null for the team aggregate, or `{id, name}` when the
+    payload is scoped to a single athlete (via ?member=<id>).
     """
 
     period = StatsPeriodSerializer()
+    member = StatsMemberSerializer(
+        allow_null=True,
+        help_text="The athlete the payload is scoped to, or null for the team aggregate.",
+    )
     attendance = StatsAttendanceSerializer()
     volume = StatsVolumeSerializer()
     intensity = StatsIntensitySerializer()

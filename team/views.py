@@ -52,9 +52,9 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
-# Default / clamp bounds for the ?weeks= window of the stats endpoint.
-STATS_DEFAULT_WEEKS = 12
-STATS_MAX_WEEKS = 520  # ~10 years; weeks=0 (or absent) -> default 12.
+# Default / clamp bounds for the stats endpoint date-range window.
+STATS_DEFAULT_DAYS = 84  # 12 weeks; used when from/to are absent.
+STATS_MAX_SPAN_DAYS = 731  # ~2 years; the window is clamped to this span.
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -98,49 +98,79 @@ class TeamViewSet(viewsets.ModelViewSet):
         summary="Team statistics (attendance, volume, intensity)",
         description=(
             "Read-only aggregated statistics for the team's events whose "
-            "`date` falls in the window [today - weeks*7 days, today]. "
-            "Owner/manager only. `weeks` defaults to 12; weeks=0 (or absent) "
-            "uses the default; values are clamped to [1, 520]."
+            "`date` falls in the window [`from`, `to`] (both inclusive). "
+            "Defaults to the last 12 weeks (`to` = today, `from` = today - 84 "
+            "days) when both are absent; a single bound fills the other "
+            "(`to` defaults to today, `from` defaults to `to` - 84 days). The "
+            "span is clamped to a maximum of 2 years.\n\n"
+            "Without `member` the payload is the **team aggregate** "
+            "(owner/manager only). With `member=<id>` the payload is **scoped "
+            "to that athlete**: allowed for the team's owner/managers for any "
+            "member, or for the athlete viewing their OWN member record."
         ),
         parameters=[
             OpenApiParameter(
-                name="weeks",
+                name="from",
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Window start (inclusive, ISO YYYY-MM-DD). Defaults to "
+                    "`to` - 84 days."
+                ),
+            ),
+            OpenApiParameter(
+                name="to",
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Window end (inclusive, ISO YYYY-MM-DD). Defaults to today."
+                ),
+            ),
+            OpenApiParameter(
+                name="member",
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.QUERY,
                 required=False,
                 description=(
-                    "Window size in weeks (default 12). 0 or absent -> 12; "
-                    "clamped to [1, 520]."
+                    "Optional member id. When set, scopes the whole payload to "
+                    "that athlete. Owner/managers may request any member of the "
+                    "team; an athlete may only request their own member id "
+                    "(otherwise 403). Member not in the team -> 404."
                 ),
-            )
+            ),
         ],
         responses={200: TeamStatsSerializer},
     )
     @action(detail=True, methods=["get"], url_path="stats")
     def stats(self, request, pk=None):
-        """GET /teams/{id}/stats/ — owner/manager-only aggregated stats.
+        """GET /teams/{id}/stats/ — read-only aggregated stats.
 
-        Object-level perms only gate writes (SAFE_METHODS pass through),
-        so we enforce owner-or-manager explicitly here.
+        Object-level perms only gate writes (SAFE_METHODS pass through), so
+        we enforce access explicitly here:
+          - no ?member=     -> team aggregate, owner/manager only.
+          - ?member=<id>    -> scoped to that athlete; owner/manager (any
+                               member) or the athlete themselves (own id only).
         """
         from event.models import Event
 
         team = self.get_object()
-        if not team.is_managed_by(request.user):
-            raise PermissionDenied(_("Only the team owner or managers can view team statistics."))
+        is_manager = team.is_managed_by(request.user)
 
-        weeks = self._parse_weeks(request)
-        today = timezone.localdate()
-        date_from = today - datetime.timedelta(days=weeks * 7)
+        # Resolve the optional per-athlete scope + enforce permissions.
+        scope_member = self._resolve_member_scope(request, team, is_manager)
 
-        # All of this team's events in the window. PostgreSQL filtering on
-        # the related program.team keeps the scope strict.
+        date_from, date_to = self._parse_window(request)
+
+        # All of this team's events in the window. Filtering on the related
+        # program.team keeps the scope strict.
         events = list(
             Event.objects.filter(
                 refer_program__team=team,
                 date__isnull=False,
                 date__gte=date_from,
-                date__lte=today,
+                date__lte=date_to,
             )
             .order_by("date", "id")
             .values("id", "name", "date", "total")
@@ -168,40 +198,140 @@ class TeamViewSet(viewsets.ModelViewSet):
         }
         expected_per_session = len(active_members)
 
+        member_id = scope_member["id"] if scope_member else None
+
         payload = {
-            "period": {"from": date_from, "to": today, "weeks": weeks},
+            "period": {"from": date_from, "to": date_to},
+            "member": scope_member,
             "attendance": self._attendance_stats(
-                event_ids, events, member_names, expected_per_session
+                event_ids, events, member_names, expected_per_session, member_id
             ),
-            "volume": self._volume_stats(event_ids, events, member_names),
-            "intensity": self._intensity_stats(event_ids),
+            "volume": self._volume_stats(event_ids, events, member_names, member_id),
+            "intensity": self._intensity_stats(event_ids, member_id),
         }
         return Response(TeamStatsSerializer(payload).data)
 
-    @staticmethod
-    def _parse_weeks(request):
-        raw = request.query_params.get("weeks")
+    def _resolve_member_scope(self, request, team, is_manager):
+        """Resolve the optional ?member=<id> scope and enforce permissions.
+
+        Returns ``None`` for the team aggregate (no ?member=), or a
+        ``{"id", "name"}`` dict for a valid, authorized per-athlete scope.
+
+        Permission matrix:
+          - no member: aggregate -> owner/manager only (raise 403 otherwise).
+          - member set: must be an active member of the team (else 404). A
+            manager may request any such member; a non-manager may only
+            request their OWN member record (member.user == request.user),
+            else 403.
+        """
+        raw = request.query_params.get("member")
+
         if raw is None or raw == "":
-            return STATS_DEFAULT_WEEKS
+            # Team aggregate: owner/manager only.
+            if not is_manager:
+                raise PermissionDenied(
+                    _("Only the team owner or managers can view team statistics.")
+                )
+            return None
+
         try:
-            weeks = int(raw)
+            member_id = int(raw)
         except (TypeError, ValueError):
-            return STATS_DEFAULT_WEEKS
-        if weeks <= 0:
-            return STATS_DEFAULT_WEEKS
-        return min(weeks, STATS_MAX_WEEKS)
+            raise drf_serializers.ValidationError(
+                {"member": _("member must be an integer id.")},
+                code="invalid_member",
+            )
+
+        membership = (
+            team.memberships.filter(member_id=member_id, left_at__isnull=True)
+            .select_related("member")
+            .first()
+        )
+        if membership is None:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound(_("No such member in this team."))
+
+        member = membership.member
+        if not is_manager:
+            # A non-manager may only view their own stats.
+            if member.user_id != request.user.pk:
+                raise PermissionDenied(
+                    _("You can only view your own statistics.")
+                )
+
+        name = f"{member.firstname} {member.lastname}".strip()
+        return {"id": member_id, "name": name}
 
     @staticmethod
-    def _attendance_stats(event_ids, events, member_names, expected_per_session):
+    def _parse_window(request):
+        """Parse the [from, to] date window from query params.
+
+        Defaults: both absent -> to=today, from=today-84d. A single bound
+        fills the other (to defaults today; from defaults to-84d). Malformed
+        dates -> 400. from > to -> 400. The span is clamped to
+        STATS_MAX_SPAN_DAYS by pulling `from` forward.
+        """
+        today = timezone.localdate()
+
+        def _parse(value, field):
+            if value is None or value == "":
+                return None
+            try:
+                return datetime.date.fromisoformat(value)
+            except (TypeError, ValueError):
+                raise drf_serializers.ValidationError(
+                    {field: _("Invalid date. Use ISO format YYYY-MM-DD.")},
+                    code="invalid_date",
+                )
+
+        raw_from = request.query_params.get("from")
+        raw_to = request.query_params.get("to")
+
+        date_from = _parse(raw_from, "from")
+        date_to = _parse(raw_to, "to")
+
+        if date_to is None:
+            date_to = today
+        if date_from is None:
+            date_from = date_to - datetime.timedelta(days=STATS_DEFAULT_DAYS)
+
+        if date_from > date_to:
+            raise drf_serializers.ValidationError(
+                {"from": _("`from` must be on or before `to`.")},
+                code="invalid_range",
+            )
+
+        # Clamp the span to a sane maximum by pulling `from` forward.
+        if (date_to - date_from).days > STATS_MAX_SPAN_DAYS:
+            date_from = date_to - datetime.timedelta(days=STATS_MAX_SPAN_DAYS)
+
+        return date_from, date_to
+
+    @staticmethod
+    def _attendance_stats(
+        event_ids, events, member_names, expected_per_session, member_id=None
+    ):
         """Attendance present-counts grouped per event and per member.
 
-        "present" = Attendance rows whose status.code == 'present'. "total"
-        per session = number of currently-active athlete members of the team.
+        "present" = Attendance rows whose status.code == 'present'.
+
+        Team aggregate (member_id is None): "total" per session = number of
+        currently-active athlete members; by_member spans all members.
+
+        Per-athlete scope (member_id set): by_session is that member's
+        personal timeline (present 0/1, total 1 per session), team_rate is
+        their overall present rate, by_member is the single scoped member.
         """
         from attendance.models import Attendance
 
         if not event_ids:
             return {"team_rate": None, "by_session": [], "by_member": []}
+
+        if member_id is not None:
+            return TeamViewSet._attendance_stats_member(
+                event_ids, events, member_names, member_id
+            )
 
         # present count per event
         per_event = dict(
@@ -249,14 +379,14 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         session_count = len(events)
         by_member = []
-        for member_id, name in member_names.items():
-            row = present_by_member.get(member_id)
+        for member_id_, name in member_names.items():
+            row = present_by_member.get(member_id_)
             present = row["present"] if row else 0
             last_present = row["last_present_date"] if row else None
             rate = (present / session_count) if session_count else None
             by_member.append(
                 {
-                    "member_id": member_id,
+                    "member_id": member_id_,
                     "name": name,
                     "present": present,
                     "total": session_count,
@@ -273,30 +403,101 @@ class TeamViewSet(viewsets.ModelViewSet):
         }
 
     @staticmethod
-    def _volume_stats(event_ids, events, member_names):
+    def _attendance_stats_member(event_ids, events, member_names, member_id):
+        """Per-athlete attendance: personal timeline + overall rate."""
+        from attendance.models import Attendance
+
+        present_event_ids = set(
+            Attendance.objects.filter(
+                event_id__in=event_ids,
+                status__code="present",
+                member_id=member_id,
+            ).values_list("event_id", flat=True)
+        )
+
+        by_session = []
+        total_present = 0
+        last_present_date = None
+        for e in events:
+            present = 1 if e["id"] in present_event_ids else 0
+            total_present += present
+            if present:
+                if last_present_date is None or e["date"] > last_present_date:
+                    last_present_date = e["date"]
+            by_session.append(
+                {
+                    "event_id": e["id"],
+                    "name": e["name"],
+                    "date": e["date"],
+                    "present": present,
+                    "total": 1,
+                    "rate": float(present),
+                }
+            )
+
+        session_count = len(events)
+        team_rate = (total_present / session_count) if session_count else None
+
+        name = member_names.get(member_id) or f"member #{member_id}"
+        by_member = [
+            {
+                "member_id": member_id,
+                "name": name,
+                "present": total_present,
+                "total": session_count,
+                "rate": team_rate,
+                "last_present_date": last_present_date,
+            }
+        ]
+
+        return {
+            "team_rate": team_rate,
+            "by_session": by_session,
+            "by_member": by_member,
+        }
+
+    @staticmethod
+    def _volume_stats(event_ids, events, member_names, member_id=None):
         """Training volume = sum of Event.total over the window.
 
-        Team-level total counts each session once. by_week buckets by the
-        ISO Monday of the event date. by_member attributes a session's full
-        distance to every member marked present at that session.
+        Team aggregate (member_id is None): total_distance counts each
+        session once; by_week buckets by ISO Monday; by_member attributes a
+        session's full distance to every member present at it.
+
+        Per-athlete scope (member_id set): total_distance / by_week only
+        count sessions where THAT member was present (their personal volume);
+        by_member is the single scoped member.
         """
         from attendance.models import Attendance
 
         if not event_ids:
             return {"total_distance": 0, "by_week": [], "by_member": []}
 
-        total_distance = sum(e["total"] for e in events)
+        if member_id is not None:
+            present_event_ids = set(
+                Attendance.objects.filter(
+                    event_id__in=event_ids,
+                    status__code="present",
+                    member_id=member_id,
+                ).values_list("event_id", flat=True)
+            )
+            scoped_events = [e for e in events if e["id"] in present_event_ids]
+            total_distance = sum(e["total"] for e in scoped_events)
+            by_week = TeamViewSet._bucket_by_week(scoped_events)
+            name = member_names.get(member_id) or f"member #{member_id}"
+            by_member = (
+                [{"member_id": member_id, "name": name, "distance": total_distance}]
+                if total_distance
+                else [{"member_id": member_id, "name": name, "distance": 0}]
+            )
+            return {
+                "total_distance": total_distance,
+                "by_week": by_week,
+                "by_member": by_member,
+            }
 
-        # by_week — bucket in Python (DB-agnostic, small N of sessions).
-        week_buckets: dict[datetime.date, int] = {}
-        for e in events:
-            d = e["date"]
-            monday = d - datetime.timedelta(days=d.weekday())
-            week_buckets[monday] = week_buckets.get(monday, 0) + e["total"]
-        by_week = [
-            {"week_start": wk, "distance": dist}
-            for wk, dist in sorted(week_buckets.items())
-        ]
+        total_distance = sum(e["total"] for e in events)
+        by_week = TeamViewSet._bucket_by_week(events)
 
         # by_member — attribute each present session's distance to the member.
         event_total = {e["id"]: e["total"] for e in events}
@@ -305,19 +506,18 @@ class TeamViewSet(viewsets.ModelViewSet):
         ).values_list("member_id", "event_id")
 
         member_distance: dict[int, int] = {}
-        for member_id, event_id in present_links:
-            member_distance[member_id] = member_distance.get(member_id, 0) + event_total.get(
+        for m_id, event_id in present_links:
+            member_distance[m_id] = member_distance.get(m_id, 0) + event_total.get(
                 event_id, 0
             )
 
         by_member = [
             {
-                "member_id": member_id,
-                "name": member_names.get(member_id)
-                or f"member #{member_id}",
+                "member_id": m_id,
+                "name": member_names.get(m_id) or f"member #{m_id}",
                 "distance": dist,
             }
-            for member_id, dist in member_distance.items()
+            for m_id, dist in member_distance.items()
         ]
         by_member.sort(key=lambda m: (-m["distance"], m["name"].lower()))
 
@@ -328,18 +528,48 @@ class TeamViewSet(viewsets.ModelViewSet):
         }
 
     @staticmethod
-    def _intensity_stats(event_ids):
+    def _bucket_by_week(events):
+        """Bucket events' distance by the ISO Monday of their date (Python,
+        DB-agnostic, small N of sessions)."""
+        week_buckets: dict[datetime.date, int] = {}
+        for e in events:
+            d = e["date"]
+            monday = d - datetime.timedelta(days=d.weekday())
+            week_buckets[monday] = week_buckets.get(monday, 0) + e["total"]
+        return [
+            {"week_start": wk, "distance": dist}
+            for wk, dist in sorted(week_buckets.items())
+        ]
+
+    @staticmethod
+    def _intensity_stats(event_ids, member_id=None):
         """Distance per energy zone across the window's exercises.
 
         zone distance = sum(exercise.distance * exercise.repetition *
         round.count) grouped by exercise.energysegment.abv. The localized
         segment description (modeltranslation, active request language) is
         returned as `label`. Ordered by abv (Z0..Z7).
+
+        Per-athlete scope (member_id set): restricts to the sessions THAT
+        member was present at (attributing session exercises to the member).
         """
         from exercise.models import Exercise
 
         if not event_ids:
             return {"by_segment": []}
+
+        if member_id is not None:
+            from attendance.models import Attendance
+
+            event_ids = list(
+                Attendance.objects.filter(
+                    event_id__in=event_ids,
+                    status__code="present",
+                    member_id=member_id,
+                ).values_list("event_id", flat=True)
+            )
+            if not event_ids:
+                return {"by_segment": []}
 
         # Exercises reachable from the window's events:
         #   Event -(M2M)- Round -(M2M)- Exercise
