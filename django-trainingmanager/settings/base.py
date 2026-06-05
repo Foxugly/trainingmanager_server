@@ -310,7 +310,12 @@ ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
 # disabled allauth.headless).
 ACCOUNT_ADAPTER = "customuser.adapter.FrontendAccountAdapter"
 
-FRONTEND_URL = env("FRONTEND_URL")
+# Canonical SSM name is FRONTEND_BASE_URL (fleet OPERATIONS.md §3.14). Read it
+# first, falling back to the legacy FRONTEND_URL until the SSM rename is migrated
+# (lazy `or` so a present FRONTEND_BASE_URL never requires the old name). FRONTEND_URL
+# stays as an in-code alias — adapter/magic_action/views still reference it.
+FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="") or env("FRONTEND_URL")
+FRONTEND_URL = FRONTEND_BASE_URL
 
 GRAPH_TENANT_ID = env("GRAPH_TENANT_ID")
 GRAPH_CLIENT_ID = env("GRAPH_CLIENT_ID")
