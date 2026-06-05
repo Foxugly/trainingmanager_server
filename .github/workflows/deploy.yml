@@ -23,7 +23,7 @@ jobs:
 
       - name: Run tests
         # The settings are fail-loud (no defaults for SECRET_KEY / DEBUG /
-        # ALLOWED_HOSTS / FRONTEND_URL / GRAPH_*). pytest uses the dev settings
+        # ALLOWED_HOSTS / FRONTEND_BASE_URL / GRAPH_*). pytest uses the dev settings
         # (pytest.ini); DB_ENGINE unset → sqlite. These are throwaway CI values.
         env:
           DEBUG: "True"
@@ -31,7 +31,7 @@ jobs:
           ALLOWED_HOSTS: "*"
           STATE: TEST
           WEBSITE: localhost
-          FRONTEND_URL: http://localhost:4200
+          FRONTEND_BASE_URL: http://localhost:4200
           GRAPH_TENANT_ID: ci
           GRAPH_CLIENT_ID: ci
           GRAPH_CLIENT_SECRET: ci
