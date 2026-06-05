@@ -94,6 +94,7 @@ def build_user_prompt(
     date_end,
     frequency_per_week,
     description,
+    team=None,
     additional_prompt="",
 ):
     duration_days = (date_end - date_start).days + 1
@@ -101,9 +102,16 @@ def build_user_prompt(
     expected_events = weeks * frequency_per_week
     language_label = resolve_language_label(language)
 
+    # Localized name/description: modeltranslation returns the active-language
+    # value (the prompt resolves the team language).
+    level_line = ""
+    if team and team.level:
+        level_line = f"- Team skill level: {team.level.name} — {team.level.description}\n"
+
     base = (
         f"Generate a training plan with these constraints:\n"
         f"- Sport: {sport_name}\n"
+        f"{level_line}"
         f"- Period: from {date_start.isoformat()} to {date_end.isoformat()} "
         f"({duration_days} days, ~{weeks} weeks)\n"
         f"- Frequency: {frequency_per_week} sessions per week "
@@ -196,6 +204,7 @@ def generate_plan(
         date_end=date_end,
         frequency_per_week=frequency_per_week,
         description=description,
+        team=program.team,
         additional_prompt=additional_prompt,
     )
     logger.info(

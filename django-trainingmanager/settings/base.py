@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "note",
     "chat",
     "attendance",
+    "level",
 ]
 
 SITE_ID = 1

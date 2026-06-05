@@ -32,6 +32,13 @@ class Team(models.Model):
         null=True,
         blank=True,
     )
+    level = models.ForeignKey(
+        "level.Level",
+        on_delete=models.PROTECT,
+        related_name="teams",
+        null=True,
+        blank=True,
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

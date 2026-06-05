@@ -109,7 +109,9 @@ def build_system_prompt(sport_name):
     )
 
 
-def build_user_prompt(*, event, modalities_catalog, energysegments_catalog, additional_prompt=""):
+def build_user_prompt(
+    *, event, modalities_catalog, energysegments_catalog, team=None, additional_prompt=""
+):
     language = (
         event.refer_program.team.language
         if event.refer_program and event.refer_program.team
@@ -120,10 +122,17 @@ def build_user_prompt(*, event, modalities_catalog, energysegments_catalog, addi
     cat_modalities = "\n".join(f"  {m['id']}: {m['name']}" for m in modalities_catalog)
     cat_segments = "\n".join(f"  {s['id']}: {s['abv']}" for s in energysegments_catalog)
 
+    # Localized name/description: modeltranslation returns the active-language
+    # value (the prompt resolves the team language above).
+    level_line = ""
+    if team and team.level:
+        level_line = f"- Team skill level: {team.level.name} — {team.level.description}\n"
+
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
         f"- Goal: {event.goal or '(not specified)'}\n"
+        f"{level_line}"
         f"- Planned date: {event.date.isoformat() if event.date else '(not specified)'}\n"
         f"- Target total distance: {event.total or 0} meters\n\n"
         f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
@@ -208,6 +217,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
         event=event,
         modalities_catalog=modalities,
         energysegments_catalog=energysegments,
+        team=team,
         additional_prompt=additional_prompt,
     )
     logger.info(

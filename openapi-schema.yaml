@@ -2298,6 +2298,219 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/levels/:
+    get:
+      operationId: levels_list
+      description: Returns the public Level serializer with localized 'name' and 'description'.
+        Available to all authenticated users. Pass ?include_inactive=true (staff only)
+        to include soft-deleted rows.
+      summary: List levels (public flavor)
+      parameters:
+      - in: query
+        name: include_inactive
+        schema:
+          type: boolean
+        description: If true and the user is staff, include soft-deleted (is_active=False)
+          records in the result. Silently ignored for non-staff users.
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - levels
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLevelList'
+          description: ''
+    post:
+      operationId: levels_create
+      description: Accepts the admin flavor with name_*/description_* variants.
+      summary: Create level (staff only)
+      tags:
+      - levels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelAdmin'
+          description: ''
+  /api/v1/levels/{id}/:
+    get:
+      operationId: levels_retrieve
+      description: Returns the admin flavor with name_*/description_* per-language
+        variants when called by a staff user, otherwise the public flavor.
+      summary: Retrieve level (admin flavor for staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this level.
+        required: true
+      - in: query
+        name: include_inactive
+        schema:
+          type: boolean
+        description: If true and the user is staff, include soft-deleted (is_active=False)
+          records in the result. Silently ignored for non-staff users.
+      tags:
+      - levels
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelAdmin'
+          description: ''
+    put:
+      operationId: levels_update
+      description: |-
+        CRUD on the Level referential.
+
+        Read: any authenticated user (default queryset filters is_active=True).
+        Write: staff only. Soft delete bumps updated_at.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this level.
+        required: true
+      - in: query
+        name: include_inactive
+        schema:
+          type: boolean
+        description: If true and the user is staff, include soft-deleted (is_active=False)
+          records in the result. Silently ignored for non-staff users.
+      tags:
+      - levels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LevelAdmin'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelAdmin'
+          description: ''
+    patch:
+      operationId: levels_partial_update
+      description: |-
+        CRUD on the Level referential.
+
+        Read: any authenticated user (default queryset filters is_active=True).
+        Write: staff only. Soft delete bumps updated_at.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this level.
+        required: true
+      - in: query
+        name: include_inactive
+        schema:
+          type: boolean
+        description: If true and the user is staff, include soft-deleted (is_active=False)
+          records in the result. Silently ignored for non-staff users.
+      tags:
+      - levels
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLevelAdmin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLevelAdmin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLevelAdmin'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelAdmin'
+          description: ''
+    delete:
+      operationId: levels_destroy
+      description: Sets is_active=False; does not hard delete.
+      summary: Soft delete level (staff only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this level.
+        required: true
+      tags:
+      - levels
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/me/:
     get:
       operationId: me_retrieve
@@ -5587,6 +5800,107 @@ components:
         * `en` - English
         * `it` - Italiano
         * `es` - Español
+    Level:
+      type: object
+      description: |-
+        Public flavor: 'name' and 'description' are auto-localized by
+        modeltranslation.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+      required:
+      - code
+      - description
+      - id
+      - is_active
+      - name
+      - order
+    LevelAdmin:
+      type: object
+      description: 'Admin flavor: exposes per-language name/description variants.'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 100
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 100
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 100
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 100
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 100
+        description_fr:
+          type: string
+          nullable: true
+          title: Description [fr]
+          maxLength: 255
+        description_nl:
+          type: string
+          nullable: true
+          title: Description [nl]
+          maxLength: 255
+        description_en:
+          type: string
+          nullable: true
+          title: Description [en]
+          maxLength: 255
+        description_it:
+          type: string
+          nullable: true
+          title: Description [it]
+          maxLength: 255
+        description_es:
+          type: string
+          nullable: true
+          title: Description [es]
+          maxLength: 255
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_active:
+          type: boolean
+      required:
+      - code
+      - id
     Logout:
       type: object
       description: |-
@@ -6027,6 +6341,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Exercise'
+    PaginatedLevelList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Level'
     PaginatedMemberList:
       type: object
       required:
@@ -6641,6 +6978,73 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedLevelAdmin:
+      type: object
+      description: 'Admin flavor: exposes per-language name/description variants.'
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 100
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 100
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 100
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 100
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 100
+        description_fr:
+          type: string
+          nullable: true
+          title: Description [fr]
+          maxLength: 255
+        description_nl:
+          type: string
+          nullable: true
+          title: Description [nl]
+          maxLength: 255
+        description_en:
+          type: string
+          nullable: true
+          title: Description [en]
+          maxLength: 255
+        description_it:
+          type: string
+          nullable: true
+          title: Description [it]
+          maxLength: 255
+        description_es:
+          type: string
+          nullable: true
+          title: Description [es]
+          maxLength: 255
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_active:
+          type: boolean
     PatchedMe:
       type: object
       properties:
@@ -7013,6 +7417,14 @@ components:
         sport_id:
           type: integer
           writeOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          readOnly: true
+        level_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         owner:
           allOf:
           - $ref: '#/components/schemas/CustomUserPublic'
@@ -7480,6 +7892,14 @@ components:
         sport_id:
           type: integer
           writeOnly: true
+        level:
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          readOnly: true
+        level_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         owner:
           allOf:
           - $ref: '#/components/schemas/CustomUserPublic'
@@ -7543,6 +7963,7 @@ components:
       required:
       - created_at
       - id
+      - level
       - managers
       - name
       - owner

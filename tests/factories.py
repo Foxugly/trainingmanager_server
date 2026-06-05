@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 from event.models import Event
 from exercise.models import EnergySegment, EnergySystem, Exercise, Modality
+from level.models import Level
 from member.models import Member
 from program.models import Program
 from round.models import Round
@@ -34,6 +35,18 @@ class SportFactory(DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Sport {n}")
     slug = factory.Sequence(lambda n: f"sport-{n}")
+    is_active = True
+
+
+class LevelFactory(DjangoModelFactory):
+    class Meta:
+        model = Level
+        django_get_or_create = ("code",)
+
+    code = factory.Sequence(lambda n: f"level-{n}")
+    name = factory.Sequence(lambda n: f"Level {n}")
+    description = "test level"
+    order = factory.Sequence(lambda n: n)
     is_active = True
 
 

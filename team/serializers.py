@@ -4,6 +4,8 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from customuser.serializers import CustomUserPublicSerializer
+from level.models import Level
+from level.serializers import LevelSerializer
 from sport.models import Sport
 from sport.serializers import SportSerializer
 
@@ -26,6 +28,14 @@ class TeamSerializer(serializers.ModelSerializer):
         queryset=Sport.objects.all(),
         write_only=True,
     )
+    level = LevelSerializer(read_only=True)
+    level_id = serializers.PrimaryKeyRelatedField(
+        source="level",
+        queryset=Level.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     owner = CustomUserPublicSerializer(read_only=True)
     managers = CustomUserPublicSerializer(many=True, read_only=True)
     managers_ids = serializers.PrimaryKeyRelatedField(
@@ -43,6 +53,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "name",
             "sport",
             "sport_id",
+            "level",
+            "level_id",
             "owner",
             "managers",
             "managers_ids",
