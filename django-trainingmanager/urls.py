@@ -5,6 +5,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from customuser.views import VerifiedTokenObtainPairView
+from event.public_views import PublicEventView
 from tools.health import HealthCheckView
 
 urlpatterns = [
@@ -41,6 +42,12 @@ urlpatterns = [
     path("api/v1/", include("notifications.urls")),
     path("api/v1/", include("messaging.urls")),
     path("api/v1/", include("attachment.urls")),
+    # Public (unauthenticated) read-only session share link
+    path(
+        "api/v1/public/events/<str:token>/",
+        PublicEventView.as_view(),
+        name="public_event",
+    ),
     # OpenAPI schema + Swagger UI
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

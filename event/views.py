@@ -19,6 +19,7 @@ from .ai import generate_training as ai_generate_training
 from .models import Event
 from .serializers import (
     DuplicateEventRequestSerializer,
+    EventShareRequestSerializer,
     EventSerializer,
     GenerateTrainingRequestSerializer,
     ReorderRoundsRequestSerializer,
@@ -374,3 +375,78 @@ class EventViewSet(viewsets.ModelViewSet):
                 created.append({"id": new_event.pk, "date": target_date})
 
         return Response({"created": created}, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=EventShareRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="EventShareResponse",
+                    fields={
+                        "is_public": serializers.BooleanField(),
+                        "public_token": serializers.CharField(allow_null=True),
+                        "public_url_path": serializers.CharField(
+                            allow_null=True,
+                            help_text="Frontend route, e.g. /s/e/<token>. Null when not shared.",
+                        ),
+                    },
+                ),
+                description="Sharing state updated.",
+            ),
+            400: OpenApiResponse(description="Invalid request body"),
+            403: OpenApiResponse(description="Not a manager of this event team"),
+            409: OpenApiResponse(
+                description=(
+                    "Public sharing is disabled for this team "
+                    "(`body.code` == `public_sharing_disabled`)."
+                )
+            ),
+        },
+        description=(
+            "Toggle the public read-only share link for this session. "
+            "Enabling (is_public=true) requires the event's team to have "
+            "public_sharing_enabled=true (else 409 public_sharing_disabled) and "
+            "mints an unguessable token if absent. Disabling (is_public=false) "
+            "keeps the token so re-enabling reuses the same URL. Manager/owner "
+            "of the event's team only."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="share")
+    def share(self, request, pk=None):
+        """POST /api/v1/events/{id}/share/ — toggle a public read-only share link."""
+        event = self.get_object()
+
+        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        body_serializer = EventShareRequestSerializer(data=request.data)
+        body_serializer.is_valid(raise_exception=True)
+        is_public = body_serializer.validated_data["is_public"]
+
+        team = event.refer_program.team
+        if is_public:
+            if not team.public_sharing_enabled:
+                return Response(
+                    {
+                        "code": "public_sharing_disabled",
+                        "detail": _("Public sharing is disabled for this team."),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            event.ensure_public_token()
+            event.is_public = True
+            event.save(update_fields=["is_public"])
+        else:
+            # Keep the token so a later re-enable reuses the same public URL.
+            event.is_public = False
+            event.save(update_fields=["is_public"])
+
+        token = event.get_public_token()
+        return Response(
+            {
+                "is_public": event.is_public,
+                "public_token": token,
+                "public_url_path": f"/s/e/{token}" if (event.is_public and token) else None,
+            },
+            status=status.HTTP_200_OK,
+        )

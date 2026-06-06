@@ -2000,6 +2000,50 @@ paths:
             `scope_mismatch`, `incomplete_reorder`.'
         '403':
           description: Not a manager of this event team
+  /api/v1/events/{id}/share/:
+    post:
+      operationId: events_share_create
+      description: Toggle the public read-only share link for this session. Enabling
+        (is_public=true) requires the event's team to have public_sharing_enabled=true
+        (else 409 public_sharing_disabled) and mints an unguessable token if absent.
+        Disabling (is_public=false) keeps the token so re-enabling reuses the same
+        URL. Manager/owner of the event's team only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventShareRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventShareRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventShareRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventShareResponse'
+          description: Sharing state updated.
+        '400':
+          description: Invalid request body
+        '403':
+          description: Not a manager of this event team
+        '409':
+          description: Public sharing is disabled for this team (`body.code` == `public_sharing_disabled`).
   /api/v1/exercises/:
     get:
       operationId: exercises_list
@@ -3645,6 +3689,32 @@ paths:
           description: AI configuration error
         '502':
           description: AI service error
+  /api/v1/public/events/{token}/:
+    get:
+      operationId: public_events_retrieve
+      description: Public read-only view of a session shared via its unguessable token.
+        Sensitive aspects (distance / goal / rounds) are revealed only when the team's
+        public_show_* config allows; name, date, time, location, equipment, program
+        and team name are always shown.
+      parameters:
+      - in: path
+        name: token
+        schema:
+          type: string
+        required: true
+      tags:
+      - public
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventPublic'
+          description: Read-only public session payload.
+        '404':
+          description: No shared session for this token (generic; never leaks existence).
   /api/v1/rounds/:
     get:
       operationId: rounds_list
@@ -6609,6 +6679,16 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
+        is_public:
+          type: boolean
+          readOnly: true
+          description: Whether this session is currently shared via its public link.
+        public_token:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Unguessable token in the public share URL. Null = never shared.
+            The token authenticates the otherwise-anonymous public view.
         generated_by_ai:
           type: boolean
           readOnly: true
@@ -6634,11 +6714,111 @@ components:
       - created_at
       - generated_by_ai
       - id
+      - is_public
       - members
       - name
+      - public_token
       - refer_program
       - refer_program_id
       - updated_at
+    EventPublic:
+      type: object
+      description: |-
+        The full read-only public payload for a shared session.
+
+        Always-public fields: name, date, hour_start, hour_end, location,
+        equipment, program_name, team_name.
+
+        Sensitive fields are gated by the event's team config:
+          - total  -> null unless team.public_show_distance
+          - goal   -> null unless team.public_show_goal
+          - rounds -> [] unless team.public_show_rounds
+      properties:
+        name:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        hour_start:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        hour_end:
+          type: string
+          format: time
+          readOnly: true
+          nullable: true
+        location:
+          type: string
+          readOnly: true
+        equipment:
+          type: string
+          readOnly: true
+        program_name:
+          type: string
+          nullable: true
+          readOnly: true
+        team_name:
+          type: string
+          nullable: true
+          readOnly: true
+        total:
+          type: integer
+          nullable: true
+          readOnly: true
+        goal:
+          type: string
+          nullable: true
+          readOnly: true
+        rounds:
+          type: array
+          items: {}
+          readOnly: true
+      required:
+      - date
+      - equipment
+      - goal
+      - hour_end
+      - hour_start
+      - location
+      - name
+      - program_name
+      - rounds
+      - team_name
+      - total
+    EventShareRequest:
+      type: object
+      description: |-
+        Body for POST /events/{id}/share/.
+
+        `is_public=True` shares the session (minting a public token if absent);
+        `is_public=False` un-shares it but keeps the token so re-enabling reuses
+        the same public URL.
+      properties:
+        is_public:
+          type: boolean
+      required:
+      - is_public
+    EventShareResponse:
+      type: object
+      properties:
+        is_public:
+          type: boolean
+        public_token:
+          type: string
+          nullable: true
+        public_url_path:
+          type: string
+          nullable: true
+          description: Frontend route, e.g. /s/e/<token>. Null when not shared.
+      required:
+      - is_public
+      - public_token
+      - public_url_path
     Exercise:
       type: object
       properties:
@@ -8249,6 +8429,16 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
+        is_public:
+          type: boolean
+          readOnly: true
+          description: Whether this session is currently shared via its public link.
+        public_token:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Unguessable token in the public share URL. Null = never shared.
+            The token authenticates the otherwise-anonymous public view.
         generated_by_ai:
           type: boolean
           readOnly: true
@@ -8888,6 +9078,19 @@ components:
           type: boolean
           description: When True, an athlete with a linked user account is notified
             when a note shared with them (visible_to_athlete=True) is added.
+        public_sharing_enabled:
+          type: boolean
+          description: Allow individual sessions of this team to be shared via a public
+            read-only link.
+        public_show_distance:
+          type: boolean
+          description: Show a shared session's total distance on its public link.
+        public_show_goal:
+          type: boolean
+          description: Show a shared session's goal on its public link.
+        public_show_rounds:
+          type: boolean
+          description: Show a shared session's rounds & exercises on its public link.
         timezone:
           type: string
           description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,
@@ -9785,6 +9988,19 @@ components:
           type: boolean
           description: When True, an athlete with a linked user account is notified
             when a note shared with them (visible_to_athlete=True) is added.
+        public_sharing_enabled:
+          type: boolean
+          description: Allow individual sessions of this team to be shared via a public
+            read-only link.
+        public_show_distance:
+          type: boolean
+          description: Show a shared session's total distance on its public link.
+        public_show_goal:
+          type: boolean
+          description: Show a shared session's goal on its public link.
+        public_show_rounds:
+          type: boolean
+          description: Show a shared session's rounds & exercises on its public link.
         timezone:
           type: string
           description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,

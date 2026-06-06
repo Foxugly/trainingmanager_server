@@ -163,6 +163,22 @@ class Team(models.Model):
             "to athletes. Inherited by new events; overridable per event."
         ),
     )
+    public_sharing_enabled = models.BooleanField(
+        default=False,
+        help_text=_("Allow individual sessions of this team to be shared via a public read-only link."),
+    )
+    public_show_distance = models.BooleanField(
+        default=True,
+        help_text=_("Show a shared session's total distance on its public link."),
+    )
+    public_show_goal = models.BooleanField(
+        default=False,
+        help_text=_("Show a shared session's goal on its public link."),
+    )
+    public_show_rounds = models.BooleanField(
+        default=True,
+        help_text=_("Show a shared session's rounds & exercises on its public link."),
+    )
     notify_managers_on_join_request = models.BooleanField(
         default=True,
         help_text=_(

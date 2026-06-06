@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
@@ -7,6 +8,16 @@ from django.utils.translation import gettext as _
 
 from member.models import Member
 from round.models import Round
+
+
+def generate_share_token():
+    """Generate a fresh, URL-safe token for a session's public share link.
+
+    The token IS the authentication for the unauthenticated public view
+    endpoint, so it must be unguessable. secrets.token_urlsafe(32) yields
+    ~43 chars of base64url (256 bits of entropy).
+    """
+    return secrets.token_urlsafe(32)
 
 
 class VisibilityMode(models.TextChoices):
@@ -91,6 +102,21 @@ class Event(models.Model):
         default=VisibilityMode.ALWAYS,
         help_text=_("Visibility of this session's rounds (and exercises) to athletes."),
     )
+    is_public = models.BooleanField(
+        default=False,
+        help_text=_("Whether this session is currently shared via its public link."),
+    )
+    public_token = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        default=None,
+        help_text=_(
+            "Unguessable token in the public share URL. Null = never shared. "
+            "The token authenticates the otherwise-anonymous public view."
+        ),
+    )
     generated_by_ai = models.BooleanField(default=False)
     ai_prompt = models.TextField(blank=True, default="")
     ai_response = models.TextField(blank=True, default="")
@@ -158,3 +184,30 @@ class Event(models.Model):
         if mode == VisibilityMode.AFTER:
             return self.is_over(now=now)
         return False
+
+    def ensure_public_token(self):
+        """Return this event's public_token, minting and persisting one if absent.
+
+        Idempotent: an already-shared session keeps its token, so re-enabling a
+        previously-disabled share reuses the same public URL. Loops on the
+        (astronomically unlikely) unique-constraint collision so the caller
+        always gets a live token back.
+        """
+        if self.public_token:
+            return self.public_token
+
+        from django.db import IntegrityError
+
+        for _attempt in range(5):
+            self.public_token = generate_share_token()
+            try:
+                self.save(update_fields=["public_token"])
+            except IntegrityError:
+                continue
+            return self.public_token
+        # Practically unreachable (256-bit collision five times in a row).
+        raise RuntimeError("Could not generate a unique public_token.")
+
+    def get_public_token(self):
+        """Read the current public_token (None if the session was never shared)."""
+        return self.public_token

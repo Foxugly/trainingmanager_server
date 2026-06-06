@@ -43,6 +43,17 @@ class DuplicateEventRequestSerializer(serializers.Serializer):
     )
 
 
+class EventShareRequestSerializer(serializers.Serializer):
+    """Body for POST /events/{id}/share/.
+
+    `is_public=True` shares the session (minting a public token if absent);
+    `is_public=False` un-shares it but keeps the token so re-enabling reuses
+    the same public URL.
+    """
+
+    is_public = serializers.BooleanField(required=True)
+
+
 class GenerateTrainingRequestSerializer(serializers.Serializer):
     """Optional payload for POST /events/{id}/generate-training/.
 
@@ -105,6 +116,8 @@ class EventSerializer(serializers.ModelSerializer):
             "vis_distance",
             "vis_goal",
             "vis_rounds",
+            "is_public",
+            "public_token",
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
@@ -113,6 +126,10 @@ class EventSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            # is_public / public_token are managed ONLY via /events/{id}/share/;
+            # they must never be writable through the normal create/update path.
+            "is_public",
+            "public_token",
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
