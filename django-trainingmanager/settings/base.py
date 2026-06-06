@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "roti",
     "level",
     "notifications",
+    "messaging",
 ]
 
 SITE_ID = 1

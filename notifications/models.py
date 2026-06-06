@@ -15,9 +15,8 @@ class NotificationType(models.TextChoices):
 
     NOTE_FOR_COACH = "note_for_coach", _("Note added on an athlete")
     NOTE_FOR_ATHLETE = "note_for_athlete", _("A note was shared with you")
-    # message_* types are added by the messaging feature later; the enum is
-    # designed to be extended (see helpers in services.py that iterate over
-    # NotificationType.choices).
+    MESSAGE_NEW_TOPIC = "message_new_topic", _("A new topic was created in your team")
+    MESSAGE_NEW_REPLY = "message_new_reply", _("A new message was posted in a topic")
 
 
 class Notification(models.Model):

@@ -5185,6 +5185,318 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{team_pk}/topics/:
+    get:
+      operationId: teams_topics_list
+      description: |-
+        Topics nested under a team.
+
+        URL: /api/v1/teams/{team_pk}/topics/
+      summary: List visible topics for a team (newest activity first)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTopicList'
+          description: ''
+    post:
+      operationId: teams_topics_create
+      description: |-
+        Topics nested under a team.
+
+        URL: /api/v1/teams/{team_pk}/topics/
+      summary: Create a topic (coach only)
+      parameters:
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Topic'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Topic'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Topic'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topic'
+          description: ''
+  /api/v1/teams/{team_pk}/topics/{id}/:
+    get:
+      operationId: teams_topics_retrieve
+      description: |-
+        Topics nested under a team.
+
+        URL: /api/v1/teams/{team_pk}/topics/
+      summary: Retrieve a topic
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this topic.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topic'
+          description: ''
+    delete:
+      operationId: teams_topics_destroy
+      description: |-
+        Topics nested under a team.
+
+        URL: /api/v1/teams/{team_pk}/topics/
+      summary: Delete a topic (author or coach)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this topic.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/:
+    get:
+      operationId: teams_topics_messages_list
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: List messages in a topic (oldest first)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTopicMessageList'
+          description: ''
+    post:
+      operationId: teams_topics_messages_create
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: Post a message in a topic
+      parameters:
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicMessage'
+          description: ''
+  /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/{id}/:
+    get:
+      operationId: teams_topics_messages_retrieve
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: Retrieve a message
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this message.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicMessage'
+          description: ''
+    delete:
+      operationId: teams_topics_messages_destroy
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: Delete a message (author or coach)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this message.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     AIPingRequest:
@@ -5475,6 +5787,14 @@ components:
       required:
       - code
       - id
+    AudienceEnum:
+      enum:
+      - team
+      - coaches
+      type: string
+      description: |-
+        * `team` - Whole team
+        * `coaches` - Coaches only
     ChatModeEnum:
       enum:
       - all
@@ -7018,6 +7338,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Team'
+    PaginatedTopicList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topic'
+    PaginatedTopicMessageList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopicMessage'
     PasswordChange:
       type: object
       description: |-
@@ -9046,14 +9412,91 @@ components:
       required:
       - access
       - refresh
+    Topic:
+      type: object
+      description: |-
+        A team topic. ``author`` is the nested public user; ``message_count``
+        is the number of messages in the thread. ``team`` and ``author`` are
+        derived from the URL / request and are read-only.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        audience:
+          allOf:
+          - $ref: '#/components/schemas/AudienceEnum'
+          description: |-
+            team = visible to all team members; coaches = visible only to the owner and managers (staff channel).
+
+            * `team` - Whole team
+            * `coaches` - Coaches only
+        allow_athlete_replies:
+          type: boolean
+          description: Only meaningful when audience=team. When True, athlete members
+            may post messages; coaches can always post.
+        author:
+          allOf:
+          - $ref: '#/components/schemas/CustomUserPublic'
+          readOnly: true
+        message_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Bumped on each new message for activity-based ordering.
+      required:
+      - author
+      - created_at
+      - id
+      - message_count
+      - title
+      - updated_at
+    TopicMessage:
+      type: object
+      description: |-
+        A single message. ``author`` is the nested public user; ``content``
+        is sanitized via bleach on every write.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+          description: Rich HTML content (sanitized via bleach on save).
+        author:
+          allOf:
+          - $ref: '#/components/schemas/CustomUserPublic'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - content
+      - created_at
+      - id
     TypeEnum:
       enum:
       - note_for_coach
       - note_for_athlete
+      - message_new_topic
+      - message_new_reply
       type: string
       description: |-
         * `note_for_coach` - Note added on an athlete
         * `note_for_athlete` - A note was shared with you
+        * `message_new_topic` - A new topic was created in your team
+        * `message_new_reply` - A new message was posted in a topic
     UnreadCount:
       type: object
       description: Response shape for GET /notifications/unread_count/.

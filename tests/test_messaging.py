@@ -1,0 +1,468 @@
+"""Coverage of the per-team messaging feature.
+
+Layers:
+  - visibility scoping (athlete never sees coaches-only topics)
+  - create permissions (coach only)
+  - reply permissions (athlete iff team + allow_athlete_replies)
+  - message ordering + topic.updated_at bump on new message
+  - delete permissions (author / coach)
+  - notification triggers (new topic, new message) + recipient prefs
+"""
+
+import pytest
+from django.contrib.auth import get_user_model
+from django.core import mail
+
+from member.models import Member
+from messaging.models import Message, Topic, TopicAudience
+from notifications.models import Notification, NotificationPreference, NotificationType
+from team.models import TeamMembership
+from tests.factories import TeamFactory, UserFactory
+
+pytestmark = pytest.mark.django_db
+
+User = get_user_model()
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def coach():
+    return UserFactory(email="coach@local.test", language="en")
+
+
+@pytest.fixture
+def manager():
+    return UserFactory(email="manager@local.test", language="en")
+
+
+@pytest.fixture
+def athlete():
+    return UserFactory(email="athlete@local.test", language="en")
+
+
+@pytest.fixture
+def outsider():
+    return UserFactory(email="outsider@local.test", language="en")
+
+
+@pytest.fixture
+def team(coach, manager):
+    t = TeamFactory(owner=coach, is_active=True)
+    t.managers.add(manager)
+    return t
+
+
+@pytest.fixture
+def member(athlete, team):
+    m = Member.objects.create(
+        firstname="Al", lastname="Ete", email="al@local.test", user=athlete
+    )
+    TeamMembership.objects.create(team=team, member=m)
+    return m
+
+
+def _topics_url(team_id):
+    return f"/api/v1/teams/{team_id}/topics/"
+
+
+def _topic_url(team_id, topic_id):
+    return f"/api/v1/teams/{team_id}/topics/{topic_id}/"
+
+
+def _messages_url(team_id, topic_id):
+    return f"/api/v1/teams/{team_id}/topics/{topic_id}/messages/"
+
+
+def _message_url(team_id, topic_id, msg_id):
+    return f"/api/v1/teams/{team_id}/topics/{topic_id}/messages/{msg_id}/"
+
+
+def _make_topic(team, author, audience=TopicAudience.TEAM, allow_replies=True, title="T"):
+    return Topic.objects.create(
+        team=team,
+        author=author,
+        title=title,
+        audience=audience,
+        allow_athlete_replies=allow_replies,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Create permissions
+# ---------------------------------------------------------------------------
+
+
+def test_coach_creates_team_topic(api_client, coach, team, member):
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Welcome", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["title"] == "Welcome"
+    assert body["audience"] == "team"
+    assert body["author"]["id"] == coach.pk
+    assert body["message_count"] == 0
+
+
+def test_coach_creates_coaches_topic(api_client, coach, team):
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Staff only", "audience": "coaches"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.json()["audience"] == "coaches"
+
+
+def test_athlete_cannot_create_topic(api_client, athlete, team, member):
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Nope", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not Topic.objects.filter(title="Nope").exists()
+
+
+def test_outsider_cannot_list_topics(api_client, outsider, team):
+    api_client.force_authenticate(user=outsider)
+    resp = api_client.get(_topics_url(team.pk))
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Visibility scoping
+# ---------------------------------------------------------------------------
+
+
+def test_athlete_sees_team_topic_not_coaches_topic(api_client, coach, team, athlete, member):
+    team_topic = _make_topic(team, coach, TopicAudience.TEAM, title="Team")
+    _make_topic(team, coach, TopicAudience.COACHES, title="Coaches")
+
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.get(_topics_url(team.pk))
+    assert resp.status_code == 200
+    ids = {t["id"] for t in resp.json()["results"]}
+    assert team_topic.pk in ids
+    titles = {t["title"] for t in resp.json()["results"]}
+    assert "Coaches" not in titles
+
+
+def test_athlete_cannot_retrieve_coaches_topic(api_client, coach, team, athlete, member):
+    coaches_topic = _make_topic(team, coach, TopicAudience.COACHES)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.get(_topic_url(team.pk, coaches_topic.pk))
+    # filtered out of the queryset -> 404 (never leak existence)
+    assert resp.status_code == 404
+
+
+def test_coach_sees_all_topics(api_client, coach, team, member):
+    _make_topic(team, coach, TopicAudience.TEAM, title="Team")
+    _make_topic(team, coach, TopicAudience.COACHES, title="Coaches")
+    api_client.force_authenticate(user=coach)
+    resp = api_client.get(_topics_url(team.pk))
+    assert resp.status_code == 200
+    titles = {t["title"] for t in resp.json()["results"]}
+    assert {"Team", "Coaches"} <= titles
+
+
+def test_manager_sees_coaches_topic(api_client, coach, manager, team):
+    coaches_topic = _make_topic(team, coach, TopicAudience.COACHES)
+    api_client.force_authenticate(user=manager)
+    resp = api_client.get(_topic_url(team.pk, coaches_topic.pk))
+    assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Reply permissions
+# ---------------------------------------------------------------------------
+
+
+def test_athlete_can_reply_when_team_and_allowed(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>hi</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.json()["author"]["id"] == athlete.pk
+
+
+def test_athlete_cannot_reply_when_replies_disabled(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=False)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>hi</p>"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert Message.objects.filter(topic=topic).count() == 0
+
+
+def test_athlete_cannot_reply_to_coaches_topic(api_client, coach, team, athlete, member):
+    # Coaches topic is invisible to the athlete -> cannot post (403).
+    topic = _make_topic(team, coach, TopicAudience.COACHES)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>hi</p>"},
+        format="json",
+    )
+    assert resp.status_code in (403, 404)
+    assert Message.objects.filter(topic=topic).count() == 0
+
+
+def test_coach_can_always_reply_even_when_replies_disabled(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=False)
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>coach</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+
+
+def test_coach_replies_to_coaches_topic(api_client, coach, manager, team):
+    topic = _make_topic(team, coach, TopicAudience.COACHES)
+    api_client.force_authenticate(user=manager)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>staff</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# Message listing / ordering / updated_at bump
+# ---------------------------------------------------------------------------
+
+
+def test_message_list_ordering_oldest_first(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    m1 = Message.objects.create(topic=topic, author=coach, content="first")
+    m2 = Message.objects.create(topic=topic, author=coach, content="second")
+    api_client.force_authenticate(user=coach)
+    resp = api_client.get(_messages_url(team.pk, topic.pk))
+    assert resp.status_code == 200
+    ids = [m["id"] for m in resp.json()["results"]]
+    assert ids == [m1.pk, m2.pk]
+
+
+def test_new_message_bumps_topic_updated_at(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    before = topic.updated_at
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>bump</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    topic.refresh_from_db()
+    assert topic.updated_at > before
+
+
+def test_topic_message_count(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    Message.objects.create(topic=topic, author=coach, content="a")
+    Message.objects.create(topic=topic, author=coach, content="b")
+    api_client.force_authenticate(user=coach)
+    resp = api_client.get(_topic_url(team.pk, topic.pk))
+    assert resp.status_code == 200
+    assert resp.json()["message_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Delete permissions
+# ---------------------------------------------------------------------------
+
+
+def test_author_can_delete_own_topic(api_client, coach, manager, team):
+    topic = _make_topic(team, manager, TopicAudience.TEAM)
+    api_client.force_authenticate(user=manager)
+    resp = api_client.delete(_topic_url(team.pk, topic.pk))
+    assert resp.status_code == 204
+    assert not Topic.objects.filter(pk=topic.pk).exists()
+
+
+def test_owner_can_delete_any_topic(api_client, coach, manager, team):
+    topic = _make_topic(team, manager, TopicAudience.TEAM)
+    api_client.force_authenticate(user=coach)  # owner, not author
+    resp = api_client.delete(_topic_url(team.pk, topic.pk))
+    assert resp.status_code == 204
+
+
+def test_athlete_cannot_delete_topic(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.delete(_topic_url(team.pk, topic.pk))
+    assert resp.status_code == 403
+    assert Topic.objects.filter(pk=topic.pk).exists()
+
+
+def test_author_can_delete_own_message(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    msg = Message.objects.create(topic=topic, author=athlete, content="mine")
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.delete(_message_url(team.pk, topic.pk, msg.pk))
+    assert resp.status_code == 204
+    assert not Message.objects.filter(pk=msg.pk).exists()
+
+
+def test_coach_can_delete_any_message(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    msg = Message.objects.create(topic=topic, author=athlete, content="theirs")
+    api_client.force_authenticate(user=coach)
+    resp = api_client.delete(_message_url(team.pk, topic.pk, msg.pk))
+    assert resp.status_code == 204
+
+
+def test_athlete_cannot_delete_others_message(api_client, coach, team, athlete, member):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    msg = Message.objects.create(topic=topic, author=coach, content="coach")
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.delete(_message_url(team.pk, topic.pk, msg.pk))
+    assert resp.status_code == 403
+    assert Message.objects.filter(pk=msg.pk).exists()
+
+
+# ---------------------------------------------------------------------------
+# Notification triggers
+# ---------------------------------------------------------------------------
+
+
+def test_new_team_topic_notifies_audience_except_author(
+    api_client, coach, manager, team, athlete, member
+):
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Hello", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    notifs = Notification.objects.filter(type=NotificationType.MESSAGE_NEW_TOPIC)
+    recipients = set(notifs.values_list("recipient_id", flat=True))
+    # athlete + manager notified; author (coach) is not.
+    assert athlete.pk in recipients
+    assert manager.pk in recipients
+    assert coach.pk not in recipients
+
+
+def test_new_coaches_topic_notifies_only_coaches(
+    api_client, coach, manager, team, athlete, member
+):
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Staff", "audience": "coaches"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    notifs = Notification.objects.filter(type=NotificationType.MESSAGE_NEW_TOPIC)
+    recipients = set(notifs.values_list("recipient_id", flat=True))
+    assert manager.pk in recipients
+    assert athlete.pk not in recipients  # athlete never sees coaches topics
+    assert coach.pk not in recipients
+
+
+def test_new_message_notifies_audience_except_sender(
+    api_client, coach, manager, team, athlete, member
+):
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>hi all</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    notifs = Notification.objects.filter(type=NotificationType.MESSAGE_NEW_REPLY)
+    recipients = set(notifs.values_list("recipient_id", flat=True))
+    # coach + manager notified; sender (athlete) is not.
+    assert coach.pk in recipients
+    assert manager.pk in recipients
+    assert athlete.pk not in recipients
+
+
+def test_message_notification_respects_in_app_pref(api_client, coach, team, athlete, member):
+    # Manager disables in-app for MESSAGE_NEW_REPLY -> no in-app row for them.
+    NotificationPreference.objects.create(
+        user=coach,
+        type=NotificationType.MESSAGE_NEW_REPLY,
+        in_app=False,
+        email=False,
+    )
+    topic = _make_topic(team, coach, TopicAudience.TEAM, allow_replies=True)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<p>hi</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert not Notification.objects.filter(
+        recipient=coach, type=NotificationType.MESSAGE_NEW_REPLY
+    ).exists()
+
+
+def test_new_topic_sends_email_to_audience(api_client, coach, team, athlete, member):
+    mail.outbox.clear()
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Mailed", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    # default prefs -> email sent; athlete has an email address.
+    assert any(athlete.email in m.to for m in mail.outbox)
+    assert any(f"/teams/{team.pk}" in m.body for m in mail.outbox)
+
+
+# ---------------------------------------------------------------------------
+# Content sanitization
+# ---------------------------------------------------------------------------
+
+
+def test_message_content_sanitized(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "<script>alert(1)</script><p>ok</p>"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert "<script>" not in resp.json()["content"]
+    assert "<p>ok</p>" in resp.json()["content"]
+
+
+def test_empty_message_rejected(api_client, coach, team):
+    topic = _make_topic(team, coach, TopicAudience.TEAM)
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _messages_url(team.pk, topic.pk),
+        {"content": "   "},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+def test_endpoints_require_authentication(api_client, team):
+    resp = api_client.get(_topics_url(team.pk))
+    assert resp.status_code == 401
