@@ -5,6 +5,7 @@ import logging
 from django.utils.translation import gettext_lazy as _
 
 from tools.ai import AIServiceError, call_claude_with_tool, truncate_for_log
+from tools.html_sanitizer import strip_html
 from tools.i18n import resolve_language_label
 
 logger = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ def build_user_prompt(
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
-        f"- Goal: {event.goal or '(not specified)'}\n"
+        f"- Goal: {strip_html(event.goal) or '(not specified)'}\n"
         f"{level_line}"
         f"{program_line}"
         f"- Planned date: {event.date.isoformat() if event.date else '(not specified)'}\n"

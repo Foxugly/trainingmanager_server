@@ -38,7 +38,7 @@ VISIBILITY_ASPECTS = ("distance", "goal", "rounds")
 
 class Event(models.Model):
     name = models.CharField(max_length=100, verbose_name=_("name"))
-    goal = models.CharField(max_length=100, blank=True, null=True, verbose_name=_("goal"))
+    goal = models.TextField(blank=True, null=True, verbose_name=_("goal"))
     location = models.CharField(
         max_length=255,
         blank=True,

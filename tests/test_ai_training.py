@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.utils import timezone
 
 from exercise.models import EnergySegment, EnergySystem, Exercise, Modality
 from round.models import Round
@@ -137,6 +138,68 @@ def test_POST_generate_training_with_existing_rounds_returns_409(
         format="json",
     )
     assert response.status_code == 409
+
+
+# ----------------------------- Future-only guard ---------------------
+
+
+def test_POST_generate_training_past_dated_event_returns_409_event_in_past(
+    auth_client_trainer, trainer_event, settings
+):
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    trainer_event.date = timezone.now().date() - timedelta(days=1)
+    trainer_event.save(update_fields=["date"])
+
+    response = auth_client_trainer.post(
+        f"/api/v1/events/{trainer_event.pk}/generate-training/",
+        {},
+        format="json",
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "event_in_past"
+
+
+def test_POST_generate_training_future_dated_event_passes_guard(
+    auth_client_trainer, trainer_event, settings
+):
+    """A future-dated session passes the date guard and reaches generation."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    trainer_event.date = timezone.now().date() + timedelta(days=7)
+    trainer_event.save(update_fields=["date"])
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    # The guard let it through to the AI path (200 generated, not 409 in-past).
+    assert response.status_code == 200
+    assert response.json()["rounds_created"] == 2
+
+
+def test_POST_generate_training_undated_event_passes_guard(
+    auth_client_trainer, trainer_event, settings
+):
+    """An unscheduled session (date is None) is always allowed."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    assert trainer_event.date is None
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
 
 
 # ----------------------------- Permissions ---------------------------

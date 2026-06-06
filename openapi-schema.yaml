@@ -2010,7 +2010,10 @@ paths:
         '403':
           description: Not a manager of this event team
         '409':
-          description: Event already has rounds
+          description: 'Conflict. `body.code` is one of: `event_has_rounds` (event
+            already has rounds — remove them before regenerating) or `event_in_past`
+            (the session date is in the past — training can only be generated for
+            a future or unscheduled session).'
         '500':
           description: AI configuration error
         '502':
@@ -5009,6 +5012,33 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{id}/pools/:
+    get:
+      operationId: teams_pools_retrieve
+      description: Read-only list of the distinct, non-empty `location` values used
+        across this team's events, ordered alphabetically. Intended for the session-editor
+        location ('piscine') autocomplete. Any member of the team (owner, manager,
+        or active athlete) may read it; non-members get 404 (the team is not in their
+        visible scope).
+      summary: Distinct session locations (pools) for autocomplete
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamPoolsResponse'
+          description: ''
   /api/v1/teams/{id}/stats/:
     get:
       operationId: teams_stats_retrieve
@@ -7043,7 +7073,6 @@ components:
         goal:
           type: string
           nullable: true
-          maxLength: 100
         location:
           type: string
           description: Where the session takes place (venue, pool, track, address).
@@ -8839,7 +8868,6 @@ components:
         goal:
           type: string
           nullable: true
-          maxLength: 100
         location:
           type: string
           description: Where the session takes place (venue, pool, track, address).
@@ -10845,6 +10873,20 @@ components:
       - id
       - language
       - name
+    TeamPoolsResponse:
+      type: object
+      description: |-
+        Response of GET /teams/{id}/pools/.
+
+        The distinct, non-empty session locations ("piscines") used across the
+        team's events, for the frontend's location autocomplete.
+      properties:
+        pools:
+          type: array
+          items:
+            type: string
+      required:
+      - pools
     TeamQuotaStatus:
       type: object
       description: |-

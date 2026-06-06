@@ -33,7 +33,7 @@ from .permissions import (
     IsTeamManagerOrReadOnly,
     IsTrainer,
 )
-from .queries import managed_teams, user_visible_teams
+from .queries import managed_teams, user_member_teams, user_visible_teams
 from .serializers import (
     CompleteInvitationSerializer,
     CreateInvitationSerializer,
@@ -51,6 +51,17 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TeamPoolsResponseSerializer(drf_serializers.Serializer):
+    """Response of GET /teams/{id}/pools/.
+
+    The distinct, non-empty session locations ("piscines") used across the
+    team's events, for the frontend's location autocomplete.
+    """
+
+    pools = drf_serializers.ListField(child=drf_serializers.CharField())
+
 
 # Default / clamp bounds for the stats endpoint date-range window.
 STATS_DEFAULT_DAYS = 84  # 12 weeks; used when from/to are absent.
@@ -210,6 +221,46 @@ class TeamViewSet(viewsets.ModelViewSet):
             "intensity": self._intensity_stats(event_ids, member_id),
         }
         return Response(TeamStatsSerializer(payload).data)
+
+    @extend_schema(
+        operation_id="teams_pools_retrieve",
+        summary="Distinct session locations (pools) for autocomplete",
+        description=(
+            "Read-only list of the distinct, non-empty `location` values used "
+            "across this team's events, ordered alphabetically. Intended for "
+            "the session-editor location ('piscine') autocomplete. Any member "
+            "of the team (owner, manager, or active athlete) may read it; "
+            "non-members get 404 (the team is not in their visible scope)."
+        ),
+        responses={200: TeamPoolsResponseSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="pools")
+    def pools(self, request, pk=None):
+        """GET /teams/{id}/pools/ — distinct non-empty event locations.
+
+        Permission: the requester must be a strict member of the team
+        (owner/manager/active athlete). The base get_queryset scopes to
+        user_visible_teams (which includes discoverable public teams), so we
+        re-check strict membership here via user_member_teams and 404 a
+        non-member — a public-team discoverer must not read its content.
+        """
+        from rest_framework.exceptions import NotFound
+
+        from event.models import Event
+
+        team = self.get_object()
+        if not user_member_teams(request.user).filter(pk=team.pk).exists():
+            raise NotFound()
+
+        pools = list(
+            Event.objects.filter(refer_program__team=team)
+            .exclude(location="")
+            .exclude(location__isnull=True)
+            .values_list("location", flat=True)
+            .distinct()
+        )
+        pools = sorted(set(pools), key=lambda s: s.lower())
+        return Response(TeamPoolsResponseSerializer({"pools": pools}).data)
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.

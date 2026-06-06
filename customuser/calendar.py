@@ -18,6 +18,8 @@ from django.db.models import Q
 from django.utils import timezone as dj_timezone
 from icalendar import Calendar, Event as ICalEvent
 
+from tools.html_sanitizer import strip_html
+
 # Sliding window around "now" (in days) for which events are published to
 # the feed. Calendar clients poll periodically; a bounded window keeps the
 # payload small while still showing recent history and the near future.
@@ -146,7 +148,7 @@ def _add_vevent(cal, user, event, dtstamp):
     if program is not None and program.name:
         description_parts.append(program.name)
     if _goal_visible(user, event):
-        description_parts.append(f"Goal: {event.goal}")
+        description_parts.append(f"Goal: {strip_html(event.goal)}")
     if description_parts:
         vevent.add("description", "\n".join(description_parts))
 

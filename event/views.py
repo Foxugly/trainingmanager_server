@@ -165,7 +165,15 @@ class EventViewSet(viewsets.ModelViewSet):
             ),
             400: OpenApiResponse(description="Invalid request body"),
             403: OpenApiResponse(description="Not a manager of this event team"),
-            409: OpenApiResponse(description="Event already has rounds"),
+            409: OpenApiResponse(
+                description=(
+                    "Conflict. `body.code` is one of: `event_has_rounds` "
+                    "(event already has rounds — remove them before "
+                    "regenerating) or `event_in_past` (the session date is in "
+                    "the past — training can only be generated for a future or "
+                    "unscheduled session)."
+                )
+            ),
             500: OpenApiResponse(description="AI configuration error"),
             502: OpenApiResponse(description="AI service error"),
         },
@@ -190,6 +198,22 @@ class EventViewSet(viewsets.ModelViewSet):
 
         if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
             raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        # Future-only: a scheduled session whose date is already in the past
+        # (judged in the team's timezone) cannot be (re)generated. An
+        # unscheduled session (date is None) is always allowed.
+        if event.date is not None:
+            team_today = timezone.now().astimezone(event._team_tzinfo()).date()
+            if event.date < team_today:
+                return Response(
+                    {
+                        "code": "event_in_past",
+                        "detail": _(
+                            "You can only generate a training for a session in the future."
+                        ),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         if event.rounds.exists():
             return Response(

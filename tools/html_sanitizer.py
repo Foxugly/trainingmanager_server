@@ -5,6 +5,8 @@ frontend (PrimeNG / Quill style). All disallowed tags and attributes
 are stripped on save.
 """
 
+import html
+
 import bleach
 
 ALLOWED_TAGS = [
@@ -52,3 +54,16 @@ def sanitize_html(html):
         protocols=ALLOWED_PROTOCOLS,
         strip=True,
     )
+
+
+def strip_html(value):
+    """Return the plain-text of an HTML string (all tags removed).
+
+    Strips every tag (``bleach.clean`` with no allowed tags) and then
+    unescapes HTML entities so the result is human-readable plain text.
+    Suitable for plain-text contexts (iCal DESCRIPTION, AI prompts) where
+    the rich-text HTML must not leak as markup. None / '' -> ''.
+    """
+    if not value:
+        return ""
+    return html.unescape(bleach.clean(value, tags=[], strip=True))

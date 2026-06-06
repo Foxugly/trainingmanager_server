@@ -242,6 +242,25 @@ def test_goal_visible_to_athlete_when_vis_always(api_client, athlete, athlete_me
     assert "Easy run" in str(vevent.get("description") or "")
 
 
+def test_goal_html_is_stripped_in_description(api_client, coach, program):
+    """Goal is now rich-text HTML; the iCal DESCRIPTION must be plain text
+    (tags stripped) — calendar clients render plain text only."""
+    today = timezone.now().date()
+    ev = _make_event(
+        program, name="HTML goal", day=today + timedelta(days=2),
+        goal="<p><b>Beat</b> the &amp; PB</p>", vis_goal=VisibilityMode.ALWAYS,
+    )
+
+    resp = api_client.get(_feed_url(coach.calendar_token))
+    cal = _parse(resp.content)
+    vevent = next(c for c in cal.walk("VEVENT")
+                  if str(c.get("uid")) == f"event-{ev.id}@tm.foxugly.com")
+    desc = str(vevent.get("description") or "")
+    assert "Beat the & PB" in desc
+    assert "<b>" not in desc
+    assert "<p>" not in desc
+
+
 # --------------------------------------------------------------------------
 # LOCATION (always visible, no gating)
 # --------------------------------------------------------------------------

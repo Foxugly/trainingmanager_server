@@ -4,6 +4,7 @@ from rest_framework import serializers
 from program.models import Program
 from program.serializers import ProgramMinimalSerializer
 from round.models import Round
+from tools.html_sanitizer import sanitize_html
 
 from .models import Event
 
@@ -136,6 +137,27 @@ class EventSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate_goal(self, value):
+        """Sanitize the rich-text (Quill) HTML goal on write.
+
+        The frontend edits ``goal`` with a rich-text editor, so it holds
+        HTML. We strip every tag/attribute not on the sanitizer whitelist
+        so only safe markup is ever persisted. Empty/None stays empty.
+        """
+        if not value:
+            return value
+        return sanitize_html(value)
+
+    def validate_equipment(self, value):
+        """Sanitize the rich-text (Quill) HTML equipment on write.
+
+        Same rationale as ``validate_goal`` — equipment is now rich text.
+        Empty/None stays empty.
+        """
+        if not value:
+            return value
+        return sanitize_html(value)
 
     def _requester_is_manager(self, instance):
         """True if the request user owns/manages the event's team.
