@@ -2834,6 +2834,177 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/notifications/:
+    get:
+      operationId: notifications_list
+      description: |-
+        The caller's own notifications + read-state mutations + channel prefs.
+
+        A user only ever sees/affects their OWN notifications: the queryset is
+        filtered by ``recipient=request.user`` and every action operates on that
+        scope (so marking someone else's notification read yields 404).
+      summary: List the caller's notifications (newest first)
+      parameters:
+      - in: query
+        name: is_read
+        schema:
+          type: boolean
+        description: Filter by read state (e.g. ?is_read=false for unread only).
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/v1/notifications/{id}/read/:
+    post:
+      operationId: notifications_read_create
+      description: |-
+        The caller's own notifications + read-state mutations + channel prefs.
+
+        A user only ever sees/affects their OWN notifications: the queryset is
+        filtered by ``recipient=request.user`` and every action operates on that
+        scope (so marking someone else's notification read yields 404).
+      summary: Mark one notification as read
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/notifications/preferences/:
+    get:
+      operationId: notifications_preferences_retrieve
+      description: Returns every NotificationType with the caller's effective channel
+        settings {type, label, in_app, email}, defaulting to in_app=True / email=True
+        where no stored row exists.
+      summary: Get the caller's effective notification preferences
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationPreference'
+          description: ''
+    put:
+      operationId: notifications_preferences_update
+      description: Accepts a list of {type, in_app, email} entries and upserts the
+        caller's rows. Returns the full updated effective list.
+      summary: Upsert the caller's notification preferences
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationPreference'
+          description: ''
+  /api/v1/notifications/read_all/:
+    post:
+      operationId: notifications_read_all_create
+      description: |-
+        The caller's own notifications + read-state mutations + channel prefs.
+
+        A user only ever sees/affects their OWN notifications: the queryset is
+        filtered by ``recipient=request.user`` and every action operates on that
+        scope (so marking someone else's notification read yields 404).
+      summary: Mark all the caller's notifications as read
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAllResponse'
+          description: ''
+  /api/v1/notifications/unread_count/:
+    get:
+      operationId: notifications_unread_count_retrieve
+      description: |-
+        The caller's own notifications + read-state mutations + channel prefs.
+
+        A user only ever sees/affects their OWN notifications: the queryset is
+        filtered by ``recipient=request.user`` and every action operates on that
+        scope (so marking someone else's notification read yields 404).
+      summary: Count the caller's unread notifications
+      tags:
+      - notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCount'
+          description: ''
   /api/v1/programs/:
     get:
       operationId: programs_list
@@ -6350,6 +6521,79 @@ components:
       - member
       - team
       - updated_at
+    Notification:
+      type: object
+      description: Read serializer for a single in-app notification.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        url:
+          type: string
+          readOnly: true
+          description: Frontend deep-link path, e.g. /teams/3.
+        is_read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - is_read
+      - title
+      - type
+      - url
+    NotificationPreference:
+      type: object
+      description: |-
+        Effective per-type channel preference (one row of the matrix).
+
+        Used both as the GET response item and the PUT request item. ``label``
+        is the human-readable, localized NotificationType label; it is read-only
+        (server-derived) and ignored on input.
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        label:
+          type: string
+          readOnly: true
+        in_app:
+          type: boolean
+        email:
+          type: boolean
+      required:
+      - email
+      - in_app
+      - label
+      - type
+    NotificationPreferenceUpdate:
+      type: object
+      description: |-
+        Request body for PUT /notifications/preferences/.
+
+        A list of {type, in_app, email} entries to upsert. Types are validated
+        against NotificationType; duplicates of the same type are rejected.
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPreference'
+      required:
+      - preferences
     OverlapStrategyEnum:
       enum:
       - add_only
@@ -6613,6 +6857,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Note'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
     PaginatedProgramList:
       type: object
       required:
@@ -7708,6 +7975,14 @@ components:
           description: When join_request_policy=manual, send the owner and managers
             an email with accept/reject magic links on each new request. Ignored when
             policy=auto (no manual decision is needed).
+        notify_coaches_on_note:
+          type: boolean
+          description: When True, the team owner and managers (except the author)
+            are notified each time a note is added on one of the team's athletes.
+        notify_athlete_on_visible_note:
+          type: boolean
+          description: When True, an athlete with a linked user account is notified
+            when a note shared with them (visible_to_athlete=True) is added.
         timezone:
           type: string
           description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,
@@ -7915,6 +8190,15 @@ components:
       required:
       - id
       - name
+    ReadAllResponse:
+      type: object
+      description: Response shape for POST /notifications/read_all/.
+      properties:
+        updated:
+          type: integer
+          description: Number of notifications marked as read.
+      required:
+      - updated
     Register:
       type: object
       description: |-
@@ -8427,6 +8711,14 @@ components:
           description: When join_request_policy=manual, send the owner and managers
             an email with accept/reject magic links on each new request. Ignored when
             policy=auto (no manual decision is needed).
+        notify_coaches_on_note:
+          type: boolean
+          description: When True, the team owner and managers (except the author)
+            are notified each time a note is added on one of the team's athletes.
+        notify_athlete_on_visible_note:
+          type: boolean
+          description: When True, an athlete with a linked user account is notified
+            when a note shared with them (visible_to_athlete=True) is added.
         timezone:
           type: string
           description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,
@@ -8754,6 +9046,23 @@ components:
       required:
       - access
       - refresh
+    TypeEnum:
+      enum:
+      - note_for_coach
+      - note_for_athlete
+      type: string
+      description: |-
+        * `note_for_coach` - Note added on an athlete
+        * `note_for_athlete` - A note was shared with you
+    UnreadCount:
+      type: object
+      description: Response shape for GET /notifications/unread_count/.
+      properties:
+        count:
+          type: integer
+          description: Number of unread notifications for the caller.
+      required:
+      - count
     ValidateInvitation:
       type: object
       properties:

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "attendance",
     "roti",
     "level",
+    "notifications",
 ]
 
 SITE_ID = 1

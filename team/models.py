@@ -149,6 +149,20 @@ class Team(models.Model):
             "policy=auto (no manual decision is needed)."
         ),
     )
+    notify_coaches_on_note = models.BooleanField(
+        default=True,
+        help_text=_(
+            "When True, the team owner and managers (except the author) are "
+            "notified each time a note is added on one of the team's athletes."
+        ),
+    )
+    notify_athlete_on_visible_note = models.BooleanField(
+        default=True,
+        help_text=_(
+            "When True, an athlete with a linked user account is notified when a "
+            "note shared with them (visible_to_athlete=True) is added."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

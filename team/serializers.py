@@ -75,6 +75,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "attendance_statuses",
             "join_request_policy",
             "notify_managers_on_join_request",
+            "notify_coaches_on_note",
+            "notify_athlete_on_visible_note",
             "timezone",
             "vis_distance",
             "vis_goal",

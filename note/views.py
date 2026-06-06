@@ -79,4 +79,48 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
         member = self.get_member_or_none()
         if not member.memberships.filter(team=team, left_at__isnull=True).exists():
             raise PermissionDenied(_("This member does not belong to this team."))
-        serializer.save(team=team, member=member, author=self.request.user)
+        note = serializer.save(team=team, member=member, author=self.request.user)
+        self._notify_on_create(note, team, member)
+
+    def _notify_on_create(self, note, team, member):
+        """Fan out in-app + email notifications after a note is created.
+
+        - The concerned athlete (if linked to a user) is notified when the
+          team toggle is on AND the note is shared with them.
+        - The team's owner + managers (except the note's author) are notified
+          when the team toggle is on.
+
+        Translatable strings are passed lazily; ``notify()`` resolves them per
+        recipient under ``translation.override(recipient.language)``.
+        """
+        from notifications.models import NotificationType
+        from notifications.services import notify
+
+        actor = self.request.user
+        member_name = member.get_fullname()
+        url = f"/teams/{team.id}"
+
+        # Athlete: only when shared and the member has a linked user.
+        if team.notify_athlete_on_visible_note and note.visible_to_athlete and member.user_id:
+            notify(
+                member.user,
+                NotificationType.NOTE_FOR_ATHLETE,
+                title=_("A note was shared with you"),
+                body=_("Your coach added a note for you."),
+                url=url,
+                actor=actor,
+            )
+
+        # Coaches: owner + managers, excluding the author.
+        if team.notify_coaches_on_note:
+            coaches = {team.owner}
+            coaches.update(team.managers.all())
+            for coach in coaches:
+                notify(
+                    coach,
+                    NotificationType.NOTE_FOR_COACH,
+                    title=_("Note added on %(name)s") % {"name": member_name},
+                    body=_("A new note was added on %(name)s.") % {"name": member_name},
+                    url=url,
+                    actor=actor,
+                )
