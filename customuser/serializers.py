@@ -249,6 +249,33 @@ class AccountDeleteSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
 
 
+class MagicLinkRequestSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/magic-link/request/.
+
+    Anti-leak by design — the view always returns the same 200 payload
+    regardless of whether `email` matches a confirmed user. Validation
+    here only enforces the field shape."""
+
+    email = serializers.EmailField()
+
+
+class MagicLinkExchangeRequestSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/magic-link/exchange/.
+
+    `token` is the signed string the user received in their magic-link
+    email (the SPA POSTs it back from /auth/magic-link/:token)."""
+
+    token = serializers.CharField()
+
+
+class MagicLinkExchangeResponseSerializer(serializers.Serializer):
+    """Success body of POST /api/v1/auth/magic-link/exchange/ — the JWT
+    pair for the freshly signed-in user."""
+
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
+
+
 class LogoutSerializer(serializers.Serializer):
     """Body of POST /api/v1/auth/logout/.
 

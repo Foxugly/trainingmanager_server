@@ -651,6 +651,90 @@ paths:
           description: Access token missing or invalid.
         '429':
           description: Too Many Requests (rate limit hit).
+  /api/v1/auth/magic-link/exchange/:
+    post:
+      operationId: auth_magic_link_exchange_create
+      description: |-
+        POST /api/v1/auth/magic-link/exchange/ — public: trade token for JWT.
+
+        Body: {token}. The token is the signed string the user received in
+        their magic-link email. On success returns the JWT pair (access +
+        refresh) for sign-in. Error mapping:
+          - expired token        -> 410 {"detail": "token_expired"}
+          - invalid / tampered   -> 400 {"detail": "token_invalid"}
+          - user no longer eligible (inactive / unconfirmed / deleted)
+                                 -> 400 {"detail": "token_invalid"}
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MagicLinkExchangeResponse'
+          description: Token accepted. Returns the JWT pair {access, refresh}.
+        '400':
+          description: 'Token invalid/tampered, or the user is no longer eligible
+            (inactive / email-unconfirmed / deleted). Body: {"detail": "token_invalid"}.'
+        '410':
+          description: 'Token expired. Body: {"detail": "token_expired"}.'
+  /api/v1/auth/magic-link/request/:
+    post:
+      operationId: auth_magic_link_request_create
+      description: |-
+        POST /api/v1/auth/magic-link/request/ — public: email a sign-in link.
+
+        Anti-leak: ALWAYS returns 200 with the same body, whether the email
+        matches an active, email-confirmed User or not. If it does, an email
+        with a 15-minute signed magic-link is dispatched (frontend URL:
+        {FRONTEND_URL}/auth/magic-link/{token}, no trailing slash). If it
+        doesn't, the call is a silent no-op — the response is byte-for-byte
+        identical (no user enumeration, timing-insensitive wording).
+
+        Rate-limited to 5 requests per hour per IP.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MagicLinkRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MagicLinkRequestResponse'
+          description: 'Always 200 with {"detail": "ok"}. If the email matches an
+            active, email-confirmed account, a sign-in link has been dispatched; otherwise
+            the response is identical (anti-leak).'
+        '400':
+          description: Body validation error (malformed email).
+        '429':
+          description: Too Many Requests (rate limit hit).
   /api/v1/auth/password/change/:
     post:
       operationId: auth_password_change_create
@@ -7695,6 +7779,54 @@ components:
           writeOnly: true
       required:
       - refresh
+    MagicLinkExchangeRequest:
+      type: object
+      description: |-
+        Body of POST /api/v1/auth/magic-link/exchange/.
+
+        `token` is the signed string the user received in their magic-link
+        email (the SPA POSTs it back from /auth/magic-link/:token).
+      properties:
+        token:
+          type: string
+      required:
+      - token
+    MagicLinkExchangeResponse:
+      type: object
+      description: |-
+        Success body of POST /api/v1/auth/magic-link/exchange/ — the JWT
+        pair for the freshly signed-in user.
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    MagicLinkRequest:
+      type: object
+      description: |-
+        Body of POST /api/v1/auth/magic-link/request/.
+
+        Anti-leak by design — the view always returns the same 200 payload
+        regardless of whether `email` matches a confirmed user. Validation
+        here only enforces the field shape.
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    MagicLinkRequestResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     Me:
       type: object
       properties:

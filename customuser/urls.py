@@ -7,6 +7,8 @@ from .views import (
     ConfirmEmailView,
     DataExportView,
     LogoutView,
+    MagicLinkExchangeView,
+    MagicLinkRequestView,
     MeView,
     PasswordChangeView,
     PasswordResetConfirmView,
@@ -43,6 +45,16 @@ urlpatterns = [
         "auth/password/reset/confirm/",
         PasswordResetConfirmView.as_view(),
         name="auth_password_reset_confirm",
+    ),
+    path(
+        "auth/magic-link/request/",
+        MagicLinkRequestView.as_view(),
+        name="auth_magic_link_request",
+    ),
+    path(
+        "auth/magic-link/exchange/",
+        MagicLinkExchangeView.as_view(),
+        name="auth_magic_link_exchange",
     ),
     path(
         "auth/password/change/",

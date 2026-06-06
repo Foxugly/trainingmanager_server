@@ -46,6 +46,14 @@ class PasswordResetThrottle(AnonRateThrottle):
     scope = "auth_password_reset"
 
 
+class MagicLinkRequestThrottle(AnonRateThrottle):
+    """Anti-spam + anti-enumeration on /auth/magic-link/request/. Per-IP.
+    Same "send a new email" pattern as PasswordResetThrottle, triggered
+    by an unauthenticated user."""
+
+    scope = "auth_magic_link_request"
+
+
 class LogoutThrottle(UserRateThrottle):
     """Per-user throttle on /auth/logout/.
 
