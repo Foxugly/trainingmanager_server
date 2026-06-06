@@ -405,6 +405,89 @@ def test_POST_generate_events_additional_prompt_appended_to_llm_prompt(
     assert sent_prompt.index("IMPORTANT instructions") < sent_prompt.index(coach_text)
 
 
+# ----------------------------- Training template ---------------------
+
+
+def test_POST_generate_events_derives_frequency_from_template_slots(
+    auth_client_trainer, trainer_user, settings
+):
+    """A team WITH 3 weekly slots -> frequency derived = 3 (no frequency
+    needed in the request); the prompt lists the FIXED slots + default pool;
+    the mocked AI events are created and program.frequency_per_week == 3."""
+    from team.models import TrainingSlot
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    team = program.team
+    team.default_pool = "Piscine olympique"
+    team.save(update_fields=["default_pool"])
+    TrainingSlot.objects.create(team=team, weekday=0, hour_start="18:00", hour_end="19:30")
+    TrainingSlot.objects.create(team=team, weekday=2, hour_start="18:00", hour_end="19:30")
+    TrainingSlot.objects.create(team=team, weekday=4, hour_start="18:00", hour_end="19:30")
+
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+    events_payload = _make_events_payload(start, 6)
+
+    # Request WITHOUT frequency_per_week — it must be derived from the slots.
+    payload = {
+        "date_start": start.isoformat(),
+        "date_end": end.isoformat(),
+        "description": "Endurance",
+        "overlap_strategy": "add_only",
+    }
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(events_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            payload,
+            format="json",
+        )
+
+    assert response.status_code == 200, response.content
+    assert response.json()["created_count"] == 6
+    assert Event.objects.filter(refer_program=program).count() == 6
+
+    program.refresh_from_db()
+    assert program.frequency_per_week == 3  # derived from the 3 slots
+
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "FIXED weekly slots" in sent_prompt
+    assert "Monday 18:00" in sent_prompt
+    assert "Wednesday 18:00" in sent_prompt
+    assert "Friday 18:00" in sent_prompt
+    assert "Piscine olympique" in sent_prompt
+
+
+def test_POST_generate_events_no_template_requires_frequency(
+    auth_client_trainer, trainer_user, settings
+):
+    """A team with NO template -> frequency_per_week is required; omitting it
+    returns 400 with code frequency_required."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+
+    payload = {
+        "date_start": start.isoformat(),
+        "date_end": end.isoformat(),
+        "description": "Endurance",
+        "overlap_strategy": "add_only",
+    }
+    response = auth_client_trainer.post(
+        f"/api/v1/programs/{program.pk}/generate-events/",
+        payload,
+        format="json",
+    )
+    assert response.status_code == 400
+    body = response.json()
+    # Code surfaces either at top-level or under fields, depending on handler.
+    assert "frequency_required" in str(body), body
+
+
 def test_POST_generate_events_additional_prompt_too_long_returns_400(
     auth_client_trainer, trainer_user, settings
 ):

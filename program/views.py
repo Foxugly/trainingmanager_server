@@ -143,14 +143,36 @@ class ProgramViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        # Resolve the team's weekly training template. When it has slots, the
+        # frequency is derived from the number of slots (any supplied value is
+        # ignored) and the slots + default_pool drive the AI placement. With no
+        # template, frequency_per_week must be supplied (else 400).
+        slots = list(
+            program.team.training_slots.values("weekday", "hour_start", "hour_end")
+        )
+        if slots:
+            frequency_per_week = len(slots)
+            default_pool = program.team.default_pool
+        else:
+            frequency_per_week = data.get("frequency_per_week")
+            if frequency_per_week is None:
+                raise serializers.ValidationError(
+                    {"frequency_per_week": _("This team has no training template; "
+                                             "frequency_per_week is required.")},
+                    code="frequency_required",
+                )
+            default_pool = ""
+
         ai_result = generate_plan(
             program=program,
             date_start=data["date_start"],
             date_end=data["date_end"],
-            frequency_per_week=data["frequency_per_week"],
+            frequency_per_week=frequency_per_week,
             description=data["description"],
             additional_prompt=data.get("additional_prompt", ""),
             user=request.user if request.user.is_authenticated else None,
+            slots=slots,
+            default_pool=default_pool,
         )
 
         with transaction.atomic():
@@ -162,7 +184,7 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 date_end=data["date_end"],
             )
 
-            program.frequency_per_week = data["frequency_per_week"]
+            program.frequency_per_week = frequency_per_week
             program.description = data["description"]
             program.generated_by_ai = True
             program.ai_prompt = ai_result["prompt_sent"]

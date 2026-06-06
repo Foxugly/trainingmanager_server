@@ -5170,6 +5170,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeamStats'
           description: ''
+  /api/v1/teams/{id}/training-template/:
+    get:
+      operationId: teams_training_template_retrieve
+      description: 'Returns the team''s reusable weekly training template: the list
+        of weekly slots (weekday Monday=0…Sunday=6 + hour_start/hour_end), the default
+        pool/venue, and the default season dates. Any member of the team (owner, manager,
+        or active athlete) may read it; non-members get 404.'
+      summary: Read the team's weekly training template
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingTemplate'
+          description: ''
+    put:
+      operationId: teams_training_template_update
+      description: 'Atomically REPLACES the team''s training template: deletes the
+        existing weekly slots and recreates them from the payload, and sets default_pool
+        / season_start / season_end on the team. Manager/owner only (else 403). Each
+        slot''s weekday must be 0..6 and hour_end must be after hour_start (else 400).'
+      summary: Replace the team's weekly training template (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrainingTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrainingTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingTemplate'
+          description: ''
   /api/v1/teams/{team_id}/ai-usage/:
     get:
       operationId: teams_ai_usage_retrieve
@@ -7461,6 +7524,10 @@ components:
           type: integer
           maximum: 14
           minimum: 1
+          description: 'Weekly session count. Optional: when the team has a weekly
+            training template, the frequency is derived from the number of slots and
+            any supplied value is ignored. Required (else 400 frequency_required)
+            only when the team has no template.'
         description:
           type: string
           default: ''
@@ -7474,7 +7541,6 @@ components:
       required:
       - date_end
       - date_start
-      - frequency_per_week
     GeneratePlanResponse:
       type: object
       properties:
@@ -11180,6 +11246,68 @@ components:
       - content
       - created_at
       - id
+    TrainingSlot:
+      type: object
+      description: |-
+        One weekly training slot (weekday + start/end time).
+
+        weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
+      properties:
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          description: |-
+            Day of the week (Python convention: Monday=0 … Sunday=6).
+
+            * `0` - Monday
+            * `1` - Tuesday
+            * `2` - Wednesday
+            * `3` - Thursday
+            * `4` - Friday
+            * `5` - Saturday
+            * `6` - Sunday
+          minimum: 0
+          maximum: 9223372036854775807
+        hour_start:
+          type: string
+          format: time
+          description: Slot start time (local team time).
+        hour_end:
+          type: string
+          format: time
+          description: Slot end time; must be after hour_start.
+      required:
+      - hour_end
+      - hour_start
+      - weekday
+    TrainingTemplate:
+      type: object
+      description: |-
+        The team's reusable weekly training template.
+
+        Body of PUT and shape of GET on /teams/{id}/training-template/. PUT
+        atomically REPLACES the template: existing slots are deleted and
+        recreated from `slots`, and default_pool/season_start/season_end are
+        set on the team.
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingSlot'
+        default_pool:
+          type: string
+          default: ''
+          maxLength: 255
+        season_start:
+          type: string
+          format: date
+          nullable: true
+        season_end:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - slots
     TypeEnum:
       enum:
       - note_for_coach
@@ -11276,6 +11404,24 @@ components:
         * `always` - Always
         * `after` - After the session
         * `never` - Never
+    WeekdayEnum:
+      enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      type: integer
+      description: |-
+        * `0` - Monday
+        * `1` - Tuesday
+        * `2` - Wednesday
+        * `3` - Thursday
+        * `4` - Friday
+        * `5` - Saturday
+        * `6` - Sunday
     _MagicActionJoinRequest:
       type: object
       description: |-

@@ -65,7 +65,17 @@ ADDITIONAL_PROMPT_MAX_LENGTH = 2000
 class GeneratePlanRequestSerializer(serializers.Serializer):
     date_start = serializers.DateField()
     date_end = serializers.DateField()
-    frequency_per_week = serializers.IntegerField(min_value=1, max_value=14)
+    frequency_per_week = serializers.IntegerField(
+        min_value=1,
+        max_value=14,
+        required=False,
+        help_text=(
+            "Weekly session count. Optional: when the team has a weekly "
+            "training template, the frequency is derived from the number of "
+            "slots and any supplied value is ignored. Required (else 400 "
+            "frequency_required) only when the team has no template."
+        ),
+    )
     description = serializers.CharField(required=False, allow_blank=True, default="")
     additional_prompt = serializers.CharField(
         required=False,

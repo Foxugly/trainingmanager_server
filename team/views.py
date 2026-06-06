@@ -27,7 +27,7 @@ from rest_framework.views import APIView
 from tools.exceptions import TeamQuotaExceeded
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 
-from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership
+from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership, TrainingSlot
 from .permissions import (
     IsJoinRequestParticipant,
     IsTeamManagerOrReadOnly,
@@ -47,6 +47,7 @@ from .serializers import (
     TeamMembershipSerializer,
     TeamSerializer,
     TeamStatsSerializer,
+    TrainingTemplateSerializer,
     ValidateInvitationSerializer,
 )
 
@@ -261,6 +262,96 @@ class TeamViewSet(viewsets.ModelViewSet):
         )
         pools = sorted(set(pools), key=lambda s: s.lower())
         return Response(TeamPoolsResponseSerializer({"pools": pools}).data)
+
+    @staticmethod
+    def _template_payload(team):
+        """Assemble the current training-template payload for a team."""
+        slots = [
+            {
+                "weekday": s.weekday,
+                "hour_start": s.hour_start,
+                "hour_end": s.hour_end,
+            }
+            for s in team.training_slots.all()
+        ]
+        return {
+            "slots": slots,
+            "default_pool": team.default_pool,
+            "season_start": team.season_start,
+            "season_end": team.season_end,
+        }
+
+    @extend_schema(
+        methods=["get"],
+        operation_id="teams_training_template_retrieve",
+        summary="Read the team's weekly training template",
+        description=(
+            "Returns the team's reusable weekly training template: the list of "
+            "weekly slots (weekday Monday=0…Sunday=6 + hour_start/hour_end), the "
+            "default pool/venue, and the default season dates. Any member of the "
+            "team (owner, manager, or active athlete) may read it; non-members "
+            "get 404."
+        ),
+        responses={200: TrainingTemplateSerializer},
+    )
+    @extend_schema(
+        methods=["put"],
+        operation_id="teams_training_template_update",
+        summary="Replace the team's weekly training template (manager only)",
+        description=(
+            "Atomically REPLACES the team's training template: deletes the "
+            "existing weekly slots and recreates them from the payload, and sets "
+            "default_pool / season_start / season_end on the team. Manager/owner "
+            "only (else 403). Each slot's weekday must be 0..6 and hour_end must "
+            "be after hour_start (else 400)."
+        ),
+        request=TrainingTemplateSerializer,
+        responses={200: TrainingTemplateSerializer},
+    )
+    @action(detail=True, methods=["get", "put"], url_path="training-template")
+    def training_template(self, request, pk=None):
+        """GET/PUT /teams/{id}/training-template/ — the weekly template."""
+        from rest_framework.exceptions import NotFound
+
+        team = self.get_object()
+
+        if request.method == "GET":
+            # Any strict member may read; non-member -> 404 (mirrors pools).
+            if not user_member_teams(request.user).filter(pk=team.pk).exists():
+                raise NotFound()
+            return Response(
+                TrainingTemplateSerializer(self._template_payload(team)).data
+            )
+
+        # PUT: manager/owner only.
+        if not team.is_managed_by(request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can edit the training template.")
+            )
+
+        serializer = TrainingTemplateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            team.training_slots.all().delete()
+            TrainingSlot.objects.bulk_create(
+                [
+                    TrainingSlot(
+                        team=team,
+                        weekday=slot["weekday"],
+                        hour_start=slot["hour_start"],
+                        hour_end=slot["hour_end"],
+                    )
+                    for slot in data["slots"]
+                ]
+            )
+            team.default_pool = data.get("default_pool", "")
+            team.season_start = data.get("season_start")
+            team.season_end = data.get("season_end")
+            team.save(update_fields=["default_pool", "season_start", "season_end", "updated_at"])
+
+        return Response(TrainingTemplateSerializer(self._template_payload(team)).data)
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.

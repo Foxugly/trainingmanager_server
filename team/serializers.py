@@ -12,7 +12,7 @@ from level.serializers import LevelSerializer
 from sport.models import Sport
 from sport.serializers import SportSerializer
 
-from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership
+from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership, TrainingSlot
 
 # Accepted data-URL prefixes for the team logo and the max total length.
 LOGO_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|svg\+xml);base64,")
@@ -502,6 +502,55 @@ class TeamStatsSerializer(serializers.Serializer):
     attendance = StatsAttendanceSerializer()
     volume = StatsVolumeSerializer()
     intensity = StatsIntensitySerializer()
+
+
+# ---------------------------------------------------------------------
+# Weekly training template — GET/PUT /api/v1/teams/{id}/training-template/
+# ---------------------------------------------------------------------
+
+
+class TrainingSlotSerializer(serializers.ModelSerializer):
+    """One weekly training slot (weekday + start/end time).
+
+    weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
+    """
+
+    class Meta:
+        model = TrainingSlot
+        fields = ["weekday", "hour_start", "hour_end"]
+
+    def validate_weekday(self, value):
+        if value < 0 or value > 6:
+            raise serializers.ValidationError(
+                _("weekday must be between 0 (Monday) and 6 (Sunday)."),
+                code="weekday_out_of_range",
+            )
+        return value
+
+    def validate(self, data):
+        if data["hour_end"] <= data["hour_start"]:
+            raise serializers.ValidationError(
+                {"hour_end": _("hour_end must be after hour_start.")},
+                code="invalid_slot_range",
+            )
+        return data
+
+
+class TrainingTemplateSerializer(serializers.Serializer):
+    """The team's reusable weekly training template.
+
+    Body of PUT and shape of GET on /teams/{id}/training-template/. PUT
+    atomically REPLACES the template: existing slots are deleted and
+    recreated from `slots`, and default_pool/season_start/season_end are
+    set on the team.
+    """
+
+    slots = TrainingSlotSerializer(many=True)
+    default_pool = serializers.CharField(
+        max_length=255, required=False, allow_blank=True, default=""
+    )
+    season_start = serializers.DateField(required=False, allow_null=True, default=None)
+    season_end = serializers.DateField(required=False, allow_null=True, default=None)
 
 
 class CompleteInvitationSerializer(serializers.Serializer):

@@ -201,6 +201,22 @@ class Team(models.Model):
             "note shared with them (visible_to_athlete=True) is added."
         ),
     )
+    default_pool = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text=_("Default venue/pool for this team's sessions (used by the season-plan generator)."),
+    )
+    season_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text=_("Default season start date, pre-fills the plan generator."),
+    )
+    season_end = models.DateField(
+        null=True,
+        blank=True,
+        help_text=_("Default season end date, pre-fills the plan generator."),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -357,3 +373,47 @@ class TeamInvitation(models.Model):
         if timezone.now() > self.expires_at:
             return False
         return True
+
+
+class Weekday(models.IntegerChoices):
+    """Weekday numbering follows Python's ``date.weekday()`` convention:
+    Monday is 0 and Sunday is 6 (NOT isoweekday / cron numbering)."""
+
+    MONDAY = 0, _("Monday")
+    TUESDAY = 1, _("Tuesday")
+    WEDNESDAY = 2, _("Wednesday")
+    THURSDAY = 3, _("Thursday")
+    FRIDAY = 4, _("Friday")
+    SATURDAY = 5, _("Saturday")
+    SUNDAY = 6, _("Sunday")
+
+
+class TrainingSlot(models.Model):
+    """One recurring weekly training slot of a team's reusable template.
+
+    The template is the set of a team's TrainingSlots. Each slot is a
+    (weekday, hour_start, hour_end) tuple; the season-plan generator places
+    one session per slot per week and derives the weekly frequency from the
+    number of slots.
+
+    ``weekday`` follows Python's ``date.weekday()`` convention: Monday=0 …
+    Sunday=6 (see the Weekday choices).
+    """
+
+    team = models.ForeignKey(
+        "team.Team",
+        on_delete=models.CASCADE,
+        related_name="training_slots",
+    )
+    weekday = models.PositiveSmallIntegerField(
+        choices=Weekday.choices,
+        help_text=_("Day of the week (Python convention: Monday=0 … Sunday=6)."),
+    )
+    hour_start = models.TimeField(help_text=_("Slot start time (local team time)."))
+    hour_end = models.TimeField(help_text=_("Slot end time; must be after hour_start."))
+
+    class Meta:
+        ordering = ["weekday", "hour_start"]
+
+    def __str__(self):
+        return f"{self.team} — {self.get_weekday_display()} {self.hour_start}-{self.hour_end}"

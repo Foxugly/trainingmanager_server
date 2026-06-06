@@ -114,6 +114,33 @@ def build_system_prompt(sport_name):
     )
 
 
+# Weekday int -> English name (Python date.weekday() convention: Monday=0).
+# The prompt is written in English; the AI is still asked to output session
+# names/goals/rationale in the team language.
+_WEEKDAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
+
+def _format_slot(slot):
+    """Render one template slot as 'Monday 18:00–19:30' for the prompt."""
+
+    def _hhmm(value):
+        # value may be a datetime.time or an 'HH:MM[:SS]' string.
+        if hasattr(value, "strftime"):
+            return value.strftime("%H:%M")
+        return str(value)[:5]
+
+    name = _WEEKDAY_NAMES[slot["weekday"]] if 0 <= slot["weekday"] <= 6 else "?"
+    return f"{name} {_hhmm(slot['hour_start'])}–{_hhmm(slot['hour_end'])}"
+
+
 def build_user_prompt(
     *,
     sport_name,
@@ -125,6 +152,8 @@ def build_user_prompt(
     team=None,
     pools=None,
     additional_prompt="",
+    slots=None,
+    default_pool="",
 ):
     duration_days = (date_end - date_start).days + 1
     weeks = max(duration_days // 7, 1)
@@ -137,24 +166,75 @@ def build_user_prompt(
     if team and team.level:
         level_line = f"- Team skill level: {team.level.name} — {team.level.description}\n"
 
-    pools_line = ""
-    if pools:
-        pools_line = (
-            f"- Known training locations for this team (reuse one consistently "
-            f"for the 'location' of each session): {', '.join(pools)}\n"
+    has_template = bool(slots)
+    location_hint = (default_pool or "").strip()
+
+    if has_template:
+        slots_text = ", ".join(_format_slot(s) for s in slots)
+        pool_text = location_hint if location_hint else "(no fixed venue)"
+        constraints = (
+            f"Generate a training plan with these constraints:\n"
+            f"- Sport: {sport_name}\n"
+            f"{level_line}"
+            f"- Period: from {date_start.isoformat()} to {date_end.isoformat()} "
+            f"({duration_days} days, ~{weeks} weeks)\n"
+            f"- The team trains on these FIXED weekly slots: {slots_text} "
+            f"at {pool_text}.\n"
+            f"- Description and constraints provided by the coach: "
+            f"{description or '(none)'}\n"
+        )
+        location_instruction = (
+            f"- For each week in the period, create exactly one session per "
+            f"slot, ON that weekday and at that hour_start/hour_end, with "
+            f"location={pool_text if location_hint else '(leave empty)'}.\n"
+            if location_hint
+            else (
+                "- For each week in the period, create exactly one session per "
+                "slot, ON that weekday and at that hour_start/hour_end. Leave "
+                "location empty (no fixed venue configured).\n"
+            )
+        )
+        progression_instruction = (
+            "- Keep a coherent intensity progression across the sessions "
+            "(endurance, technique, intensity, recovery).\n"
+        )
+    else:
+        pools_line = ""
+        if pools:
+            pools_line = (
+                f"- Known training locations for this team (reuse one consistently "
+                f"for the 'location' of each session): {', '.join(pools)}\n"
+            )
+        constraints = (
+            f"Generate a training plan with these constraints:\n"
+            f"- Sport: {sport_name}\n"
+            f"{level_line}"
+            f"- Period: from {date_start.isoformat()} to {date_end.isoformat()} "
+            f"({duration_days} days, ~{weeks} weeks)\n"
+            f"- Frequency: {frequency_per_week} sessions per week "
+            f"(~{expected_events} sessions total)\n"
+            f"{pools_line}"
+            f"- Description and constraints provided by the coach: "
+            f"{description or '(none)'}\n"
+        )
+        location_instruction = (
+            f"- Generate approximately {expected_events} sessions distributed "
+            f"intelligently across the period. Each session must have a date "
+            f"within the requested range.\n"
+            f"- Set a realistic start time (hour_start) and end time (hour_end, "
+            f"after the start) for every session — keep them consistent (typical "
+            f"training slots) unless the coach's description implies otherwise.\n"
+            f"- Set a 'location' for every session: reuse one of the team's known "
+            f"locations listed above when provided; if none are listed, leave "
+            f"location empty.\n"
+        )
+        progression_instruction = (
+            "- Vary effort types (endurance, technique, intensity, recovery) "
+            "following a coherent progression.\n"
         )
 
     base = (
-        f"Generate a training plan with these constraints:\n"
-        f"- Sport: {sport_name}\n"
-        f"{level_line}"
-        f"- Period: from {date_start.isoformat()} to {date_end.isoformat()} "
-        f"({duration_days} days, ~{weeks} weeks)\n"
-        f"- Frequency: {frequency_per_week} sessions per week "
-        f"(~{expected_events} sessions total)\n"
-        f"{pools_line}"
-        f"- Description and constraints provided by the coach: "
-        f"{description or '(none)'}\n"
+        f"{constraints}"
         f"\n"
         f"IMPORTANT instructions:\n"
         f"- The 'Description and constraints' above is provided by the coach "
@@ -162,17 +242,8 @@ def build_user_prompt(
         f"athletes' age category, current performance level, training goals, "
         f"available equipment, or other constraints. Take ALL of this "
         f"information into account when designing the plan.\n"
-        f"- Generate approximately {expected_events} sessions distributed "
-        f"intelligently across the period. Each session must have a date "
-        f"within the requested range.\n"
-        f"- Set a realistic start time (hour_start) and end time (hour_end, "
-        f"after the start) for every session — keep them consistent (typical "
-        f"training slots) unless the coach's description implies otherwise.\n"
-        f"- Set a 'location' for every session: reuse one of the team's known "
-        f"locations listed above when provided; if none are listed, leave "
-        f"location empty.\n"
-        f"- Vary effort types (endurance, technique, intensity, recovery) "
-        f"following a coherent progression.\n"
+        f"{location_instruction}"
+        f"{progression_instruction}"
         f"- Respond ENTIRELY in {language_label}: all event names, goals, "
         f"and the rationale must be in {language_label}.\n"
         f"- Use the 'create_training_plan' tool only.\n"
@@ -183,11 +254,23 @@ def build_user_prompt(
         # Appended AFTER the structured context as a marked block to deter
         # prompt-injection: the system rules above stay binding even if the
         # coach's text says "ignore previous instructions".
+        override_note = (
+            "These take precedence over the defaults above. The fixed weekly "
+            "slots are the default schedule, but if these instructions CLEARLY "
+            "ask for a different schedule (different days, times, frequency or "
+            "venue), follow the coach's instructions instead. Stay consistent "
+            "with the team sport, language, and the requested period.\n"
+            if has_template
+            else (
+                "These take precedence over generic defaults but must remain "
+                "consistent with the team sport, language, and the requested "
+                "period.\n"
+            )
+        )
         base += (
             "\n---\n"
-            "Additional instructions provided by the coach (these take "
-            "precedence over generic defaults but must remain consistent "
-            "with the team sport, language, and the requested period):\n"
+            "Additional instructions provided by the coach:\n"
+            f"{override_note}"
             f"{extra}\n"
             "---\n"
         )
@@ -212,6 +295,8 @@ def generate_plan(
     description,
     user=None,
     additional_prompt="",
+    slots=None,
+    default_pool="",
 ):
     sport_name = program.team.sport.name if program.team.sport else "the practiced sport"
     language = program.team.language
@@ -239,17 +324,23 @@ def generate_plan(
         len(additional_prompt or ""),
     )
 
-    # Distinct, non-empty session locations already used across this team's
-    # events, so the AI reuses a real venue for each generated session.
-    from event.models import Event
+    # When a default_pool is set on the team it supersedes the pools derived
+    # from existing events. Otherwise fall back to the distinct, non-empty
+    # locations already used across this team's events so the AI reuses a real
+    # venue for each generated session.
+    location_hint = (default_pool or "").strip()
+    if location_hint:
+        pools = []
+    else:
+        from event.models import Event
 
-    pools = list(
-        Event.objects.filter(refer_program__team_id=program.team_id)
-        .exclude(location="")
-        .values_list("location", flat=True)
-        .distinct()
-        .order_by("location")
-    )
+        pools = list(
+            Event.objects.filter(refer_program__team_id=program.team_id)
+            .exclude(location="")
+            .values_list("location", flat=True)
+            .distinct()
+            .order_by("location")
+        )
 
     system = build_system_prompt(sport_name)
     user_prompt = build_user_prompt(
@@ -262,6 +353,8 @@ def generate_plan(
         team=program.team,
         pools=pools,
         additional_prompt=additional_prompt,
+        slots=slots,
+        default_pool=location_hint,
     )
     logger.info(
         "generate_plan request: tool=%r system=%s user_prompt=%s",
