@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "level",
     "notifications",
     "messaging",
+    "attachment",
 ]
 
 SITE_ID = 1
@@ -346,6 +347,37 @@ ANTHROPIC_MAX_TOKENS_DEFAULT = env.int("ANTHROPIC_MAX_TOKENS_DEFAULT", default=2
 # ping) keep the smaller default.
 ANTHROPIC_MAX_TOKENS_PLAN = env.int("ANTHROPIC_MAX_TOKENS_PLAN", default=20000)
 ANTHROPIC_TIMEOUT_SECONDS = env.int("ANTHROPIC_TIMEOUT_SECONDS", default=60)
+
+# --- File attachments (S3 presigned uploads/downloads) ---------------------
+# The browser uploads/downloads files DIRECTLY to/from a private S3 bucket via
+# short-lived presigned URLs the backend mints with the EC2 instance role's
+# credentials (boto3 default credential chain — NO keys in code/settings).
+# Access is gated by app permissions at presign / download time.
+#
+# ATTACHMENTS_S3_BUCKET is published to SSM (/tm/prod/ATTACHMENTS_S3_BUCKET) by
+# deploy/create-attachments-infra.sh; an empty value means the feature is
+# unconfigured and the mutating endpoints fail-closed with HTTP 503.
+ATTACHMENTS_S3_BUCKET = env("ATTACHMENTS_S3_BUCKET", default="")
+ATTACHMENTS_S3_REGION = env("ATTACHMENTS_S3_REGION", default="eu-west-1")
+ATTACHMENTS_MAX_BYTES = env.int("ATTACHMENTS_MAX_BYTES", default=500 * 1024 * 1024)  # 500 MB
+ATTACHMENTS_PRESIGN_EXPIRY = env.int("ATTACHMENTS_PRESIGN_EXPIRY", default=3600)  # seconds
+
+# Allow-list of MIME types accepted for upload: PDF, common images, common
+# video. Overridable via env (comma-separated) so prod can widen/narrow it
+# without a code change. frozenset = immutable shared default.
+_DEFAULT_ATTACHMENTS_ALLOWED_MIME = (
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+)
+ATTACHMENTS_ALLOWED_MIME = frozenset(
+    env.list("ATTACHMENTS_ALLOWED_MIME", default=list(_DEFAULT_ATTACHMENTS_ALLOWED_MIME))
+)
 
 # --- Sentry (error tracking / performance) — OPERATIONS.md §3.8 -------------
 # Only active under prod (STATE=PROD): even with a DSN present in dev/test we

@@ -36,6 +36,193 @@ paths:
           description: AI configuration error
         '502':
           description: AI service error
+  /api/v1/attachments/:
+    get:
+      operationId: attachments_list
+      description: List the READY attachments for a target the caller can read. Both
+        `target_type` and `target_id` are required query params.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: target_id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: target_type
+        schema:
+          type: string
+          enum:
+          - event
+          - message
+        required: true
+      tags:
+      - attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAttachmentList'
+          description: ''
+        '400':
+          description: Missing/invalid query params (`missing_params`, `invalid_target_type`).
+        '403':
+          description: No read access to this target.
+        '404':
+          description: Target not found.
+  /api/v1/attachments/{id}/:
+    delete:
+      operationId: attachments_destroy
+      description: 'Delete an attachment: best-effort removal of the S3 object then
+        the row. Caller must be the uploader or able to write the target.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this attachment.
+        required: true
+      tags:
+      - attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: Attachment deleted.
+        '403':
+          description: Not allowed to delete this attachment.
+        '404':
+          description: Attachment not found.
+        '503':
+          description: Attachments unconfigured (`attachments_unconfigured`).
+  /api/v1/attachments/{id}/complete/:
+    post:
+      operationId: attachments_complete_create
+      description: 'Finalize an upload: HEAD the S3 object, record its real size,
+        and flip the Attachment to `ready`. Caller must be the uploader or able to
+        write the target.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this attachment.
+        required: true
+      tags:
+      - attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+          description: ''
+        '400':
+          description: Upload not found in S3 (`upload_not_found`).
+        '403':
+          description: Not allowed to complete this attachment.
+        '404':
+          description: Attachment not found.
+        '503':
+          description: Attachments unconfigured (`attachments_unconfigured`).
+  /api/v1/attachments/{id}/download/:
+    get:
+      operationId: attachments_download_retrieve
+      description: Mint a short-lived presigned GET URL to download a ready attachment.
+        Caller must be able to read the target.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this attachment.
+        required: true
+      tags:
+      - attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentDownloadResponse'
+          description: Presigned GET URL.
+        '403':
+          description: No read access to this attachment's target.
+        '404':
+          description: Attachment not found.
+        '409':
+          description: Attachment not ready yet.
+        '503':
+          description: Attachments unconfigured (`attachments_unconfigured`).
+  /api/v1/attachments/presign/:
+    post:
+      operationId: attachments_presign_create
+      description: Request a presigned S3 PUT URL to upload a file and create a `pending`
+        Attachment for an Event or Message target. Validates the MIME allow-list and
+        the size cap, and that the caller may write to the target (event-team manager
+        / message author or coach).
+      tags:
+      - attachments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PresignUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignUploadResponse'
+          description: Presigned PUT URL issued; a pending Attachment row was created.
+        '400':
+          description: 'Validation error. `code` is one of: `mime_not_allowed`, `file_too_large`,
+            `invalid_target_type`, `validation_error`.'
+        '403':
+          description: You may not attach files to this target.
+        '404':
+          description: Target not found.
+        '503':
+          description: Attachments unconfigured (`attachments_unconfigured`).
   /api/v1/attendance-statuses/:
     get:
       operationId: attendance_statuses_list
@@ -5798,6 +5985,69 @@ components:
       description: |-
         * `accept` - accept
         * `reject` - reject
+    Attachment:
+      type: object
+      description: |-
+        Read-only representation of an Attachment.
+
+        ``target_type`` / ``target_id`` are derived from the generic relation so the
+        frontend never sees raw content_type ids.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        target_type:
+          type: string
+          nullable: true
+          readOnly: true
+        target_id:
+          type: integer
+          readOnly: true
+        filename:
+          type: string
+          readOnly: true
+        content_type_mime:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AttachmentStatusEnum'
+          readOnly: true
+        uploaded_by:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content_type_mime
+      - created_at
+      - filename
+      - id
+      - size_bytes
+      - status
+      - target_id
+      - target_type
+      - uploaded_by
+    AttachmentDownloadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+      - url
+    AttachmentStatusEnum:
+      enum:
+      - pending
+      - ready
+      type: string
+      description: |-
+        * `pending` - pending
+        * `ready` - ready
     Attendance:
       type: object
       properties:
@@ -7186,6 +7436,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AIUsageDetail'
+    PaginatedAttachmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
     PaginatedAttendanceList:
       type: object
       required:
@@ -8740,6 +9013,54 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PresignUploadHeaders:
+      type: object
+      properties:
+        Content-Type:
+          type: string
+      required:
+      - Content-Type
+    PresignUploadRequest:
+      type: object
+      description: Body for POST /attachments/presign/.
+      properties:
+        target_type:
+          $ref: '#/components/schemas/TargetTypeEnum'
+        target_id:
+          type: integer
+          minimum: 1
+        filename:
+          type: string
+          maxLength: 255
+          minLength: 1
+        content_type:
+          type: string
+          maxLength: 150
+        size:
+          type: integer
+          minimum: 1
+      required:
+      - content_type
+      - filename
+      - size
+      - target_id
+      - target_type
+    PresignUploadResponse:
+      type: object
+      properties:
+        attachment_id:
+          type: integer
+        upload_url:
+          type: string
+        s3_key:
+          type: string
+        headers:
+          $ref: '#/components/schemas/PresignUploadHeaders'
+      required:
+      - attachment_id
+      - headers
+      - s3_key
+      - upload_url
     Program:
       type: object
       properties:
@@ -9351,6 +9672,14 @@ components:
       required:
       - distance
       - week_start
+    TargetTypeEnum:
+      enum:
+      - event
+      - message
+      type: string
+      description: |-
+        * `event` - event
+        * `message` - message
     Team:
       type: object
       properties:
