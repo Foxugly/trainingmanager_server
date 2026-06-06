@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: trainingmanager 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-05 13:53+0200\n"
+"POT-Creation-Date: 2026-06-06 18:20+0200\n"
 "PO-Revision-Date: 2026-04-28 00:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: French\n"
@@ -32,7 +32,54 @@ msgid "Generate training"
 msgstr "Générer l'entraînement"
 
 msgid "Only the owner and managers of this team can view AI usage."
-msgstr "Seuls le propriétaire et les managers de cette équipe peuvent consulter l'utilisation de l'IA."
+msgstr ""
+"Seuls le propriétaire et les managers de cette équipe peuvent consulter "
+"l'utilisation de l'IA."
+
+msgid "Unsupported target_type."
+msgstr "target_type non pris en charge."
+
+msgid "File attachments are not configured on this server."
+msgstr "Les pièces jointes ne sont pas configurées sur ce serveur."
+
+msgid "Attachment not found."
+msgstr "Pièce jointe introuvable."
+
+msgid "Target not found."
+msgstr "Cible introuvable."
+
+msgid "You may not attach files to this target."
+msgstr "Vous ne pouvez pas joindre de fichiers à cette cible."
+
+msgid "This file type is not allowed."
+msgstr "Ce type de fichier n'est pas autorisé."
+
+msgid "File exceeds the maximum allowed size."
+msgstr "Le fichier dépasse la taille maximale autorisée."
+
+msgid "You may not complete this attachment."
+msgstr "Vous ne pouvez pas finaliser cette pièce jointe."
+
+msgid "Uploaded file not found in storage."
+msgstr "Fichier téléversé introuvable dans le stockage."
+
+msgid "You may not access this attachment."
+msgstr "Vous ne pouvez pas accéder à cette pièce jointe."
+
+msgid "Attachment is not ready."
+msgstr "La pièce jointe n'est pas prête."
+
+msgid "target_type and target_id are required."
+msgstr "target_type et target_id sont requis."
+
+msgid "target_id must be an integer."
+msgstr "target_id doit être un entier."
+
+msgid "You may not access this target."
+msgstr "Vous ne pouvez pas accéder à cette cible."
+
+msgid "You may not delete this attachment."
+msgstr "Vous ne pouvez pas supprimer cette pièce jointe."
 
 msgid "Snake_case identifier (e.g. 'present', 'absent', 'excused')"
 msgstr "Identifiant en snake_case (ex. 'present', 'absent', 'excused')"
@@ -50,7 +97,8 @@ msgid "Hex color (#xxxxxx) for the frontend, optional."
 msgstr "Couleur hexadécimale (#xxxxxx) pour le frontend, optionnelle."
 
 msgid "You don't have permission to access this event's attendance."
-msgstr "Vous n'avez pas la permission d'accéder aux présences de cet évènement."
+msgstr ""
+"Vous n'avez pas la permission d'accéder aux présences de cet évènement."
 
 msgid "Event has no team (orphan event)."
 msgstr "L'évènement n'a pas d'équipe (évènement orphelin)."
@@ -59,10 +107,14 @@ msgid "This member is not in the team."
 msgstr "Ce membre n'appartient pas à l'équipe."
 
 msgid "Attendance already exists for this member. Use PATCH to update."
-msgstr "Une présence existe déjà pour ce membre. Utilisez PATCH pour la mettre à jour."
+msgstr ""
+"Une présence existe déjà pour ce membre. Utilisez PATCH pour la mettre à "
+"jour."
 
 msgid "Only team owner and managers can bulk-set attendances."
-msgstr "Seuls le propriétaire et les managers de l'équipe peuvent définir les présences en lot."
+msgstr ""
+"Seuls le propriétaire et les managers de l'équipe peuvent définir les "
+"présences en lot."
 
 #, python-brace-format
 msgid "Members not in team: {ids}"
@@ -71,6 +123,63 @@ msgstr "Membres absents de l'équipe : {ids}"
 #, python-brace-format
 msgid "Status codes not found or inactive: {codes}"
 msgstr "Codes de statut introuvables ou inactifs : {codes}"
+
+msgid "Member anonymized"
+msgstr "Membre anonymisé"
+
+msgid "Member removed from team"
+msgstr "Membre retiré de l'équipe"
+
+msgid "Account deleted"
+msgstr "Compte supprimé"
+
+msgid "Session shared publicly"
+msgstr "Séance partagée publiquement"
+
+msgid "Session sharing disabled"
+msgstr "Partage de la séance désactivé"
+
+msgid "Attachment deleted"
+msgstr "Pièce jointe supprimée"
+
+msgid "Team configuration updated"
+msgstr "Configuration de l'équipe mise à jour"
+
+msgid "The user who performed the action. NULL = system/anonymous."
+msgstr "L'utilisateur ayant effectué l'action. NULL = système/anonyme."
+
+msgid ""
+"Snapshot of the actor's username/display at the time. Survives actor "
+"deletion or anonymization (when the FK is SET_NULL)."
+msgstr ""
+"Instantané du nom d'utilisateur/affichage de l'acteur à ce moment-là. "
+"Subsiste après la suppression ou l'anonymisation de l'acteur (lorsque la clé "
+"étrangère est SET_NULL)."
+
+msgid "Stable code identifying the audited action."
+msgstr "Code stable identifiant l'action auditée."
+
+msgid ""
+"Team the action is scoped to (used for read scoping). NULL = not team-"
+"scoped, e.g. an account self-delete."
+msgstr ""
+"Équipe à laquelle l'action est rattachée (utilisée pour le filtrage en "
+"lecture). NULL = non rattachée à une équipe, ex. une auto-suppression de "
+"compte."
+
+msgid "Human-readable description of the target."
+msgstr "Description lisible de la cible."
+
+msgid "Small structured extra context (no unnecessary PII)."
+msgstr ""
+"Petit contexte supplémentaire structuré (sans données personnelles "
+"superflues)."
+
+msgid "audit log entry"
+msgstr "entrée du journal d'audit"
+
+msgid "audit log entries"
+msgstr "entrées du journal d'audit"
 
 msgid "Author of the message. SET_NULL on user deletion."
 msgstr "Auteur du message. SET_NULL lors de la suppression de l'utilisateur."
@@ -99,11 +208,73 @@ msgstr "Permissions"
 msgid "Important dates"
 msgstr "Dates importantes"
 
+msgid "Hello"
+msgstr "Bonjour"
+
+#, python-format
+msgid ""
+"Here is your weekly TrainingManager recap for the week of %(from)s to %(to)s."
+msgstr ""
+"Voici votre récapitulatif hebdomadaire TrainingManager pour la semaine du "
+"%(from)s au %(to)s."
+
+msgid "n/a"
+msgstr "n/d"
+
+msgid "Sessions"
+msgstr "Séances"
+
+msgid "Attendance rate"
+msgstr "Taux de présence"
+
+msgid "Total volume"
+msgstr "Volume total"
+
+msgid "Upcoming sessions next week"
+msgstr "Séances à venir la semaine prochaine"
+
+msgid ""
+"You receive this because you own or manage these teams. To stop, disable the "
+"weekly recap in your account preferences."
+msgstr ""
+"Vous recevez ce message car vous possédez ou gérez ces équipes. Pour ne plus "
+"le recevoir, désactivez le récapitulatif hebdomadaire dans les préférences "
+"de votre compte."
+
+msgid "Votre récap hebdo"
+msgstr "Votre récap hebdo"
+
 msgid "language"
 msgstr "langue"
 
-msgid "Maximum number of active teams this user can own. Defaults to 0 — creating a team is a paid feature; admins bump this per user (or via a future billing flow)."
-msgstr "Nombre maximal d'équipes actives que cet utilisateur peut posséder. Par défaut 0 — créer une équipe est une fonctionnalité payante ; les admins augmentent cette valeur par utilisateur (ou via un futur flux de facturation)."
+msgid ""
+"Per-user preference for the weekly recap email. Opt-out model: default True. "
+"When False, this user receives no weekly recap even for teams they own/"
+"manage that have it enabled."
+msgstr ""
+"Préférence par utilisateur pour l'email de récapitulatif hebdomadaire. "
+"Modèle opt-out : True par défaut. Lorsque False, cet utilisateur ne reçoit "
+"aucun récapitulatif hebdomadaire, même pour les équipes qu'il possède/gère "
+"et qui l'ont activé."
+
+msgid ""
+"Maximum number of active teams this user can own. Defaults to 0 — creating a "
+"team is a paid feature; admins bump this per user (or via a future billing "
+"flow)."
+msgstr ""
+"Nombre maximal d'équipes actives que cet utilisateur peut posséder. Par "
+"défaut 0 — créer une équipe est une fonctionnalité payante ; les admins "
+"augmentent cette valeur par utilisateur (ou via un futur flux de "
+"facturation)."
+
+msgid ""
+"Unguessable token embedded in the user's personal iCal (.ics) subscription "
+"URL. The token IS the authentication for that (otherwise anonymous) feed. "
+"Rotate it to revoke an old URL."
+msgstr ""
+"Jeton indevinable intégré à l'URL d'abonnement iCal (.ics) personnel de "
+"l'utilisateur. Le jeton EST l'authentification de ce flux (par ailleurs "
+"anonyme). Faites-le tourner pour révoquer une ancienne URL."
 
 msgid "This username is already taken."
 msgstr "Ce nom d'utilisateur est déjà pris."
@@ -112,31 +283,37 @@ msgid "This email is already in use."
 msgstr "Cette adresse email est déjà utilisée."
 
 msgid "Account created. Please check your email to confirm your registration."
-msgstr "Compte créé. Veuillez consulter votre email pour confirmer votre inscription."
+msgstr ""
+"Compte créé. Veuillez consulter votre email pour confirmer votre inscription."
 
 msgid "Invalid or expired confirmation token."
 msgstr "Jeton de confirmation invalide ou expiré."
 
-msgid "If a matching unverified account exists, a confirmation email has been sent."
-msgstr "Si un compte non vérifié correspond, un email de confirmation a été envoyé."
+msgid ""
+"If a matching unverified account exists, a confirmation email has been sent."
+msgstr ""
+"Si un compte non vérifié correspond, un email de confirmation a été envoyé."
 
 msgid "Password reset"
 msgstr "Réinitialisation du mot de passe"
 
-msgid "Hello"
-msgstr "Bonjour"
-
 msgid "You (or someone) requested a password reset for your account."
-msgstr "Vous (ou quelqu'un d'autre) avez demandé la réinitialisation du mot de passe de votre compte."
+msgstr ""
+"Vous (ou quelqu'un d'autre) avez demandé la réinitialisation du mot de passe "
+"de votre compte."
 
 msgid "To set a new password, click the link below:"
 msgstr "Pour définir un nouveau mot de passe, cliquez sur le lien ci-dessous :"
 
 msgid "If you did not request this, you can safely ignore this email."
-msgstr "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce message en toute sécurité."
+msgstr ""
+"Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce "
+"message en toute sécurité."
 
 msgid "If a matching account exists, a password reset email has been sent."
-msgstr "Si un compte correspond à cet email, un message de réinitialisation a été envoyé."
+msgstr ""
+"Si un compte correspond à cet email, un message de réinitialisation a été "
+"envoyé."
 
 msgid "Invalid or expired password reset token."
 msgstr "Lien de réinitialisation invalide ou expiré."
@@ -149,6 +326,9 @@ msgstr "Le nouveau mot de passe doit être différent de l'actuel."
 
 msgid "Password updated."
 msgstr "Mot de passe mis à jour."
+
+msgid "Invalid or expired refresh token."
+msgstr "Jeton de rafraîchissement invalide ou expiré."
 
 msgid "No modalities defined for this sport. Cannot generate."
 msgstr "Aucune modalité définie pour ce sport. Génération impossible."
@@ -165,11 +345,38 @@ msgstr "L'IA a utilisé un identifiant de modalité invalide."
 msgid "AI used an invalid energysegment id."
 msgstr "L'IA a utilisé un identifiant de segment énergétique invalide."
 
+msgid "Always"
+msgstr "Toujours"
+
+msgid "After the session"
+msgstr "Après la séance"
+
+msgid "Never"
+msgstr "Jamais"
+
 msgid "name"
 msgstr "nom"
 
 msgid "goal"
 msgstr "objectif"
+
+msgid "location"
+msgstr "lieu"
+
+msgid ""
+"Where the session takes place (venue, pool, track, address). Always visible "
+"to athletes."
+msgstr ""
+"Lieu où se déroule la séance (site, piscine, piste, adresse). Toujours "
+"visible par les athlètes."
+
+msgid "equipment"
+msgstr "équipement"
+
+msgid "Material/gear athletes should bring. Always visible to athletes."
+msgstr ""
+"Matériel/équipement que les athlètes doivent apporter. Toujours visible par "
+"les athlètes."
 
 msgid "color"
 msgstr "couleur"
@@ -177,20 +384,53 @@ msgstr "couleur"
 msgid "refer_program"
 msgstr "refer_program"
 
+msgid "Visibility of this session's total distance to athletes."
+msgstr "Visibilité de la distance totale de cette séance pour les athlètes."
+
+msgid "Visibility of this session's goal to athletes."
+msgstr "Visibilité de l'objectif de cette séance pour les athlètes."
+
+msgid "Visibility of this session's rounds (and exercises) to athletes."
+msgstr ""
+"Visibilité des séries (et exercices) de cette séance pour les athlètes."
+
+msgid "Whether this session is currently shared via its public link."
+msgstr "Indique si cette séance est actuellement partagée via son lien public."
+
+msgid ""
+"Unguessable token in the public share URL. Null = never shared. The token "
+"authenticates the otherwise-anonymous public view."
+msgstr ""
+"Jeton indevinable dans l'URL de partage public. Null = jamais partagée. Le "
+"jeton authentifie la vue publique (par ailleurs anonyme)."
+
 msgid "Event"
 msgstr "Évènement"
+
+#, python-format
+msgid "Additional prompt cannot exceed %(n)d characters."
+msgstr "Le prompt additionnel ne peut pas dépasser %(n)d caractères."
 
 msgid "refer_program is required."
 msgstr "refer_program est requis."
 
 msgid "You do not manage the team of this program."
-msgstr "Vous ne gérez pas la team de ce programme."
+msgstr "Vous ne gérez pas l'équipe de ce programme."
 
 msgid "You must be owner or manager of this event's team."
-msgstr "Vous devez être propriétaire ou manager de la team de cet évènement."
+msgstr ""
+"Vous devez être propriétaire ou manager de l'équipe de cet évènement."
 
 msgid "Event already has rounds. Remove them before regenerating."
-msgstr "L'évènement contient déjà des séries. Supprimez-les avant de régénérer."
+msgstr ""
+"L'évènement contient déjà des séries. Supprimez-les avant de régénérer."
+
+msgid "You must manage this event's team to reorder its rounds."
+msgstr ""
+"Vous devez gérer l'équipe de cet évènement pour réordonner ses séries."
+
+msgid "Public sharing is disabled for this team."
+msgstr "Le partage public est désactivé pour cette équipe."
 
 msgid "abv"
 msgstr "abv"
@@ -225,6 +465,24 @@ msgstr "notes"
 msgid "Exercise"
 msgstr "Exercice"
 
+msgid "You are not authorized to attach an exercise to this round."
+msgstr "Vous n'êtes pas autorisé à attacher un exercice à cette série."
+
+msgid "MM:SS format, e.g. 1:30."
+msgstr "Format MM:SS, ex. 1:30."
+
+msgid ""
+"Optional. If provided on POST, the newly created Exercise is atomically "
+"attached to this Round. The request user must manage at least one team of at "
+"least one Event linked to this Round (library rounds with no events are "
+"accepted as-is). Ignored on PATCH/PUT."
+msgstr ""
+"Facultatif. Si fourni lors d'un POST, l'exercice nouvellement créé est "
+"attaché de manière atomique à cette série. L'utilisateur de la requête doit "
+"gérer au moins une équipe d'au moins un évènement lié à cette série (les "
+"séries de bibliothèque sans évènement sont acceptées telles quelles). Ignoré "
+"lors d'un PATCH/PUT."
+
 msgid "Firstname"
 msgstr "Prénom"
 
@@ -244,19 +502,162 @@ msgid "This user already has a member profile."
 msgstr "Cet utilisateur possède déjà un profil membre."
 
 msgid "The user must already belong to at least one of the member's teams."
-msgstr "L'utilisateur doit déjà appartenir à au moins l'une des équipes du membre."
+msgstr ""
+"L'utilisateur doit déjà appartenir à au moins l'une des équipes du membre."
 
 msgid "You must manage at least one team to create members."
 msgstr "Vous devez gérer au moins une équipe pour créer des membres."
 
-msgid "The coach who wrote this note. SET_NULL if the author account is deleted."
-msgstr "L'entraîneur qui a rédigé cette note. SET_NULL si le compte de l'auteur est supprimé."
+msgid "No such member."
+msgstr "Membre inexistant."
+
+msgid "No such member in a team you manage."
+msgstr "Aucun membre de ce type dans une équipe que vous gérez."
+
+msgid "Whole team"
+msgstr "Toute l'équipe"
+
+msgid "Coaches only"
+msgstr "Entraîneurs uniquement"
+
+msgid "The coach who created the topic. SET_NULL on user deletion."
+msgstr ""
+"L'entraîneur qui a créé le sujet. SET_NULL lors de la suppression de "
+"l'utilisateur."
+
+msgid ""
+"team = visible to all team members; coaches = visible only to the owner and "
+"managers (staff channel)."
+msgstr ""
+"team = visible par tous les membres de l'équipe ; coaches = visible "
+"uniquement par le propriétaire et les managers (canal staff)."
+
+msgid ""
+"Only meaningful when audience=team. When True, athlete members may post "
+"messages; coaches can always post."
+msgstr ""
+"Pertinent uniquement lorsque audience=team. Lorsque True, les membres "
+"athlètes peuvent publier des messages ; les entraîneurs peuvent toujours "
+"publier."
+
+msgid "Bumped on each new message for activity-based ordering."
+msgstr ""
+"Mis à jour à chaque nouveau message pour un tri basé sur l'activité."
+
+msgid "You don't have permission to access this team's topics."
+msgstr "Vous n'avez pas la permission d'accéder aux sujets de cette équipe."
+
+msgid "You don't have permission to post in this topic."
+msgstr "Vous n'avez pas la permission de publier dans ce sujet."
+
+msgid "Title cannot be empty."
+msgstr "Le titre ne peut pas être vide."
+
+msgid "Athletes can only create whole-team topics."
+msgstr ""
+"Les athlètes ne peuvent créer que des sujets destinés à toute l'équipe."
+
+#, python-format
+msgid "New topic: %(title)s"
+msgstr "Nouveau sujet : %(title)s"
+
+msgid "A new topic was created in your team."
+msgstr "Un nouveau sujet a été créé dans votre équipe."
+
+#, python-format
+msgid "New message in: %(title)s"
+msgstr "Nouveau message dans : %(title)s"
+
+msgid "A new message was posted in a topic you follow."
+msgstr "Un nouveau message a été publié dans un sujet que vous suivez."
+
+msgid ""
+"The coach who wrote this note. SET_NULL if the author account is deleted."
+msgstr ""
+"L'entraîneur qui a rédigé cette note. SET_NULL si le compte de l'auteur est "
+"supprimé."
+
+msgid ""
+"If True, the concerned athlete can read this note (when it is also active). "
+"Default False — notes are coach-only unless explicitly shared."
+msgstr ""
+"Si True, l'athlète concerné peut lire cette note (lorsqu'elle est également "
+"active). False par défaut — les notes sont réservées aux entraîneurs sauf "
+"partage explicite."
 
 msgid "You don't have permission to access these notes."
 msgstr "Vous n'avez pas la permission d'accéder à ces notes."
 
 msgid "This member does not belong to this team."
 msgstr "Ce membre n'appartient pas à cette équipe."
+
+msgid "A note was shared with you"
+msgstr "Une note a été partagée avec vous"
+
+msgid "Your coach added a note for you."
+msgstr "Votre entraîneur a ajouté une note pour vous."
+
+#, python-format
+msgid "Note added on %(name)s"
+msgstr "Note ajoutée sur %(name)s"
+
+#, python-format
+msgid "A new note was added on %(name)s."
+msgstr "Une nouvelle note a été ajoutée sur %(name)s."
+
+msgid "Note added on an athlete"
+msgstr "Note ajoutée sur un athlète"
+
+msgid "A new topic was created in your team"
+msgstr "Un nouveau sujet a été créé dans votre équipe"
+
+msgid "A new message was posted in a topic"
+msgstr "Un nouveau message a été publié dans un sujet"
+
+msgid "Frontend deep-link path, e.g. /teams/3."
+msgstr "Chemin de lien profond du frontend, ex. /teams/3."
+
+msgid "Seconds"
+msgstr "Secondes"
+
+msgid "Meters"
+msgstr "Mètres"
+
+msgid "Repetitions"
+msgstr "Répétitions"
+
+msgid "Kilograms"
+msgstr "Kilogrammes"
+
+msgid "Points"
+msgstr "Points"
+
+msgid "label"
+msgstr "libellé"
+
+msgid "Discipline / test name, e.g. '100m freestyle' or 'Cooper test'."
+msgstr "Nom de discipline / test, ex. '100m nage libre' ou 'test de Cooper'."
+
+msgid ""
+"Numeric result, interpreted by unit (seconds for time, meters for distance, "
+"etc.)."
+msgstr ""
+"Résultat numérique, interprété selon l'unité (secondes pour le temps, mètres "
+"pour la distance, etc.)."
+
+msgid "Date the performance was achieved."
+msgstr "Date à laquelle la performance a été réalisée."
+
+msgid "You cannot log a performance for this member."
+msgstr "Vous ne pouvez pas enregistrer une performance pour ce membre."
+
+msgid "You can only log performances in a team you belong to."
+msgstr ""
+"Vous ne pouvez enregistrer des performances que dans une équipe à laquelle "
+"vous appartenez."
+
+msgid "You cannot modify this performance."
+msgstr "Vous ne pouvez pas modifier cette performance."
 
 msgid "AI returned an invalid date format."
 msgstr "L'IA a renvoyé un format de date invalide."
@@ -277,13 +678,28 @@ msgid "Range cannot exceed 365 days."
 msgstr "La plage ne peut pas dépasser 365 jours."
 
 msgid "You do not manage this team."
-msgstr "Vous ne gérez pas cette team."
+msgstr "Vous ne gérez pas cette équipe."
 
 msgid "You must be owner or manager of this program's team."
-msgstr "Vous devez être propriétaire ou manager de la team de ce programme."
+msgstr "Vous devez être propriétaire ou manager de l'équipe de ce programme."
+
+msgid "You don't have permission to access this event's ROTI."
+msgstr "Vous n'avez pas la permission d'accéder au ROTI de cet évènement."
 
 msgid "Round"
 msgstr "Round"
+
+msgid "You are not authorized to attach a round to this event."
+msgstr "Vous n'êtes pas autorisé à attacher une série à cet évènement."
+
+msgid ""
+"Optional. If provided on POST, the newly created Round is atomically "
+"attached to this Event. The request user must manage the Event's team. "
+"Ignored on PATCH/PUT."
+msgstr ""
+"Facultatif. Si fourni lors d'un POST, la série nouvellement créée est "
+"attachée de manière atomique à cet évènement. L'utilisateur de la requête "
+"doit gérer l'équipe de l'évènement. Ignoré lors d'un PATCH/PUT."
 
 msgid "An exercise has a modality.sport that doesn't match round.sport."
 msgstr "Un exercice a un modality.sport qui ne correspond pas à round.sport."
@@ -297,6 +713,32 @@ msgstr "exercise_id est requis."
 msgid "Exercise not found or not accessible."
 msgstr "Exercice introuvable ou inaccessible."
 
+msgid ""
+"You must manage at least one team owning an event linked to this round to "
+"reorder its exercises."
+msgstr ""
+"Vous devez gérer au moins une équipe possédant un évènement lié à cette "
+"série pour réordonner ses exercices."
+
+msgid "Going"
+msgstr "Présent"
+
+msgid "Maybe"
+msgstr "Peut-être"
+
+msgid "Not going"
+msgstr "Absent"
+
+msgid "You don't have permission to access this event's RSVP."
+msgstr ""
+"Vous n'avez pas la permission d'accéder aux réponses de présence de cet "
+"évènement."
+
+msgid "Only team owner and managers can apply RSVPs to attendance."
+msgstr ""
+"Seuls le propriétaire et les managers de l'équipe peuvent appliquer les "
+"réponses de présence aux présences."
+
 msgid "All members can post"
 msgstr "Tous les membres peuvent poster"
 
@@ -307,49 +749,213 @@ msgid "Manual — managers accept/reject each request"
 msgstr "Manuel — les managers acceptent/refusent chaque demande"
 
 msgid "Auto-accept — every join request is accepted immediately"
-msgstr "Acceptation automatique — chaque demande d'inscription est acceptée immédiatement"
+msgstr ""
+"Acceptation automatique — chaque demande d'inscription est acceptée "
+"immédiatement"
+
+msgid "Owner only"
+msgstr "Propriétaire uniquement"
+
+msgid "Owner and coaches"
+msgstr "Propriétaire et entraîneurs"
+
+msgid "Everyone (incl. athletes)"
+msgstr "Tout le monde (y compris les athlètes)"
+
+msgid ""
+"Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...'). "
+"Stored inline in the DB; no file storage."
+msgstr ""
+"Petite data-URL en base64 pour le logo de l'équipe (ex. "
+"'data:image/png;base64,...'). Stockée directement dans la base de données ; "
+"aucun stockage de fichier."
+
+msgid ""
+"If True, athletes can submit a per-session difficulty rating (ROTI, 1..5) "
+"for the team's events."
+msgstr ""
+"Si True, les athlètes peuvent soumettre une note de difficulté par séance "
+"(ROTI, 1..5) pour les évènements de l'équipe."
+
+msgid ""
+"If True, athletes can declare their availability (RSVP: going / maybe / not "
+"going) for the team's events."
+msgstr ""
+"Si True, les athlètes peuvent déclarer leur disponibilité (réponse de "
+"présence : présent / peut-être / absent) pour les évènements de l'équipe."
 
 msgid "Defines who can post messages in the team chat."
 msgstr "Définit qui peut poster des messages dans le chat de l'équipe."
 
-msgid "If True, athletes can read their own coach notes. Default False (notes are coach-only)."
-msgstr "Si True, les athlètes peuvent lire leurs propres notes d'entraîneur. False par défaut (notes réservées aux entraîneurs)."
+msgid ""
+"If True, this team is included in the weekly recap email sent to its owner "
+"and managers. Default False (opt-in per team)."
+msgstr ""
+"Si True, cette équipe est incluse dans l'email de récapitulatif hebdomadaire "
+"envoyé à son propriétaire et à ses managers. False par défaut (opt-in par "
+"équipe)."
 
-msgid "Statuses available for marking attendance in this team's events. Default: present, absent, excused."
-msgstr "Statuts disponibles pour marquer les présences dans les évènements de cette équipe. Par défaut : present, absent, excused."
+msgid ""
+"Statuses available for marking attendance in this team's events. Default: "
+"present, absent, excused."
+msgstr ""
+"Statuts disponibles pour marquer les présences dans les évènements de cette "
+"équipe. Par défaut : present, absent, excused."
 
-msgid "Manual = managers accept/reject each TeamJoinRequest. Auto = every join request is accepted immediately on submission."
-msgstr "Manuel = les managers acceptent/refusent chaque TeamJoinRequest. Auto = chaque demande d'inscription est acceptée immédiatement à la soumission."
+msgid ""
+"Manual = managers accept/reject each TeamJoinRequest. Auto = every join "
+"request is accepted immediately on submission."
+msgstr ""
+"Manuel = les managers acceptent/refusent chaque TeamJoinRequest. Auto = "
+"chaque demande d'inscription est acceptée immédiatement à la soumission."
 
-msgid "When join_request_policy=manual, send the owner and managers an email with accept/reject magic links on each new request. Ignored when policy=auto (no manual decision is needed)."
-msgstr "Lorsque join_request_policy=manual, envoyer au propriétaire et aux managers un email avec des liens magiques d'acceptation/refus à chaque nouvelle demande. Ignoré lorsque policy=auto (aucune décision manuelle requise)."
+msgid ""
+"Who may create messaging topics in this team. owner = team owner only; "
+"coaches = owner and managers; members = owner, managers, and active athlete "
+"members."
+msgstr ""
+"Qui peut créer des sujets de messagerie dans cette équipe. owner = "
+"propriétaire de l'équipe uniquement ; coaches = propriétaire et managers ; "
+"members = propriétaire, managers et membres athlètes actifs."
+
+msgid ""
+"IANA timezone name (e.g. 'Europe/Brussels'). Used to decide, in the team's "
+"local time, whether a session is over for per-aspect athlete visibility "
+"(vis_distance/vis_goal/vis_rounds)."
+msgstr ""
+"Nom de fuseau horaire IANA (ex. 'Europe/Brussels'). Utilisé pour déterminer, "
+"selon l'heure locale de l'équipe, si une séance est terminée pour la "
+"visibilité par aspect des athlètes (vis_distance/vis_goal/vis_rounds)."
+
+msgid ""
+"Default visibility of a session's total distance to athletes. Inherited by "
+"new events; overridable per event."
+msgstr ""
+"Visibilité par défaut de la distance totale d'une séance pour les athlètes. "
+"Héritée par les nouveaux évènements ; modifiable par évènement."
+
+msgid ""
+"Default visibility of a session's goal to athletes. Inherited by new events; "
+"overridable per event."
+msgstr ""
+"Visibilité par défaut de l'objectif d'une séance pour les athlètes. Héritée "
+"par les nouveaux évènements ; modifiable par évènement."
+
+msgid ""
+"Default visibility of a session's rounds (and their exercises) to athletes. "
+"Inherited by new events; overridable per event."
+msgstr ""
+"Visibilité par défaut des séries (et de leurs exercices) d'une séance pour "
+"les athlètes. Héritée par les nouveaux évènements ; modifiable par "
+"évènement."
+
+msgid ""
+"Allow individual sessions of this team to be shared via a public read-only "
+"link."
+msgstr ""
+"Autoriser le partage des séances individuelles de cette équipe via un lien "
+"public en lecture seule."
+
+msgid "Show a shared session's total distance on its public link."
+msgstr ""
+"Afficher la distance totale d'une séance partagée sur son lien public."
+
+msgid "Show a shared session's goal on its public link."
+msgstr "Afficher l'objectif d'une séance partagée sur son lien public."
+
+msgid "Show a shared session's rounds & exercises on its public link."
+msgstr ""
+"Afficher les séries et exercices d'une séance partagée sur son lien public."
+
+msgid ""
+"When join_request_policy=manual, send the owner and managers an email with "
+"accept/reject magic links on each new request. Ignored when policy=auto (no "
+"manual decision is needed)."
+msgstr ""
+"Lorsque join_request_policy=manual, envoyer au propriétaire et aux managers "
+"un email avec des liens magiques d'acceptation/refus à chaque nouvelle "
+"demande. Ignoré lorsque policy=auto (aucune décision manuelle requise)."
+
+msgid ""
+"When True, the team owner and managers (except the author) are notified each "
+"time a note is added on one of the team's athletes."
+msgstr ""
+"Lorsque True, le propriétaire et les managers de l'équipe (sauf l'auteur) "
+"sont notifiés chaque fois qu'une note est ajoutée sur l'un des athlètes de "
+"l'équipe."
+
+msgid ""
+"When True, an athlete with a linked user account is notified when a note "
+"shared with them (visible_to_athlete=True) is added."
+msgstr ""
+"Lorsque True, un athlète disposant d'un compte utilisateur lié est notifié "
+"lorsqu'une note partagée avec lui (visible_to_athlete=True) est ajoutée."
 
 msgid "When this athlete joined the team."
 msgstr "Date à laquelle cet athlète a rejoint l'équipe."
 
 msgid "When this athlete left the team. NULL = currently active."
-msgstr "Date à laquelle cet athlète a quitté l'équipe. NULL = actuellement actif."
+msgstr ""
+"Date à laquelle cet athlète a quitté l'équipe. NULL = actuellement actif."
 
 msgid "Only the team owner can delete the team."
 msgstr "Seul le propriétaire de l'équipe peut la supprimer."
 
-msgid "Only trainers (owners or managers of an active team) can modify the catalog."
-msgstr "Seuls les entraîneurs (propriétaires ou managers d'une team active) peuvent modifier le catalogue."
+msgid ""
+"Only trainers (owners or managers of an active team) can modify the catalog."
+msgstr ""
+"Seuls les entraîneurs (propriétaires ou managers d'une équipe active) "
+"peuvent modifier le catalogue."
+
+#, python-format
+msgid "'%(tz)s' is not a valid IANA timezone name."
+msgstr "'%(tz)s' n'est pas un nom de fuseau horaire IANA valide."
+
+#, python-format
+msgid "Logo is too large (max %(max)d characters)."
+msgstr "Le logo est trop volumineux (max %(max)d caractères)."
+
+msgid ""
+"Logo must be a base64 data-URL of an image (png, jpeg, jpg, webp or svg+xml)."
+msgstr ""
+"Le logo doit être une data-URL en base64 d'une image (png, jpeg, jpg, webp "
+"ou svg+xml)."
 
 msgid "You are already a member of this team."
-msgstr "Vous êtes déjà membre de cette team."
+msgstr "Vous êtes déjà membre de cette équipe."
 
 msgid "You already have a pending request for this team."
-msgstr "Vous avez déjà une demande en attente pour cette team."
+msgstr "Vous avez déjà une demande en attente pour cette équipe."
 
 msgid "This team is inactive."
-msgstr "Cette team est inactive."
+msgstr "Cette équipe est inactive."
 
 msgid "This team is not public."
-msgstr "Cette team n'est pas publique."
+msgstr "Cette équipe n'est pas publique."
 
 msgid "An invitation is already pending for this email on this team."
-msgstr "Une invitation est déjà en attente pour cet email sur cette team."
+msgstr ""
+"Une invitation est déjà en attente pour cet email sur cette équipe."
+
+msgid "Only the team owner or managers can view team statistics."
+msgstr ""
+"Seuls le propriétaire ou les managers de l'équipe peuvent consulter les "
+"statistiques de l'équipe."
+
+msgid "member must be an integer id."
+msgstr "member doit être un identifiant entier."
+
+msgid "No such member in this team."
+msgstr "Aucun membre de ce type dans cette équipe."
+
+msgid "You can only view your own statistics."
+msgstr "Vous ne pouvez consulter que vos propres statistiques."
+
+msgid "Invalid date. Use ISO format YYYY-MM-DD."
+msgstr "Date invalide. Utilisez le format ISO AAAA-MM-JJ."
+
+msgid "`from` must be on or before `to`."
+msgstr "`from` doit être antérieur ou égal à `to`."
 
 msgid "Join request from"
 msgstr "Demande d'inscription de"
@@ -369,8 +975,11 @@ msgstr "Accepter"
 msgid "Reject"
 msgstr "Refuser"
 
-msgid "Links are valid for 7 days. You can also respond from the team dashboard."
-msgstr "Les liens sont valides pendant 7 jours. Vous pouvez aussi répondre depuis le tableau de bord de l'équipe."
+msgid ""
+"Links are valid for 48 hours. You can also respond from the team dashboard."
+msgstr ""
+"Les liens sont valides pendant 48 heures. Vous pouvez aussi répondre depuis "
+"le tableau de bord de l'équipe."
 
 msgid "This request has already been handled."
 msgstr "Cette demande a déjà été traitée."
@@ -393,11 +1002,18 @@ msgstr "Vous n'êtes pas manager de cette équipe."
 msgid "token is required."
 msgstr "token est requis."
 
-msgid "This join request was cancelled by the requester and cannot be acted on."
-msgstr "Cette demande d'inscription a été annulée par l'auteur et ne peut plus être traitée."
+msgid ""
+"This join request was cancelled by the requester and cannot be acted on."
+msgstr ""
+"Cette demande d'inscription a été annulée par l'auteur et ne peut plus être "
+"traitée."
 
-msgid "Cet utilisateur est déjà enregistré. Une invitation directe n'est pas possible pour les comptes existants."
-msgstr "Cet utilisateur est déjà enregistré. Une invitation directe n'est pas possible pour les comptes existants."
+msgid ""
+"Cet utilisateur est déjà enregistré. Une invitation directe n'est pas "
+"possible pour les comptes existants."
+msgstr ""
+"Cet utilisateur est déjà enregistré. Une invitation directe n'est pas "
+"possible pour les comptes existants."
 
 msgid "You are invited to"
 msgstr "Vous êtes invité(e) à rejoindre"
@@ -424,16 +1040,23 @@ msgid "Account created and invitation finalized."
 msgstr "Compte créé et invitation finalisée."
 
 msgid "Only owner and managers can add members to a team."
-msgstr "Seuls le propriétaire et les managers peuvent ajouter des membres à une équipe."
+msgstr ""
+"Seuls le propriétaire et les managers peuvent ajouter des membres à une "
+"équipe."
 
 msgid "This member is already in the team."
 msgstr "Ce membre fait déjà partie de l'équipe."
 
 msgid "You can only remove yourself or you must be a team manager."
-msgstr "Vous ne pouvez retirer que vous-même ou vous devez être manager de l'équipe."
+msgstr ""
+"Vous ne pouvez retirer que vous-même ou vous devez être manager de l'équipe."
 
-msgid "Team owner cannot leave their own team. Transfer ownership first or delete the team."
-msgstr "Le propriétaire de l'équipe ne peut pas quitter sa propre équipe. Transférez d'abord la propriété ou supprimez l'équipe."
+msgid ""
+"Team owner cannot leave their own team. Transfer ownership first or delete "
+"the team."
+msgstr ""
+"Le propriétaire de l'équipe ne peut pas quitter sa propre équipe. Transférez "
+"d'abord la propriété ou supprimez l'équipe."
 
 msgid "AI service unavailable. Please retry later."
 msgstr "Service IA indisponible. Veuillez réessayer plus tard."
@@ -459,20 +1082,53 @@ msgstr "Erreur IA inattendue."
 msgid "AI did not call the expected tool."
 msgstr "L'IA n'a pas appelé l'outil attendu."
 
-msgid "This resource is locked because it is used in multiple places. Clone it to modify."
-msgstr "Cette ressource est verrouillée car elle est utilisée à plusieurs endroits. Clonez-la pour la modifier."
+msgid "You must be owner or manager of this team."
+msgstr "Vous devez être propriétaire ou manager de cette équipe."
 
-msgid "Email not verified. Please check your inbox or request a new confirmation link."
-msgstr "Email non vérifié. Veuillez consulter votre boîte de réception ou demander un nouveau lien de confirmation."
+msgid "You must manage this event's team to perform this action."
+msgstr ""
+"Vous devez gérer l'équipe de cet évènement pour effectuer cette action."
+
+msgid "You must manage at least one team owning an event linked to this round."
+msgstr ""
+"Vous devez gérer au moins une équipe possédant un évènement lié à cette "
+"série."
+
+msgid ""
+"This resource is locked because it is used in multiple places. Clone it to "
+"modify."
+msgstr ""
+"Cette ressource est verrouillée car elle est utilisée à plusieurs endroits. "
+"Clonez-la pour la modifier."
+
+msgid ""
+"Email not verified. Please check your inbox or request a new confirmation "
+"link."
+msgstr ""
+"Email non vérifié. Veuillez consulter votre boîte de réception ou demander "
+"un nouveau lien de confirmation."
 
 msgid "Captcha verification failed. Please try again."
 msgstr "La vérification du captcha a échoué. Veuillez réessayer."
 
-msgid "You have reached your team quota. Soft-delete an existing team or contact an admin to raise your quota."
-msgstr "Vous avez atteint votre quota d'équipes. Supprimez (en mode soft) une équipe existante ou contactez un admin pour augmenter votre quota."
+msgid ""
+"You have reached your team quota. Soft-delete an existing team or contact an "
+"admin to raise your quota."
+msgstr ""
+"Vous avez atteint votre quota d'équipes. Supprimez (en mode soft) une équipe "
+"existante ou contactez un admin pour augmenter votre quota."
 
 msgid "Transfer or delete your teams before deleting your account."
 msgstr "Transférez ou supprimez vos équipes avant de supprimer votre compte."
+
+msgid "ROTI is not enabled for this team."
+msgstr "Le ROTI n'est pas activé pour cette équipe."
+
+msgid "Only athlete-members of the team can submit a ROTI."
+msgstr "Seuls les membres athlètes de l'équipe peuvent soumettre un ROTI."
+
+msgid "RSVP is not enabled for this team."
+msgstr "Les réponses de présence ne sont pas activées pour cette équipe."
 
 msgid "Validation failed."
 msgstr "Échec de la validation."
@@ -481,7 +1137,27 @@ msgid "Some fields are invalid."
 msgstr "Certains champs sont invalides."
 
 msgid "Only staff users can modify the catalog referential."
-msgstr "Seuls les utilisateurs staff peuvent modifier le référentiel du catalogue."
+msgstr ""
+"Seuls les utilisateurs staff peuvent modifier le référentiel du catalogue."
+
+msgid "Expected format: MM:SS (e.g. 1:30)."
+msgstr "Format attendu : MM:SS (ex. 1:30)."
+
+#, python-brace-format
+msgid "{field} cannot be empty."
+msgstr "{field} ne peut pas être vide."
+
+#, python-brace-format
+msgid "{field} contains duplicate IDs."
+msgstr "{field} contient des identifiants en double."
+
+#, python-brace-format
+msgid "{field} contains IDs not attached to this {container}: {ids}"
+msgstr "{field} contient des identifiants non rattachés à ce {container} : {ids}"
+
+#, python-brace-format
+msgid "{field} is missing IDs attached to this {container}: {ids}"
+msgstr "Il manque à {field} des identifiants rattachés à ce {container} : {ids}"
 
 #~ msgid "User already exists; Member created and linked."
 #~ msgstr "L'utilisateur existe déjà ; un Member a été créé et associé."

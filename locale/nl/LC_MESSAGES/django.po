@@ -1,13 +1,12 @@
 # Dutch translations for trainingmanager.
 # Copyright (C) 2026
 # This file is distributed under the same license as the trainingmanager package.
-# TRANSLATIONS PENDING — falls back to English source until translated.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: trainingmanager 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-05 13:53+0200\n"
+"POT-Creation-Date: 2026-06-06 18:20+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: Dutch\n"
@@ -33,7 +32,53 @@ msgid "Generate training"
 msgstr "Training genereren"
 
 msgid "Only the owner and managers of this team can view AI usage."
-msgstr "Alleen de eigenaar en managers van dit team kunnen het AI-gebruik bekijken."
+msgstr ""
+"Alleen de eigenaar en managers van dit team kunnen het AI-gebruik bekijken."
+
+msgid "Unsupported target_type."
+msgstr "Niet-ondersteund target_type."
+
+msgid "File attachments are not configured on this server."
+msgstr "Bestandsbijlagen zijn niet geconfigureerd op deze server."
+
+msgid "Attachment not found."
+msgstr "Bijlage niet gevonden."
+
+msgid "Target not found."
+msgstr "Doel niet gevonden."
+
+msgid "You may not attach files to this target."
+msgstr "U mag geen bestanden aan dit doel koppelen."
+
+msgid "This file type is not allowed."
+msgstr "Dit bestandstype is niet toegestaan."
+
+msgid "File exceeds the maximum allowed size."
+msgstr "Het bestand overschrijdt de maximaal toegestane grootte."
+
+msgid "You may not complete this attachment."
+msgstr "U mag deze bijlage niet voltooien."
+
+msgid "Uploaded file not found in storage."
+msgstr "Geüpload bestand niet gevonden in de opslag."
+
+msgid "You may not access this attachment."
+msgstr "U mag deze bijlage niet raadplegen."
+
+msgid "Attachment is not ready."
+msgstr "De bijlage is niet gereed."
+
+msgid "target_type and target_id are required."
+msgstr "target_type en target_id zijn verplicht."
+
+msgid "target_id must be an integer."
+msgstr "target_id moet een geheel getal zijn."
+
+msgid "You may not access this target."
+msgstr "U mag dit doel niet raadplegen."
+
+msgid "You may not delete this attachment."
+msgstr "U mag deze bijlage niet verwijderen."
 
 msgid "Snake_case identifier (e.g. 'present', 'absent', 'excused')"
 msgstr "Snake_case-identificator (bv. 'present', 'absent', 'excused')"
@@ -51,7 +96,8 @@ msgid "Hex color (#xxxxxx) for the frontend, optional."
 msgstr "Hex-kleur (#xxxxxx) voor de frontend, optioneel."
 
 msgid "You don't have permission to access this event's attendance."
-msgstr "U hebt geen toestemming om de aanwezigheid van dit evenement te raadplegen."
+msgstr ""
+"U hebt geen toestemming om de aanwezigheid van dit evenement te raadplegen."
 
 msgid "Event has no team (orphan event)."
 msgstr "Het evenement heeft geen team (verweesd evenement)."
@@ -60,10 +106,12 @@ msgid "This member is not in the team."
 msgstr "Dit lid maakt geen deel uit van het team."
 
 msgid "Attendance already exists for this member. Use PATCH to update."
-msgstr "Er bestaat al een aanwezigheid voor dit lid. Gebruik PATCH om bij te werken."
+msgstr ""
+"Er bestaat al een aanwezigheid voor dit lid. Gebruik PATCH om bij te werken."
 
 msgid "Only team owner and managers can bulk-set attendances."
-msgstr "Alleen de teameigenaar en managers kunnen aanwezigheden in bulk instellen."
+msgstr ""
+"Alleen de teameigenaar en managers kunnen aanwezigheden in bulk instellen."
 
 #, python-brace-format
 msgid "Members not in team: {ids}"
@@ -72,6 +120,60 @@ msgstr "Leden niet in het team: {ids}"
 #, python-brace-format
 msgid "Status codes not found or inactive: {codes}"
 msgstr "Statuscodes niet gevonden of inactief: {codes}"
+
+msgid "Member anonymized"
+msgstr "Lid geanonimiseerd"
+
+msgid "Member removed from team"
+msgstr "Lid verwijderd uit het team"
+
+msgid "Account deleted"
+msgstr "Account verwijderd"
+
+msgid "Session shared publicly"
+msgstr "Sessie openbaar gedeeld"
+
+msgid "Session sharing disabled"
+msgstr "Delen van sessie uitgeschakeld"
+
+msgid "Attachment deleted"
+msgstr "Bijlage verwijderd"
+
+msgid "Team configuration updated"
+msgstr "Teamconfiguratie bijgewerkt"
+
+msgid "The user who performed the action. NULL = system/anonymous."
+msgstr "De gebruiker die de actie heeft uitgevoerd. NULL = systeem/anoniem."
+
+msgid ""
+"Snapshot of the actor's username/display at the time. Survives actor "
+"deletion or anonymization (when the FK is SET_NULL)."
+msgstr ""
+"Momentopname van de gebruikersnaam/weergave van de actor op dat moment. "
+"Blijft behouden na verwijdering of anonimisering van de actor (wanneer de FK "
+"SET_NULL is)."
+
+msgid "Stable code identifying the audited action."
+msgstr "Stabiele code die de geauditeerde actie identificeert."
+
+msgid ""
+"Team the action is scoped to (used for read scoping). NULL = not team-"
+"scoped, e.g. an account self-delete."
+msgstr ""
+"Team waartoe de actie behoort (gebruikt voor leesafbakening). NULL = niet "
+"teamgebonden, bv. een zelfverwijdering van een account."
+
+msgid "Human-readable description of the target."
+msgstr "Voor mensen leesbare beschrijving van het doel."
+
+msgid "Small structured extra context (no unnecessary PII)."
+msgstr "Kleine gestructureerde extra context (geen onnodige PII)."
+
+msgid "audit log entry"
+msgstr "auditlogvermelding"
+
+msgid "audit log entries"
+msgstr "auditlogvermeldingen"
 
 msgid "Author of the message. SET_NULL on user deletion."
 msgstr "Auteur van het bericht. SET_NULL bij verwijdering van de gebruiker."
@@ -100,11 +202,71 @@ msgstr "Rechten"
 msgid "Important dates"
 msgstr "Belangrijke datums"
 
+msgid "Hello"
+msgstr "Hallo"
+
+#, python-format
+msgid ""
+"Here is your weekly TrainingManager recap for the week of %(from)s to %(to)s."
+msgstr ""
+"Hier is uw wekelijkse TrainingManager-overzicht voor de week van %(from)s "
+"tot %(to)s."
+
+msgid "n/a"
+msgstr "n.v.t."
+
+msgid "Sessions"
+msgstr "Sessies"
+
+msgid "Attendance rate"
+msgstr "Aanwezigheidspercentage"
+
+msgid "Total volume"
+msgstr "Totaal volume"
+
+msgid "Upcoming sessions next week"
+msgstr "Aankomende sessies volgende week"
+
+msgid ""
+"You receive this because you own or manage these teams. To stop, disable the "
+"weekly recap in your account preferences."
+msgstr ""
+"U ontvangt dit omdat u eigenaar of beheerder bent van deze teams. Om dit te "
+"stoppen, schakelt u het wekelijkse overzicht uit in uw accountvoorkeuren."
+
+msgid "Votre récap hebdo"
+msgstr "Uw wekelijkse overzicht"
+
 msgid "language"
 msgstr "taal"
 
-msgid "Maximum number of active teams this user can own. Defaults to 0 — creating a team is a paid feature; admins bump this per user (or via a future billing flow)."
-msgstr "Maximaal aantal actieve teams dat deze gebruiker mag bezitten. Standaard 0 — een team aanmaken is een betaalde functie; admins verhogen deze waarde per gebruiker (of via een toekomstige facturatiestroom)."
+msgid ""
+"Per-user preference for the weekly recap email. Opt-out model: default True. "
+"When False, this user receives no weekly recap even for teams they own/"
+"manage that have it enabled."
+msgstr ""
+"Voorkeur per gebruiker voor de wekelijkse overzichtsmail. Opt-outmodel: "
+"standaard True. Wanneer False ontvangt deze gebruiker geen wekelijks "
+"overzicht, zelfs niet voor teams die hij bezit/beheert en waarvoor het is "
+"ingeschakeld."
+
+msgid ""
+"Maximum number of active teams this user can own. Defaults to 0 — creating a "
+"team is a paid feature; admins bump this per user (or via a future billing "
+"flow)."
+msgstr ""
+"Maximaal aantal actieve teams dat deze gebruiker mag bezitten. Standaard 0 — "
+"een team aanmaken is een betaalde functie; admins verhogen deze waarde per "
+"gebruiker (of via een toekomstige facturatiestroom)."
+
+msgid ""
+"Unguessable token embedded in the user's personal iCal (.ics) subscription "
+"URL. The token IS the authentication for that (otherwise anonymous) feed. "
+"Rotate it to revoke an old URL."
+msgstr ""
+"Niet te raden token dat is ingebed in de persoonlijke iCal-abonnements-URL "
+"(.ics) van de gebruiker. Het token IS de authenticatie voor die (verder "
+"anonieme) feed. Roteer het om een oude URL in te trekken."
 
 msgid "This username is already taken."
 msgstr "Deze gebruikersnaam is al in gebruik."
@@ -113,22 +275,25 @@ msgid "This email is already in use."
 msgstr "Dit e-mailadres is al in gebruik."
 
 msgid "Account created. Please check your email to confirm your registration."
-msgstr "Account aangemaakt. Controleer uw e-mail om uw registratie te bevestigen."
+msgstr ""
+"Account aangemaakt. Controleer uw e-mail om uw registratie te bevestigen."
 
 msgid "Invalid or expired confirmation token."
 msgstr "Ongeldig of verlopen bevestigingstoken."
 
-msgid "If a matching unverified account exists, a confirmation email has been sent."
-msgstr "Als een overeenkomend niet-geverifieerd account bestaat, is er een bevestigingsmail verzonden."
+msgid ""
+"If a matching unverified account exists, a confirmation email has been sent."
+msgstr ""
+"Als een overeenkomend niet-geverifieerd account bestaat, is er een "
+"bevestigingsmail verzonden."
 
 msgid "Password reset"
 msgstr "Wachtwoord opnieuw instellen"
 
-msgid "Hello"
-msgstr "Hallo"
-
 msgid "You (or someone) requested a password reset for your account."
-msgstr "U (of iemand anders) heeft een nieuwe instelling van het wachtwoord voor uw account aangevraagd."
+msgstr ""
+"U (of iemand anders) heeft een nieuwe instelling van het wachtwoord voor uw "
+"account aangevraagd."
 
 msgid "To set a new password, click the link below:"
 msgstr "Klik op onderstaande link om een nieuw wachtwoord in te stellen:"
@@ -137,13 +302,28 @@ msgid "If you did not request this, you can safely ignore this email."
 msgstr "Als u dit niet hebt aangevraagd, kunt u deze e-mail veilig negeren."
 
 msgid "If a matching account exists, a password reset email has been sent."
-msgstr "Als er een overeenkomend account bestaat, is er een e-mail voor wachtwoordherstel verzonden."
+msgstr ""
+"Als er een overeenkomend account bestaat, is er een e-mail voor "
+"wachtwoordherstel verzonden."
 
 msgid "Invalid or expired password reset token."
 msgstr "Ongeldige of verlopen herstellink voor wachtwoord."
 
+msgid "Current password is incorrect."
+msgstr "Het huidige wachtwoord is onjuist."
+
+msgid "The new password must be different from the current one."
+msgstr "Het nieuwe wachtwoord moet verschillen van het huidige."
+
+msgid "Password updated."
+msgstr "Wachtwoord bijgewerkt."
+
+msgid "Invalid or expired refresh token."
+msgstr "Ongeldig of verlopen vernieuwingstoken."
+
 msgid "No modalities defined for this sport. Cannot generate."
-msgstr "Geen modaliteiten gedefinieerd voor deze sport. Genereren niet mogelijk."
+msgstr ""
+"Geen modaliteiten gedefinieerd voor deze sport. Genereren niet mogelijk."
 
 msgid "No energy segments defined. Cannot generate."
 msgstr "Geen energiesegmenten gedefinieerd. Genereren niet mogelijk."
@@ -157,11 +337,38 @@ msgstr "AI gebruikte een ongeldige modaliteit-id."
 msgid "AI used an invalid energysegment id."
 msgstr "AI gebruikte een ongeldige energiesegment-id."
 
+msgid "Always"
+msgstr "Altijd"
+
+msgid "After the session"
+msgstr "Na de sessie"
+
+msgid "Never"
+msgstr "Nooit"
+
 msgid "name"
 msgstr "naam"
 
 msgid "goal"
 msgstr "doel"
+
+msgid "location"
+msgstr "locatie"
+
+msgid ""
+"Where the session takes place (venue, pool, track, address). Always visible "
+"to athletes."
+msgstr ""
+"Waar de sessie plaatsvindt (locatie, zwembad, baan, adres). Altijd zichtbaar "
+"voor atleten."
+
+msgid "equipment"
+msgstr "uitrusting"
+
+msgid "Material/gear athletes should bring. Always visible to athletes."
+msgstr ""
+"Materiaal/uitrusting die atleten moeten meebrengen. Altijd zichtbaar voor "
+"atleten."
 
 msgid "color"
 msgstr "kleur"
@@ -169,8 +376,32 @@ msgstr "kleur"
 msgid "refer_program"
 msgstr "refer_program"
 
+msgid "Visibility of this session's total distance to athletes."
+msgstr "Zichtbaarheid van de totale afstand van deze sessie voor atleten."
+
+msgid "Visibility of this session's goal to athletes."
+msgstr "Zichtbaarheid van het doel van deze sessie voor atleten."
+
+msgid "Visibility of this session's rounds (and exercises) to athletes."
+msgstr ""
+"Zichtbaarheid van de rounds (en oefeningen) van deze sessie voor atleten."
+
+msgid "Whether this session is currently shared via its public link."
+msgstr "Of deze sessie momenteel wordt gedeeld via haar openbare link."
+
+msgid ""
+"Unguessable token in the public share URL. Null = never shared. The token "
+"authenticates the otherwise-anonymous public view."
+msgstr ""
+"Niet te raden token in de openbare deel-URL. Null = nooit gedeeld. Het token "
+"authenticeert de verder anonieme openbare weergave."
+
 msgid "Event"
 msgstr "Evenement"
+
+#, python-format
+msgid "Additional prompt cannot exceed %(n)d characters."
+msgstr "De extra prompt mag niet langer zijn dan %(n)d tekens."
 
 msgid "refer_program is required."
 msgstr "refer_program is verplicht."
@@ -182,7 +413,15 @@ msgid "You must be owner or manager of this event's team."
 msgstr "U moet eigenaar of manager zijn van het team van dit evenement."
 
 msgid "Event already has rounds. Remove them before regenerating."
-msgstr "Het evenement heeft al rounds. Verwijder ze voordat u opnieuw genereert."
+msgstr ""
+"Het evenement heeft al rounds. Verwijder ze voordat u opnieuw genereert."
+
+msgid "You must manage this event's team to reorder its rounds."
+msgstr ""
+"U moet het team van dit evenement beheren om de rounds opnieuw te ordenen."
+
+msgid "Public sharing is disabled for this team."
+msgstr "Openbaar delen is uitgeschakeld voor dit team."
 
 msgid "abv"
 msgstr "afk"
@@ -217,6 +456,24 @@ msgstr "notities"
 msgid "Exercise"
 msgstr "Oefening"
 
+msgid "You are not authorized to attach an exercise to this round."
+msgstr "U bent niet gemachtigd om een oefening aan deze round te koppelen."
+
+msgid "MM:SS format, e.g. 1:30."
+msgstr "MM:SS-formaat, bv. 1:30."
+
+msgid ""
+"Optional. If provided on POST, the newly created Exercise is atomically "
+"attached to this Round. The request user must manage at least one team of at "
+"least one Event linked to this Round (library rounds with no events are "
+"accepted as-is). Ignored on PATCH/PUT."
+msgstr ""
+"Optioneel. Indien opgegeven bij een POST wordt de nieuw aangemaakte oefening "
+"atomair gekoppeld aan deze round. De aanvragende gebruiker moet ten minste "
+"één team beheren van ten minste één evenement dat aan deze round is "
+"gekoppeld (bibliotheek-rounds zonder evenementen worden als zodanig "
+"geaccepteerd). Genegeerd bij PATCH/PUT."
+
 msgid "Firstname"
 msgstr "Voornaam"
 
@@ -236,19 +493,158 @@ msgid "This user already has a member profile."
 msgstr "Deze gebruiker heeft al een lidprofiel."
 
 msgid "The user must already belong to at least one of the member's teams."
-msgstr "De gebruiker moet al lid zijn van ten minste één van de teams van het lid."
+msgstr ""
+"De gebruiker moet al lid zijn van ten minste één van de teams van het lid."
 
 msgid "You must manage at least one team to create members."
 msgstr "U moet ten minste één team beheren om leden aan te maken."
 
-msgid "The coach who wrote this note. SET_NULL if the author account is deleted."
-msgstr "De trainer die deze notitie heeft geschreven. SET_NULL als het auteursaccount wordt verwijderd."
+msgid "No such member."
+msgstr "Geen dergelijk lid."
+
+msgid "No such member in a team you manage."
+msgstr "Geen dergelijk lid in een team dat u beheert."
+
+msgid "Whole team"
+msgstr "Hele team"
+
+msgid "Coaches only"
+msgstr "Alleen trainers"
+
+msgid "The coach who created the topic. SET_NULL on user deletion."
+msgstr ""
+"De trainer die het onderwerp heeft aangemaakt. SET_NULL bij verwijdering van "
+"de gebruiker."
+
+msgid ""
+"team = visible to all team members; coaches = visible only to the owner and "
+"managers (staff channel)."
+msgstr ""
+"team = zichtbaar voor alle teamleden; coaches = alleen zichtbaar voor de "
+"eigenaar en managers (staffkanaal)."
+
+msgid ""
+"Only meaningful when audience=team. When True, athlete members may post "
+"messages; coaches can always post."
+msgstr ""
+"Alleen zinvol wanneer audience=team. Wanneer True mogen atleetleden berichten "
+"plaatsen; trainers kunnen altijd berichten plaatsen."
+
+msgid "Bumped on each new message for activity-based ordering."
+msgstr ""
+"Bijgewerkt bij elk nieuw bericht voor een op activiteit gebaseerde ordening."
+
+msgid "You don't have permission to access this team's topics."
+msgstr "U hebt geen toestemming om de onderwerpen van dit team te raadplegen."
+
+msgid "You don't have permission to post in this topic."
+msgstr "U hebt geen toestemming om in dit onderwerp te plaatsen."
+
+msgid "Title cannot be empty."
+msgstr "De titel mag niet leeg zijn."
+
+msgid "Athletes can only create whole-team topics."
+msgstr "Atleten kunnen alleen onderwerpen voor het hele team aanmaken."
+
+#, python-format
+msgid "New topic: %(title)s"
+msgstr "Nieuw onderwerp: %(title)s"
+
+msgid "A new topic was created in your team."
+msgstr "Er is een nieuw onderwerp aangemaakt in uw team."
+
+#, python-format
+msgid "New message in: %(title)s"
+msgstr "Nieuw bericht in: %(title)s"
+
+msgid "A new message was posted in a topic you follow."
+msgstr "Er is een nieuw bericht geplaatst in een onderwerp dat u volgt."
+
+msgid ""
+"The coach who wrote this note. SET_NULL if the author account is deleted."
+msgstr ""
+"De trainer die deze notitie heeft geschreven. SET_NULL als het "
+"auteursaccount wordt verwijderd."
+
+msgid ""
+"If True, the concerned athlete can read this note (when it is also active). "
+"Default False — notes are coach-only unless explicitly shared."
+msgstr ""
+"Indien True kan de betrokken atleet deze notitie lezen (wanneer ze ook actief "
+"is). Standaard False — notities zijn alleen voor trainers, tenzij ze expliciet "
+"worden gedeeld."
 
 msgid "You don't have permission to access these notes."
 msgstr "U hebt geen toestemming om deze notities te raadplegen."
 
 msgid "This member does not belong to this team."
 msgstr "Dit lid maakt geen deel uit van dit team."
+
+msgid "A note was shared with you"
+msgstr "Er is een notitie met u gedeeld"
+
+msgid "Your coach added a note for you."
+msgstr "Uw trainer heeft een notitie voor u toegevoegd."
+
+#, python-format
+msgid "Note added on %(name)s"
+msgstr "Notitie toegevoegd over %(name)s"
+
+#, python-format
+msgid "A new note was added on %(name)s."
+msgstr "Er is een nieuwe notitie toegevoegd over %(name)s."
+
+msgid "Note added on an athlete"
+msgstr "Notitie toegevoegd over een atleet"
+
+msgid "A new topic was created in your team"
+msgstr "Er is een nieuw onderwerp aangemaakt in uw team"
+
+msgid "A new message was posted in a topic"
+msgstr "Er is een nieuw bericht geplaatst in een onderwerp"
+
+msgid "Frontend deep-link path, e.g. /teams/3."
+msgstr "Frontend-deeplinkpad, bv. /teams/3."
+
+msgid "Seconds"
+msgstr "Seconden"
+
+msgid "Meters"
+msgstr "Meters"
+
+msgid "Repetitions"
+msgstr "Herhalingen"
+
+msgid "Kilograms"
+msgstr "Kilogram"
+
+msgid "Points"
+msgstr "Punten"
+
+msgid "label"
+msgstr "label"
+
+msgid "Discipline / test name, e.g. '100m freestyle' or 'Cooper test'."
+msgstr "Discipline-/testnaam, bv. '100m vrije slag' of 'Cooper-test'."
+
+msgid ""
+"Numeric result, interpreted by unit (seconds for time, meters for distance, "
+"etc.)."
+msgstr ""
+"Numeriek resultaat, geïnterpreteerd op basis van de eenheid (seconden voor "
+"tijd, meters voor afstand, enz.)."
+
+msgid "Date the performance was achieved."
+msgstr "Datum waarop de prestatie is behaald."
+
+msgid "You cannot log a performance for this member."
+msgstr "U kunt geen prestatie registreren voor dit lid."
+
+msgid "You can only log performances in a team you belong to."
+msgstr "U kunt alleen prestaties registreren in een team waartoe u behoort."
+
+msgid "You cannot modify this performance."
+msgstr "U kunt deze prestatie niet wijzigen."
 
 msgid "AI returned an invalid date format."
 msgstr "AI gaf een ongeldig datumformaat terug."
@@ -274,11 +670,27 @@ msgstr "U beheert dit team niet."
 msgid "You must be owner or manager of this program's team."
 msgstr "U moet eigenaar of manager zijn van het team van dit programma."
 
+msgid "You don't have permission to access this event's ROTI."
+msgstr "U hebt geen toestemming om de ROTI van dit evenement te raadplegen."
+
 msgid "Round"
 msgstr "Round"
 
+msgid "You are not authorized to attach a round to this event."
+msgstr "U bent niet gemachtigd om een round aan dit evenement te koppelen."
+
+msgid ""
+"Optional. If provided on POST, the newly created Round is atomically "
+"attached to this Event. The request user must manage the Event's team. "
+"Ignored on PATCH/PUT."
+msgstr ""
+"Optioneel. Indien opgegeven bij een POST wordt de nieuw aangemaakte round "
+"atomair gekoppeld aan dit evenement. De aanvragende gebruiker moet het team "
+"van het evenement beheren. Genegeerd bij PATCH/PUT."
+
 msgid "An exercise has a modality.sport that doesn't match round.sport."
-msgstr "Een oefening heeft een modality.sport die niet overeenkomt met round.sport."
+msgstr ""
+"Een oefening heeft een modality.sport die niet overeenkomt met round.sport."
 
 msgid "An exercise has a language that doesn't match round.language."
 msgstr "Een oefening heeft een taal die niet overeenkomt met round.language."
@@ -288,6 +700,31 @@ msgstr "exercise_id is verplicht."
 
 msgid "Exercise not found or not accessible."
 msgstr "Oefening niet gevonden of niet toegankelijk."
+
+msgid ""
+"You must manage at least one team owning an event linked to this round to "
+"reorder its exercises."
+msgstr ""
+"U moet ten minste één team beheren dat eigenaar is van een aan deze round "
+"gekoppeld evenement om de oefeningen opnieuw te ordenen."
+
+msgid "Going"
+msgstr "Aanwezig"
+
+msgid "Maybe"
+msgstr "Misschien"
+
+msgid "Not going"
+msgstr "Afwezig"
+
+msgid "You don't have permission to access this event's RSVP."
+msgstr ""
+"U hebt geen toestemming om de RSVP van dit evenement te raadplegen."
+
+msgid "Only team owner and managers can apply RSVPs to attendance."
+msgstr ""
+"Alleen de teameigenaar en managers kunnen RSVP's toepassen op de "
+"aanwezigheid."
 
 msgid "All members can post"
 msgstr "Alle leden kunnen berichten plaatsen"
@@ -299,22 +736,145 @@ msgid "Manual — managers accept/reject each request"
 msgstr "Handmatig — managers aanvaarden/weigeren elk verzoek"
 
 msgid "Auto-accept — every join request is accepted immediately"
-msgstr "Automatisch accepteren — elk aansluitingsverzoek wordt onmiddellijk geaccepteerd"
+msgstr ""
+"Automatisch accepteren — elk aansluitingsverzoek wordt onmiddellijk "
+"geaccepteerd"
+
+msgid "Owner only"
+msgstr "Alleen eigenaar"
+
+msgid "Owner and coaches"
+msgstr "Eigenaar en trainers"
+
+msgid "Everyone (incl. athletes)"
+msgstr "Iedereen (incl. atleten)"
+
+msgid ""
+"Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...'). "
+"Stored inline in the DB; no file storage."
+msgstr ""
+"Kleine base64 data-URL voor het teamlogo (bv. "
+"'data:image/png;base64,...'). Inline opgeslagen in de DB; geen "
+"bestandsopslag."
+
+msgid ""
+"If True, athletes can submit a per-session difficulty rating (ROTI, 1..5) "
+"for the team's events."
+msgstr ""
+"Indien True kunnen atleten per sessie een moeilijkheidsbeoordeling (ROTI, "
+"1..5) indienen voor de evenementen van het team."
+
+msgid ""
+"If True, athletes can declare their availability (RSVP: going / maybe / not "
+"going) for the team's events."
+msgstr ""
+"Indien True kunnen atleten hun beschikbaarheid aangeven (RSVP: aanwezig / "
+"misschien / afwezig) voor de evenementen van het team."
 
 msgid "Defines who can post messages in the team chat."
 msgstr "Bepaalt wie berichten kan plaatsen in de teamchat."
 
-msgid "If True, athletes can read their own coach notes. Default False (notes are coach-only)."
-msgstr "Indien True kunnen atleten hun eigen trainernotities lezen. Standaard False (notities zijn alleen voor trainers)."
+msgid ""
+"If True, this team is included in the weekly recap email sent to its owner "
+"and managers. Default False (opt-in per team)."
+msgstr ""
+"Indien True wordt dit team opgenomen in de wekelijkse overzichtsmail die naar "
+"de eigenaar en managers wordt gestuurd. Standaard False (opt-in per team)."
 
-msgid "Statuses available for marking attendance in this team's events. Default: present, absent, excused."
-msgstr "Statussen die beschikbaar zijn om aanwezigheid te markeren bij de evenementen van dit team. Standaard: present, absent, excused."
+msgid ""
+"Statuses available for marking attendance in this team's events. Default: "
+"present, absent, excused."
+msgstr ""
+"Statussen die beschikbaar zijn om aanwezigheid te markeren bij de "
+"evenementen van dit team. Standaard: present, absent, excused."
 
-msgid "Manual = managers accept/reject each TeamJoinRequest. Auto = every join request is accepted immediately on submission."
-msgstr "Handmatig = managers aanvaarden/weigeren elke TeamJoinRequest. Auto = elk aansluitingsverzoek wordt onmiddellijk geaccepteerd bij indiening."
+msgid ""
+"Manual = managers accept/reject each TeamJoinRequest. Auto = every join "
+"request is accepted immediately on submission."
+msgstr ""
+"Handmatig = managers aanvaarden/weigeren elke TeamJoinRequest. Auto = elk "
+"aansluitingsverzoek wordt onmiddellijk geaccepteerd bij indiening."
 
-msgid "When join_request_policy=manual, send the owner and managers an email with accept/reject magic links on each new request. Ignored when policy=auto (no manual decision is needed)."
-msgstr "Wanneer join_request_policy=manual, stuur de eigenaar en managers bij elk nieuw verzoek een e-mail met magic links om te accepteren/weigeren. Genegeerd wanneer policy=auto (geen handmatige beslissing nodig)."
+msgid ""
+"Who may create messaging topics in this team. owner = team owner only; "
+"coaches = owner and managers; members = owner, managers, and active athlete "
+"members."
+msgstr ""
+"Wie berichtenonderwerpen mag aanmaken in dit team. owner = alleen de "
+"teameigenaar; coaches = eigenaar en managers; members = eigenaar, managers "
+"en actieve atleetleden."
+
+msgid ""
+"IANA timezone name (e.g. 'Europe/Brussels'). Used to decide, in the team's "
+"local time, whether a session is over for per-aspect athlete visibility "
+"(vis_distance/vis_goal/vis_rounds)."
+msgstr ""
+"IANA-tijdzonenaam (bv. 'Europe/Brussels'). Gebruikt om in de lokale tijd van "
+"het team te bepalen of een sessie voorbij is voor de zichtbaarheid per aspect "
+"voor atleten (vis_distance/vis_goal/vis_rounds)."
+
+msgid ""
+"Default visibility of a session's total distance to athletes. Inherited by "
+"new events; overridable per event."
+msgstr ""
+"Standaardzichtbaarheid van de totale afstand van een sessie voor atleten. "
+"Overgenomen door nieuwe evenementen; per evenement aanpasbaar."
+
+msgid ""
+"Default visibility of a session's goal to athletes. Inherited by new events; "
+"overridable per event."
+msgstr ""
+"Standaardzichtbaarheid van het doel van een sessie voor atleten. Overgenomen "
+"door nieuwe evenementen; per evenement aanpasbaar."
+
+msgid ""
+"Default visibility of a session's rounds (and their exercises) to athletes. "
+"Inherited by new events; overridable per event."
+msgstr ""
+"Standaardzichtbaarheid van de rounds (en hun oefeningen) van een sessie voor "
+"atleten. Overgenomen door nieuwe evenementen; per evenement aanpasbaar."
+
+msgid ""
+"Allow individual sessions of this team to be shared via a public read-only "
+"link."
+msgstr ""
+"Sta toe dat individuele sessies van dit team worden gedeeld via een openbare "
+"alleen-lezenlink."
+
+msgid "Show a shared session's total distance on its public link."
+msgstr "Toon de totale afstand van een gedeelde sessie op haar openbare link."
+
+msgid "Show a shared session's goal on its public link."
+msgstr "Toon het doel van een gedeelde sessie op haar openbare link."
+
+msgid "Show a shared session's rounds & exercises on its public link."
+msgstr ""
+"Toon de rounds en oefeningen van een gedeelde sessie op haar openbare link."
+
+msgid ""
+"When join_request_policy=manual, send the owner and managers an email with "
+"accept/reject magic links on each new request. Ignored when policy=auto (no "
+"manual decision is needed)."
+msgstr ""
+"Wanneer join_request_policy=manual, stuur de eigenaar en managers bij elk "
+"nieuw verzoek een e-mail met magic links om te accepteren/weigeren. "
+"Genegeerd wanneer policy=auto (geen handmatige beslissing nodig)."
+
+msgid ""
+"When True, the team owner and managers (except the author) are notified each "
+"time a note is added on one of the team's athletes."
+msgstr ""
+"Wanneer True worden de teameigenaar en managers (behalve de auteur) telkens "
+"op de hoogte gebracht wanneer een notitie wordt toegevoegd over een van de "
+"atleten van het team."
+
+msgid ""
+"When True, an athlete with a linked user account is notified when a note "
+"shared with them (visible_to_athlete=True) is added."
+msgstr ""
+"Wanneer True wordt een atleet met een gekoppeld gebruikersaccount op de "
+"hoogte gebracht wanneer een met hem gedeelde notitie "
+"(visible_to_athlete=True) wordt toegevoegd."
 
 msgid "When this athlete joined the team."
 msgstr "Wanneer deze atleet zich bij het team heeft aangesloten."
@@ -325,8 +885,25 @@ msgstr "Wanneer deze atleet het team heeft verlaten. NULL = momenteel actief."
 msgid "Only the team owner can delete the team."
 msgstr "Alleen de teameigenaar kan het team verwijderen."
 
-msgid "Only trainers (owners or managers of an active team) can modify the catalog."
-msgstr "Alleen trainers (eigenaars of managers van een actief team) kunnen de catalogus wijzigen."
+msgid ""
+"Only trainers (owners or managers of an active team) can modify the catalog."
+msgstr ""
+"Alleen trainers (eigenaars of managers van een actief team) kunnen de "
+"catalogus wijzigen."
+
+#, python-format
+msgid "'%(tz)s' is not a valid IANA timezone name."
+msgstr "'%(tz)s' is geen geldige IANA-tijdzonenaam."
+
+#, python-format
+msgid "Logo is too large (max %(max)d characters)."
+msgstr "Het logo is te groot (max %(max)d tekens)."
+
+msgid ""
+"Logo must be a base64 data-URL of an image (png, jpeg, jpg, webp or svg+xml)."
+msgstr ""
+"Het logo moet een base64 data-URL van een afbeelding zijn (png, jpeg, jpg, "
+"webp of svg+xml)."
 
 msgid "You are already a member of this team."
 msgstr "U bent al lid van dit team."
@@ -342,6 +919,25 @@ msgstr "Dit team is niet openbaar."
 
 msgid "An invitation is already pending for this email on this team."
 msgstr "Er staat al een uitnodiging open voor dit e-mailadres bij dit team."
+
+msgid "Only the team owner or managers can view team statistics."
+msgstr ""
+"Alleen de teameigenaar of managers kunnen de teamstatistieken bekijken."
+
+msgid "member must be an integer id."
+msgstr "member moet een geheel-getal-id zijn."
+
+msgid "No such member in this team."
+msgstr "Geen dergelijk lid in dit team."
+
+msgid "You can only view your own statistics."
+msgstr "U kunt alleen uw eigen statistieken bekijken."
+
+msgid "Invalid date. Use ISO format YYYY-MM-DD."
+msgstr "Ongeldige datum. Gebruik het ISO-formaat JJJJ-MM-DD."
+
+msgid "`from` must be on or before `to`."
+msgstr "`from` moet op of vóór `to` liggen."
 
 msgid "Join request from"
 msgstr "Aansluitingsverzoek van"
@@ -361,8 +957,10 @@ msgstr "Accepteren"
 msgid "Reject"
 msgstr "Weigeren"
 
-msgid "Links are valid for 7 days. You can also respond from the team dashboard."
-msgstr "De links zijn 7 dagen geldig. U kunt ook reageren vanaf het teamdashboard."
+msgid ""
+"Links are valid for 48 hours. You can also respond from the team dashboard."
+msgstr ""
+"De links zijn 48 uur geldig. U kunt ook reageren vanaf het teamdashboard."
 
 msgid "This request has already been handled."
 msgstr "Dit verzoek is al verwerkt."
@@ -385,11 +983,18 @@ msgstr "U bent geen manager van dit team."
 msgid "token is required."
 msgstr "token is verplicht."
 
-msgid "This join request was cancelled by the requester and cannot be acted on."
-msgstr "Dit aansluitingsverzoek werd door de aanvrager geannuleerd en kan niet meer worden verwerkt."
+msgid ""
+"This join request was cancelled by the requester and cannot be acted on."
+msgstr ""
+"Dit aansluitingsverzoek werd door de aanvrager geannuleerd en kan niet meer "
+"worden verwerkt."
 
-msgid "Cet utilisateur est déjà enregistré. Une invitation directe n'est pas possible pour les comptes existants."
-msgstr "Deze gebruiker is al geregistreerd. Een directe uitnodiging is niet mogelijk voor bestaande accounts."
+msgid ""
+"Cet utilisateur est déjà enregistré. Une invitation directe n'est pas "
+"possible pour les comptes existants."
+msgstr ""
+"Deze gebruiker is al geregistreerd. Een directe uitnodiging is niet mogelijk "
+"voor bestaande accounts."
 
 msgid "You are invited to"
 msgstr "U bent uitgenodigd om"
@@ -424,8 +1029,12 @@ msgstr "Dit lid maakt al deel uit van het team."
 msgid "You can only remove yourself or you must be a team manager."
 msgstr "U kunt alleen uzelf verwijderen of u moet teammanager zijn."
 
-msgid "Team owner cannot leave their own team. Transfer ownership first or delete the team."
-msgstr "De teameigenaar kan het eigen team niet verlaten. Draag eerst het eigendom over of verwijder het team."
+msgid ""
+"Team owner cannot leave their own team. Transfer ownership first or delete "
+"the team."
+msgstr ""
+"De teameigenaar kan het eigen team niet verlaten. Draag eerst het eigendom "
+"over of verwijder het team."
 
 msgid "AI service unavailable. Please retry later."
 msgstr "AI-dienst niet beschikbaar. Probeer het later opnieuw."
@@ -451,17 +1060,52 @@ msgstr "Onverwachte AI-fout."
 msgid "AI did not call the expected tool."
 msgstr "AI heeft de verwachte tool niet aangeroepen."
 
-msgid "This resource is locked because it is used in multiple places. Clone it to modify."
-msgstr "Deze bron is vergrendeld omdat ze op meerdere plaatsen wordt gebruikt. Kloon ze om te wijzigen."
+msgid "You must be owner or manager of this team."
+msgstr "U moet eigenaar of manager zijn van dit team."
 
-msgid "Email not verified. Please check your inbox or request a new confirmation link."
-msgstr "E-mail niet geverifieerd. Controleer uw inbox of vraag een nieuwe bevestigingslink aan."
+msgid "You must manage this event's team to perform this action."
+msgstr "U moet het team van dit evenement beheren om deze actie uit te voeren."
+
+msgid "You must manage at least one team owning an event linked to this round."
+msgstr ""
+"U moet ten minste één team beheren dat eigenaar is van een aan deze round "
+"gekoppeld evenement."
+
+msgid ""
+"This resource is locked because it is used in multiple places. Clone it to "
+"modify."
+msgstr ""
+"Deze bron is vergrendeld omdat ze op meerdere plaatsen wordt gebruikt. Kloon "
+"ze om te wijzigen."
+
+msgid ""
+"Email not verified. Please check your inbox or request a new confirmation "
+"link."
+msgstr ""
+"E-mail niet geverifieerd. Controleer uw inbox of vraag een nieuwe "
+"bevestigingslink aan."
 
 msgid "Captcha verification failed. Please try again."
 msgstr "Captcha-verificatie mislukt. Probeer het opnieuw."
 
-msgid "You have reached your team quota. Soft-delete an existing team or contact an admin to raise your quota."
-msgstr "U hebt uw teamquotum bereikt. Voer een zachte verwijdering uit op een bestaand team of neem contact op met een admin om uw quotum te verhogen."
+msgid ""
+"You have reached your team quota. Soft-delete an existing team or contact an "
+"admin to raise your quota."
+msgstr ""
+"U hebt uw teamquotum bereikt. Voer een zachte verwijdering uit op een "
+"bestaand team of neem contact op met een admin om uw quotum te verhogen."
+
+msgid "Transfer or delete your teams before deleting your account."
+msgstr "Draag uw teams over of verwijder ze voordat u uw account verwijdert."
+
+msgid "ROTI is not enabled for this team."
+msgstr "ROTI is niet ingeschakeld voor dit team."
+
+msgid "Only athlete-members of the team can submit a ROTI."
+msgstr "Alleen atleetleden van het team kunnen een ROTI indienen."
+
+msgid "RSVP is not enabled for this team."
+msgstr "RSVP is niet ingeschakeld voor dit team."
 
 msgid "Validation failed."
 msgstr "Validatie mislukt."
@@ -471,3 +1115,22 @@ msgstr "Sommige velden zijn ongeldig."
 
 msgid "Only staff users can modify the catalog referential."
 msgstr "Alleen staff-gebruikers kunnen het catalogusreferentieel wijzigen."
+
+msgid "Expected format: MM:SS (e.g. 1:30)."
+msgstr "Verwacht formaat: MM:SS (bv. 1:30)."
+
+#, python-brace-format
+msgid "{field} cannot be empty."
+msgstr "{field} mag niet leeg zijn."
+
+#, python-brace-format
+msgid "{field} contains duplicate IDs."
+msgstr "{field} bevat dubbele ID's."
+
+#, python-brace-format
+msgid "{field} contains IDs not attached to this {container}: {ids}"
+msgstr "{field} bevat ID's die niet aan deze {container} zijn gekoppeld: {ids}"
+
+#, python-brace-format
+msgid "{field} is missing IDs attached to this {container}: {ids}"
+msgstr "In {field} ontbreken ID's die aan deze {container} zijn gekoppeld: {ids}"
