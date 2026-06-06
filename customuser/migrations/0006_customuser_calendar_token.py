@@ -32,11 +32,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # NOTE: no db_index on the intermediate field. unique=True (step 3)
+        # already creates the index (+ the Postgres varchar_pattern_ops "_like"
+        # index). Setting db_index=True here too made Django create the "_like"
+        # index in step 1 AND again in step 3 → DuplicateTable on Postgres
+        # (SQLite doesn't create _like indexes, so tests didn't catch it).
         migrations.AddField(
             model_name='customuser',
             name='calendar_token',
             field=models.CharField(
-                db_index=True,
                 default=customuser.models.generate_calendar_token,
                 help_text=(
                     "Unguessable token embedded in the user's personal iCal "
@@ -52,7 +56,6 @@ class Migration(migrations.Migration):
             model_name='customuser',
             name='calendar_token',
             field=models.CharField(
-                db_index=True,
                 default=customuser.models.generate_calendar_token,
                 help_text=(
                     "Unguessable token embedded in the user's personal iCal "

@@ -78,7 +78,6 @@ class CustomUser(AbstractUser):
     calendar_token = models.CharField(
         max_length=64,
         unique=True,
-        db_index=True,
         default=generate_calendar_token,
         help_text=_(
             "Unguessable token embedded in the user's personal iCal (.ics) "
