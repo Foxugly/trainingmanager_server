@@ -367,3 +367,66 @@ def test_manager_rounds_visible_despite_never(owner_client, team):
     # and in the event detail too
     ev = owner_client.get(f"/api/v1/events/{event.pk}/").json()
     assert r.id in ev["rounds"]
+
+
+# ==========================================================================
+# location / equipment (always-visible free-text, never redacted)
+# ==========================================================================
+
+
+def test_event_serializer_exposes_location_equipment_default_empty():
+    from event.serializers import EventSerializer
+
+    event = EventFactory()
+    data = EventSerializer(event).data
+    assert data["location"] == ""
+    assert data["equipment"] == ""
+
+
+def test_manager_can_patch_location_and_equipment(owner_client, team):
+    program = ProgramFactory(team=team)
+    event = EventFactory(refer_program=program)
+    resp = owner_client.patch(
+        f"/api/v1/events/{event.pk}/",
+        {
+            "location": "Piscine communale, bassin 50m",
+            "equipment": "palmes, plaquettes, pull-buoy",
+        },
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    event.refresh_from_db()
+    assert event.location == "Piscine communale, bassin 50m"
+    assert event.equipment == "palmes, plaquettes, pull-buoy"
+    body = resp.json()
+    assert body["location"] == "Piscine communale, bassin 50m"
+    assert body["equipment"] == "palmes, plaquettes, pull-buoy"
+
+
+def test_athlete_sees_location_equipment_even_when_all_vis_never(athlete_client, team):
+    """location/equipment are NOT gated by the per-aspect visibility system:
+    even with every vis_* aspect set to NEVER, an athlete-member receives
+    their real values (while total/goal/rounds are redacted)."""
+    program = ProgramFactory(team=team)
+    event = EventFactory(
+        name="Hidden",
+        refer_program=program,
+        total=5000,
+        goal="Endurance",
+        location="Piscine communale, bassin 50m",
+        equipment="palmes, plaquettes, pull-buoy",
+        date=date.today() + timedelta(days=3),
+        hour_end=time(10, 0),
+        vis_distance="never",
+        vis_goal="never",
+        vis_rounds="never",
+    )
+    resp = athlete_client.get(f"/api/v1/events/{event.pk}/")
+    assert resp.status_code == 200
+    body = resp.json()
+    # gated aspects are redacted ...
+    assert body["total"] is None
+    assert body["goal"] is None
+    # ... but location/equipment come through with their real values
+    assert body["location"] == "Piscine communale, bassin 50m"
+    assert body["equipment"] == "palmes, plaquettes, pull-buoy"

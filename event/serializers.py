@@ -72,6 +72,8 @@ class EventSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "goal",
+            "location",
+            "equipment",
             "color",
             "date",
             "hour_start",

@@ -150,7 +150,10 @@ def _add_vevent(cal, user, event, dtstamp):
     if description_parts:
         vevent.add("description", "\n".join(description_parts))
 
-    # LOCATION intentionally left blank for now (no location field yet).
+    # LOCATION: always visible to athletes (no visibility gating), so emit
+    # it verbatim whenever the event has one.
+    if event.location:
+        vevent.add("location", event.location)
 
     cal.add_component(vevent)
 

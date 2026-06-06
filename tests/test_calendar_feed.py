@@ -243,6 +243,33 @@ def test_goal_visible_to_athlete_when_vis_always(api_client, athlete, athlete_me
 
 
 # --------------------------------------------------------------------------
+# LOCATION (always visible, no gating)
+# --------------------------------------------------------------------------
+def test_location_in_vevent_when_set(api_client, athlete, athlete_membership, program):
+    today = timezone.now().date()
+    ev = _make_event(program, name="At the pool", day=today + timedelta(days=2))
+    ev.location = "Piscine communale, bassin 50m"
+    ev.save(update_fields=["location"])
+
+    resp = api_client.get(_feed_url(athlete.calendar_token))
+    cal = _parse(resp.content)
+    vevent = next(c for c in cal.walk("VEVENT")
+                  if str(c.get("uid")) == f"event-{ev.id}@tm.foxugly.com")
+    assert str(vevent.get("location")) == "Piscine communale, bassin 50m"
+
+
+def test_no_location_property_when_blank(api_client, coach, program):
+    today = timezone.now().date()
+    ev = _make_event(program, name="No venue", day=today + timedelta(days=2))
+
+    resp = api_client.get(_feed_url(coach.calendar_token))
+    cal = _parse(resp.content)
+    vevent = next(c for c in cal.walk("VEVENT")
+                  if str(c.get("uid")) == f"event-{ev.id}@tm.foxugly.com")
+    assert vevent.get("location") is None
+
+
+# --------------------------------------------------------------------------
 # Token exposure on /me/ and rotation
 # --------------------------------------------------------------------------
 def test_me_exposes_calendar_token(auth_client, authenticated_user):

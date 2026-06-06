@@ -6199,6 +6199,14 @@ components:
           type: string
           nullable: true
           maxLength: 100
+        location:
+          type: string
+          description: Where the session takes place (venue, pool, track, address).
+            Always visible to athletes.
+          maxLength: 255
+        equipment:
+          type: string
+          description: Material/gear athletes should bring. Always visible to athletes.
         color:
           type: string
           maxLength: 10
@@ -7808,6 +7816,14 @@ components:
           type: string
           nullable: true
           maxLength: 100
+        location:
+          type: string
+          description: Where the session takes place (venue, pool, track, address).
+            Always visible to athletes.
+          maxLength: 255
+        equipment:
+          type: string
+          description: Material/gear athletes should bring. Always visible to athletes.
         color:
           type: string
           maxLength: 10

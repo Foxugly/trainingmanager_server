@@ -28,6 +28,22 @@ VISIBILITY_ASPECTS = ("distance", "goal", "rounds")
 class Event(models.Model):
     name = models.CharField(max_length=100, verbose_name=_("name"))
     goal = models.CharField(max_length=100, blank=True, null=True, verbose_name=_("goal"))
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("location"),
+        help_text=_(
+            "Where the session takes place (venue, pool, track, address). "
+            "Always visible to athletes."
+        ),
+    )
+    equipment = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("equipment"),
+        help_text=_("Material/gear athletes should bring. Always visible to athletes."),
+    )
     color = models.CharField(max_length=10, blank=True, verbose_name=_("color"))
     date = models.DateField(
         blank=True,
