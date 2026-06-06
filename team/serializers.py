@@ -70,7 +70,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "logo",
             "roti_enabled",
             "chat_mode",
-            "athlete_can_read_notes",
+            "weekly_recap_enabled",
             "attendance_statuses",
             "join_request_policy",
             "notify_managers_on_join_request",

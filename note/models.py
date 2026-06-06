@@ -6,8 +6,10 @@ from django.utils.translation import gettext_lazy as _
 class Note(models.Model):
     """Coach note about a member within a team.
 
-    Read access for the member depends on team.athlete_can_read_notes
-    AND on the member being the user's own profile.
+    Read access for the member is PER-NOTE: the concerned athlete may read a
+    note iff ``visible_to_athlete=True`` AND ``is_active=True`` AND the note's
+    member is the requesting user's own profile. Coaches (team owner/managers)
+    always see every note of their team.
     """
 
     team = models.ForeignKey(
@@ -30,6 +32,13 @@ class Note(models.Model):
     )
     content = models.TextField(
         help_text=_("Rich HTML content (sanitized via bleach on save)."),
+    )
+    visible_to_athlete = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, the concerned athlete can read this note (when it is also "
+            "active). Default False — notes are coach-only unless explicitly shared."
+        ),
     )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -25,6 +25,7 @@ class NoteSerializer(serializers.ModelSerializer):
             "author",
             "author_username",
             "content",
+            "visible_to_athlete",
             "is_active",
             "created_at",
             "updated_at",
@@ -39,6 +40,11 @@ class NoteSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+        extra_kwargs = {
+            # Coach-writable; only coaches reach a write at all (athletes are
+            # blocked by IsTeamCoachOrReadOwnNotes). Defaults to False on create.
+            "visible_to_athlete": {"required": False, "default": False},
+        }
 
     def validate_content(self, value):
         return sanitize_html(value)

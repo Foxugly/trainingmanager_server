@@ -3,9 +3,9 @@
 URL pattern: /api/v1/teams/{team_id}/members/{member_id}/notes/
 
 Permissions:
-  - Coach (team owner / managers): full CRUD
-  - Athlete (member.user == request.user): read own notes only when
-    team.athlete_can_read_notes is True
+  - Coach (team owner / managers): full CRUD; sees every note of the team
+  - Athlete (member.user == request.user): reads their own member's notes,
+    PER-NOTE, only those with visible_to_athlete=True AND is_active=True
   - Soft-deleted notes never visible to athletes
 """
 
@@ -213,35 +213,147 @@ def test_owner_can_see_inactive_with_include_inactive(
 # =====================================================================
 
 
-def test_athlete_cannot_read_when_flag_false(
+def test_athlete_sees_only_visible_active_notes(
     athlete_client, coach_team, member_in_team, coach_user
 ):
-    """Default: team.athlete_can_read_notes=False -> athlete gets 403."""
-    Note.objects.create(team=coach_team, member=member_in_team, author=coach_user, content="x")
-    response = athlete_client.get(_url(coach_team.pk, member_in_team.pk))
-    assert response.status_code == 403
-
-
-def test_athlete_can_read_own_notes_when_flag_true(
-    athlete_client, coach_team, member_in_team, coach_user
-):
-    coach_team.athlete_can_read_notes = True
-    coach_team.save(update_fields=["athlete_can_read_notes"])
-    Note.objects.create(team=coach_team, member=member_in_team, author=coach_user, content="hello")
+    """Per-note visibility: athlete sees the visible+active note, not the
+    invisible one nor the soft-deleted one."""
+    Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="shared",
+        visible_to_athlete=True,
+    )
+    Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="private",
+        visible_to_athlete=False,
+    )
+    Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="visible-but-archived",
+        visible_to_athlete=True,
+        is_active=False,
+    )
     response = athlete_client.get(_url(coach_team.pk, member_in_team.pk))
     assert response.status_code == 200
-    assert response.json()["count"] == 1
+    body = response.json()
+    assert body["count"] == 1
+    assert body["results"][0]["content"] == "shared"
 
 
-def test_athlete_cannot_read_other_member_notes_even_when_flag_true(
+def test_athlete_gets_empty_list_when_no_visible_notes(
     athlete_client, coach_team, member_in_team, coach_user
 ):
-    """Another Member, same team, with the flag on -> still 403 for our athlete."""
-    coach_team.athlete_can_read_notes = True
-    coach_team.save(update_fields=["athlete_can_read_notes"])
+    """An invisible note alone -> athlete gets 200 with an empty list (no 403:
+    they may access their own member's notes, just see nothing shared)."""
+    Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="private",
+        visible_to_athlete=False,
+    )
+    response = athlete_client.get(_url(coach_team.pk, member_in_team.pk))
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
+def test_athlete_can_retrieve_a_visible_note_but_not_an_invisible_one(
+    athlete_client, coach_team, member_in_team, coach_user
+):
+    visible = Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="shared",
+        visible_to_athlete=True,
+    )
+    hidden = Note.objects.create(
+        team=coach_team,
+        member=member_in_team,
+        author=coach_user,
+        content="private",
+        visible_to_athlete=False,
+    )
+    ok = athlete_client.get(_url(coach_team.pk, member_in_team.pk, visible.pk))
+    assert ok.status_code == 200
+    nope = athlete_client.get(_url(coach_team.pk, member_in_team.pk, hidden.pk))
+    assert nope.status_code == 404
+
+
+def test_coach_sees_both_visible_and_invisible(
+    coach_client, coach_team, member_in_team, coach_user
+):
+    Note.objects.create(
+        team=coach_team, member=member_in_team, author=coach_user,
+        content="shared", visible_to_athlete=True,
+    )
+    Note.objects.create(
+        team=coach_team, member=member_in_team, author=coach_user,
+        content="private", visible_to_athlete=False,
+    )
+    response = coach_client.get(_url(coach_team.pk, member_in_team.pk))
+    assert response.status_code == 200
+    assert response.json()["count"] == 2
+
+
+def test_create_defaults_visible_to_athlete_false(
+    coach_client, coach_team, member_in_team
+):
+    response = coach_client.post(
+        _url(coach_team.pk, member_in_team.pk),
+        {"content": "<p>x</p>"},
+        format="json",
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["visible_to_athlete"] is False
+    note = Note.objects.get(pk=body["id"])
+    assert note.visible_to_athlete is False
+
+
+def test_coach_can_toggle_visibility_and_athlete_sees_it(
+    api_client, coach_team, member_in_team, coach_user, athlete_user
+):
+    note = Note.objects.create(
+        team=coach_team, member=member_in_team, author=coach_user,
+        content="x", visible_to_athlete=False,
+    )
+    # Hidden -> athlete sees nothing.
+    api_client.force_authenticate(user=athlete_user)
+    assert api_client.get(_url(coach_team.pk, member_in_team.pk)).json()["count"] == 0
+    # Coach toggles it visible.
+    api_client.force_authenticate(user=coach_user)
+    patch = api_client.patch(
+        _url(coach_team.pk, member_in_team.pk, note.pk),
+        {"visible_to_athlete": True},
+        format="json",
+    )
+    assert patch.status_code == 200
+    note.refresh_from_db()
+    assert note.visible_to_athlete is True
+    # Now the athlete sees it.
+    api_client.force_authenticate(user=athlete_user)
+    assert api_client.get(_url(coach_team.pk, member_in_team.pk)).json()["count"] == 1
+
+
+def test_athlete_cannot_read_other_member_notes(
+    athlete_client, coach_team, member_in_team, coach_user
+):
+    """Another Member, same team, with a visible note -> still 403 for our
+    athlete (not their own member record)."""
     other = Member.objects.create(firstname="Other", lastname="Person", email="other@local.test")
     TeamMembership.objects.create(team=coach_team, member=other)
-    Note.objects.create(team=coach_team, member=other, author=coach_user, content="secret")
+    Note.objects.create(
+        team=coach_team, member=other, author=coach_user,
+        content="secret", visible_to_athlete=True,
+    )
     response = athlete_client.get(_url(coach_team.pk, other.pk))
     assert response.status_code == 403
 
@@ -249,14 +361,16 @@ def test_athlete_cannot_read_other_member_notes_even_when_flag_true(
 def test_athlete_cannot_see_soft_deleted_even_with_include_inactive(
     athlete_client, coach_team, member_in_team, coach_user
 ):
-    coach_team.athlete_can_read_notes = True
-    coach_team.save(update_fields=["athlete_can_read_notes"])
-    Note.objects.create(team=coach_team, member=member_in_team, author=coach_user, content="alive")
+    Note.objects.create(
+        team=coach_team, member=member_in_team, author=coach_user,
+        content="alive", visible_to_athlete=True,
+    )
     Note.objects.create(
         team=coach_team,
         member=member_in_team,
         author=coach_user,
         content="dead",
+        visible_to_athlete=True,
         is_active=False,
     )
     response = athlete_client.get(_url(coach_team.pk, member_in_team.pk) + "?include_inactive=true")
@@ -265,8 +379,6 @@ def test_athlete_cannot_see_soft_deleted_even_with_include_inactive(
 
 
 def test_athlete_cannot_create_note(athlete_client, coach_team, member_in_team):
-    coach_team.athlete_can_read_notes = True
-    coach_team.save(update_fields=["athlete_can_read_notes"])
     response = athlete_client.post(
         _url(coach_team.pk, member_in_team.pk),
         {"content": "<p>I'm just an athlete</p>"},

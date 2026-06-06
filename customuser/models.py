@@ -47,6 +47,14 @@ class CustomUser(AbstractUser):
         choices=settings.LANGUAGES,
         default="fr",
     )
+    weekly_recap_opt_in = models.BooleanField(
+        default=True,
+        help_text=_(
+            "Per-user preference for the weekly recap email. Opt-out model: "
+            "default True. When False, this user receives no weekly recap even "
+            "for teams they own/manage that have it enabled."
+        ),
+    )
     team_quota = models.PositiveIntegerField(
         default=0,
         help_text=_(

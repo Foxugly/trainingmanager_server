@@ -6077,6 +6077,11 @@ components:
           maxLength: 150
         language:
           $ref: '#/components/schemas/LanguageEnum'
+        weekly_recap_opt_in:
+          type: boolean
+          description: 'Per-user preference for the weekly recap email. Opt-out model:
+            default True. When False, this user receives no weekly recap even for
+            teams they own/manage that have it enabled.'
         is_staff:
           type: boolean
           readOnly: true
@@ -6291,6 +6296,12 @@ components:
         content:
           type: string
           description: Rich HTML content (sanitized via bleach on save).
+        visible_to_athlete:
+          type: boolean
+          default: false
+          description: If True, the concerned athlete can read this note (when it
+            is also active). Default False — notes are coach-only unless explicitly
+            shared.
         is_active:
           type: boolean
           readOnly: true
@@ -7211,6 +7222,11 @@ components:
           maxLength: 150
         language:
           $ref: '#/components/schemas/LanguageEnum'
+        weekly_recap_opt_in:
+          type: boolean
+          description: 'Per-user preference for the weekly recap email. Opt-out model:
+            default True. When False, this user receives no weekly recap even for
+            teams they own/manage that have it enabled.'
         is_staff:
           type: boolean
           readOnly: true
@@ -7375,6 +7391,12 @@ components:
         content:
           type: string
           description: Rich HTML content (sanitized via bleach on save).
+        visible_to_athlete:
+          type: boolean
+          default: false
+          description: If True, the concerned athlete can read this note (when it
+            is also active). Default False — notes are coach-only unless explicitly
+            shared.
         is_active:
           type: boolean
           readOnly: true
@@ -7609,10 +7631,10 @@ components:
 
             * `all` - All members can post
             * `coaches_only` - Only coaches can post
-        athlete_can_read_notes:
+        weekly_recap_enabled:
           type: boolean
-          description: If True, athletes can read their own coach notes. Default False
-            (notes are coach-only).
+          description: If True, this team is included in the weekly recap email sent
+            to its owner and managers. Default False (opt-in per team).
         attendance_statuses:
           type: array
           items:
@@ -8295,10 +8317,10 @@ components:
 
             * `all` - All members can post
             * `coaches_only` - Only coaches can post
-        athlete_can_read_notes:
+        weekly_recap_enabled:
           type: boolean
-          description: If True, athletes can read their own coach notes. Default False
-            (notes are coach-only).
+          description: If True, this team is included in the weekly recap email sent
+            to its owner and managers. Default False (opt-in per team).
         attendance_statuses:
           type: array
           items:

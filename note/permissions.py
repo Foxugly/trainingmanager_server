@@ -6,9 +6,12 @@ class IsTeamCoachOrReadOwnNotes(BasePermission):
     """Permission for team-scoped notes.
 
     Read (SAFE_METHODS):
-      - team owner / managers always
-      - the concerned member can read their own notes if
-        team.athlete_can_read_notes is True
+      - team owner / managers always (they see every note of their team)
+      - the concerned athlete (the note's member belongs to the requesting
+        user) may read their own member's notes. Per-note visibility is
+        enforced by the view queryset (visible_to_athlete=True AND
+        is_active=True); this permission only gates that the athlete is
+        accessing their OWN member record.
 
     Write (POST/PATCH/PUT/DELETE):
       - team owner / managers only
@@ -33,10 +36,8 @@ class IsTeamCoachOrReadOwnNotes(BasePermission):
             return True
 
         if request.method in SAFE_METHODS:
-            if not team.athlete_can_read_notes:
-                return False
-            if member.user_id != request.user.pk:
-                return False
-            return True
+            # The athlete may only access notes attached to their own member
+            # record; the queryset further restricts to visible+active notes.
+            return member.user_id == request.user.pk
 
         return False

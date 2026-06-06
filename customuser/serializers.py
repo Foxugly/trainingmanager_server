@@ -48,6 +48,7 @@ class MeSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "language",
+            "weekly_recap_opt_in",
             "is_staff",
             "last_login",
             "date_joined",

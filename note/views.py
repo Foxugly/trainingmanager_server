@@ -64,6 +64,14 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
         qs = Note.objects.filter(team=team, member=member).select_related(
             "author", "team", "member"
         )
+
+        # Athletes (non-managers reading their own member's notes) only ever
+        # see notes explicitly shared with them AND still active — regardless
+        # of the include_inactive flag. Coaches go through the normal
+        # active/include_inactive filter.
+        if not team.is_managed_by(self.request.user):
+            return qs.filter(visible_to_athlete=True, is_active=True)
+
         return self._apply_include_inactive_filter(qs)
 
     def perform_create(self, serializer):

@@ -78,11 +78,11 @@ class Team(models.Model):
         default=ChatMode.ALL,
         help_text=_("Defines who can post messages in the team chat."),
     )
-    athlete_can_read_notes = models.BooleanField(
+    weekly_recap_enabled = models.BooleanField(
         default=False,
         help_text=_(
-            "If True, athletes can read their own coach notes. "
-            "Default False (notes are coach-only)."
+            "If True, this team is included in the weekly recap email sent to "
+            "its owner and managers. Default False (opt-in per team)."
         ),
     )
     attendance_statuses = models.ManyToManyField(

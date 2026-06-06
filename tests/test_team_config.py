@@ -1,4 +1,4 @@
-"""Coverage of Team config toggles: chat_mode + athlete_can_read_notes.
+"""Coverage of Team config toggles: chat_mode + weekly_recap_enabled.
 
 Both fields are owner/manager-editable via PATCH /api/v1/teams/{id}/.
 Fields surface on TeamSerializer (full); they are intentionally NOT
@@ -20,23 +20,23 @@ def test_team_default_chat_mode_is_all():
     assert team.chat_mode == "all"
 
 
-def test_team_default_athlete_can_read_notes_is_false():
+def test_team_default_weekly_recap_enabled_is_false():
     team = TeamFactory()
-    assert team.athlete_can_read_notes is False
+    assert team.weekly_recap_enabled is False
 
 
 # ----------------------------- serializer exposure ------------------
 
 
-def test_team_serializer_exposes_chat_mode_and_notes_flag(auth_client_trainer, trainer_user):
+def test_team_serializer_exposes_chat_mode_and_recap_flag(auth_client_trainer, trainer_user):
     team = trainer_user.owned_teams.first()
     response = auth_client_trainer.get(f"/api/v1/teams/{team.pk}/")
     assert response.status_code == 200
     body = response.json()
     assert "chat_mode" in body
     assert body["chat_mode"] == "all"
-    assert "athlete_can_read_notes" in body
-    assert body["athlete_can_read_notes"] is False
+    assert "weekly_recap_enabled" in body
+    assert body["weekly_recap_enabled"] is False
 
 
 # ----------------------------- write permissions --------------------
@@ -54,7 +54,7 @@ def test_team_owner_can_patch_chat_mode(auth_client_trainer, trainer_user):
     assert team.chat_mode == "coaches_only"
 
 
-def test_team_manager_can_patch_athlete_can_read_notes(
+def test_team_manager_can_patch_weekly_recap_enabled(
     api_client, trainer_user, authenticated_user
 ):
     team = trainer_user.owned_teams.first()
@@ -62,12 +62,12 @@ def test_team_manager_can_patch_athlete_can_read_notes(
     api_client.force_authenticate(user=authenticated_user)
     response = api_client.patch(
         f"/api/v1/teams/{team.pk}/",
-        {"athlete_can_read_notes": True},
+        {"weekly_recap_enabled": True},
         format="json",
     )
     assert response.status_code == 200
     team.refresh_from_db()
-    assert team.athlete_can_read_notes is True
+    assert team.weekly_recap_enabled is True
 
 
 def test_team_random_user_cannot_patch_config(api_client, trainer_user, non_trainer_user):

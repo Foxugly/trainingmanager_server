@@ -1,0 +1,13 @@
+[Unit]
+Description=Training Manager — weekly recap email schedule (Monday 07:00)
+
+[Timer]
+# Every Monday at 07:00 local time. The command computes the LAST completed
+# ISO week (the Mon..Sun that just ended), so a Monday-morning run is correct.
+OnCalendar=Mon *-*-* 07:00:00
+# Catch up if the box was down at the scheduled time.
+Persistent=true
+Unit=tm-weekly-recap.service
+
+[Install]
+WantedBy=timers.target
