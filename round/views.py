@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from exercise.models import Exercise
 from exercise.serializers import ExerciseSerializer
 from team.permissions import IsTrainer
+from team.queries import user_member_teams
 from team.utils import scope_by_sport_language
 from tools.exceptions import NotAuthorizedRoundDenied
 from tools.validators import validate_reorder_ids
@@ -32,7 +33,8 @@ class RoundViewSet(viewsets.ModelViewSet):
             "exercises__modality__sport",
             "exercises__energysegment__energysystem",
         )
-        return scope_by_sport_language(qs, self.request.user, sport_field="sport_id")
+        qs = scope_by_sport_language(qs, self.request.user, sport_field="sport_id")
+        return _gate_rounds_by_event_visibility(qs, self.request.user)
 
     @extend_schema(
         request=None,
@@ -154,6 +156,61 @@ class RoundViewSet(viewsets.ModelViewSet):
                 Exercise.objects.filter(pk=exercise_id).update(order=index)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _gate_rounds_by_event_visibility(qs, user):
+    """Hide rounds an athlete may not see because of per-event vis_rounds.
+
+    Security gate for the athlete session-detail flow: rounds are reached via
+    the RoundViewSet (the EventSerializer exposes round PKs, the client then
+    fetches them here). A round attached to an event whose ``vis_rounds`` is
+    not currently visible to a NON-manager athlete of that event's team must
+    not be returned.
+
+    A round can be linked to several events. We exclude a round only when it
+    is linked to at least one event the athlete should NOT see rounds for AND
+    it is NOT also linked to some event whose rounds the athlete (or a team
+    they manage) MAY see. Library rounds (no events) and rounds the user
+    manages via any linking team are unaffected.
+    """
+    if not getattr(user, "is_authenticated", False):
+        return qs
+
+    from event.models import Event
+
+    # Events linking the candidate rounds that belong to a team the user is
+    # connected to (member/manager/owner). select_related the team so the
+    # visibility/role resolution does not issue per-row queries.
+    candidate_round_ids = set(qs.values_list("id", flat=True))
+    if not candidate_round_ids:
+        return qs
+
+    events = (
+        Event.objects.filter(rounds__in=candidate_round_ids)
+        .filter(refer_program__team__in=user_member_teams(user))
+        .select_related("refer_program__team")
+        .prefetch_related("rounds")
+        .distinct()
+    )
+
+    # rounds the athlete is allowed to see via at least one event, and rounds
+    # explicitly hidden via at least one event. "Allowed" wins over "hidden".
+    allowed = set()
+    hidden = set()
+    for event in events:
+        team = event.team
+        is_manager = team is not None and team.is_managed_by(user)
+        visible = is_manager or event.aspect_visible_to_athlete("rounds")
+        linked_ids = [r.id for r in event.rounds.all() if r.id in candidate_round_ids]
+        if visible:
+            allowed.update(linked_ids)
+        else:
+            hidden.update(linked_ids)
+
+    to_exclude = hidden - allowed
+    if to_exclude:
+        qs = qs.exclude(id__in=to_exclude)
+    return qs
 
 
 def _user_may_mutate_round(round_obj, user):

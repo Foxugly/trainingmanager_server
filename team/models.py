@@ -6,6 +6,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from event.models import VisibilityMode
+
 
 def generate_invitation_token():
     return secrets.token_urlsafe(32)
@@ -101,6 +103,42 @@ class Team(models.Model):
         help_text=_(
             "Manual = managers accept/reject each TeamJoinRequest. "
             "Auto = every join request is accepted immediately on submission."
+        ),
+    )
+    timezone = models.CharField(
+        max_length=64,
+        default="Europe/Brussels",
+        help_text=_(
+            "IANA timezone name (e.g. 'Europe/Brussels'). Used to decide, in "
+            "the team's local time, whether a session is over for per-aspect "
+            "athlete visibility (vis_distance/vis_goal/vis_rounds)."
+        ),
+    )
+    vis_distance = models.CharField(
+        max_length=10,
+        choices=VisibilityMode.choices,
+        default=VisibilityMode.ALWAYS,
+        help_text=_(
+            "Default visibility of a session's total distance to athletes. "
+            "Inherited by new events; overridable per event."
+        ),
+    )
+    vis_goal = models.CharField(
+        max_length=10,
+        choices=VisibilityMode.choices,
+        default=VisibilityMode.ALWAYS,
+        help_text=_(
+            "Default visibility of a session's goal to athletes. "
+            "Inherited by new events; overridable per event."
+        ),
+    )
+    vis_rounds = models.CharField(
+        max_length=10,
+        choices=VisibilityMode.choices,
+        default=VisibilityMode.ALWAYS,
+        help_text=_(
+            "Default visibility of a session's rounds (and their exercises) "
+            "to athletes. Inherited by new events; overridable per event."
         ),
     )
     notify_managers_on_join_request = models.BooleanField(

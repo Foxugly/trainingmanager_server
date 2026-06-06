@@ -49,8 +49,20 @@ class EventViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(_("You do not manage the team of this program."))
 
     def perform_create(self, serializer):
-        self._check_program_write(serializer.validated_data.get("refer_program"))
-        serializer.save()
+        program = serializer.validated_data.get("refer_program")
+        self._check_program_write(program)
+        # Inherit each per-aspect visibility default from the event's team
+        # unless the create payload explicitly set it. We key off the raw
+        # request body because the serializer fields carry model defaults,
+        # so validated_data alone cannot distinguish "omitted" from
+        # "explicitly equal to the default".
+        team = program.team if program is not None else None
+        overrides = {}
+        if team is not None:
+            for aspect in ("vis_distance", "vis_goal", "vis_rounds"):
+                if aspect not in self.request.data:
+                    overrides[aspect] = getattr(team, aspect)
+        serializer.save(**overrides)
 
     def perform_update(self, serializer):
         self._check_program_write(

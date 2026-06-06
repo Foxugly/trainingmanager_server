@@ -81,6 +81,9 @@ class EventSerializer(serializers.ModelSerializer):
             "refer_program_id",
             "rounds",
             "members",
+            "vis_distance",
+            "vis_goal",
+            "vis_rounds",
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
@@ -95,3 +98,41 @@ class EventSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def _requester_is_manager(self, instance):
+        """True if the request user owns/manages the event's team.
+
+        Managers/owners always see every aspect. Anonymous and non-team
+        requesters never reach here (the queryset already scopes them out),
+        so any non-manager who can see the event is treated as an athlete.
+        """
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return False
+        team = instance.team
+        if team is None:
+            return False
+        return team.is_managed_by(user)
+
+    def to_representation(self, instance):
+        """Serialize, then null out aspects hidden from a non-manager athlete.
+
+        Security: an athlete-member of the event's team must never receive the
+        real value of an aspect whose resolved visibility is not satisfied.
+        - vis_distance not visible -> ``total`` is nulled.
+        - vis_goal not visible     -> ``goal`` is nulled.
+        - vis_rounds not visible   -> ``rounds`` is emptied.
+        The vis_* mode fields themselves stay readable so the frontend knows
+        WHY a value is hidden. Managers/owners are never redacted.
+        """
+        data = super().to_representation(instance)
+        if self._requester_is_manager(instance):
+            return data
+        if not instance.aspect_visible_to_athlete("distance"):
+            data["total"] = None
+        if not instance.aspect_visible_to_athlete("goal"):
+            data["goal"] = None
+        if not instance.aspect_visible_to_athlete("rounds"):
+            data["rounds"] = []
+        return data

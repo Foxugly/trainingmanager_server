@@ -1,4 +1,5 @@
 import re
+from zoneinfo import ZoneInfo, available_timezones
 
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -74,10 +75,32 @@ class TeamSerializer(serializers.ModelSerializer):
             "attendance_statuses",
             "join_request_policy",
             "notify_managers_on_join_request",
+            "timezone",
+            "vis_distance",
+            "vis_goal",
+            "vis_rounds",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "owner", "managers", "created_at", "updated_at"]
+
+    def validate_timezone(self, value):
+        # Reject anything that is not a valid IANA zone name. We check
+        # against the canonical set first (fast, explicit) and confirm it
+        # constructs — guards against platform tzdata gaps.
+        if value not in available_timezones():
+            raise serializers.ValidationError(
+                _("'%(tz)s' is not a valid IANA timezone name.") % {"tz": value},
+                code="invalid_timezone",
+            )
+        try:
+            ZoneInfo(value)
+        except Exception as exc:  # pragma: no cover - defensive
+            raise serializers.ValidationError(
+                _("'%(tz)s' is not a valid IANA timezone name.") % {"tz": value},
+                code="invalid_timezone",
+            ) from exc
+        return value
 
     def validate_logo(self, value):
         if not value:

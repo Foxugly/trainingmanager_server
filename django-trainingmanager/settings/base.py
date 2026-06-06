@@ -292,6 +292,7 @@ SPECTACULAR_SETTINGS = {
         "JoinRequestStatusEnum": "team.models.TeamJoinRequest.STATUS_CHOICES",
         "InvitationStatusEnum": "team.models.TeamInvitation.STATUS_CHOICES",
         "OverlapStrategyEnum": "program.choices.OVERLAP_STRATEGY_CHOICES",
+        "VisibilityMode": "event.models.VisibilityMode",
     },
 }
 
