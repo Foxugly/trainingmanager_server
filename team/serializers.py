@@ -74,6 +74,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "weekly_recap_enabled",
             "attendance_statuses",
             "join_request_policy",
+            "topic_creation",
             "notify_managers_on_join_request",
             "notify_coaches_on_note",
             "notify_athlete_on_visible_note",

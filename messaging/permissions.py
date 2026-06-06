@@ -1,7 +1,31 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
+from team.models import Team
+
 from .models import TopicAudience
+
+
+def can_create_topic(team, user):
+    """Whether ``user`` may CREATE a topic in ``team``, per the team's
+    ``topic_creation`` policy:
+
+    - ``owner``   : only the team owner.
+    - ``coaches`` : the team owner or a manager.
+    - ``members`` : the owner, a manager, or an active athlete member.
+
+    Non-members are always denied.
+    """
+    if not user.is_authenticated:
+        return False
+
+    policy = team.topic_creation
+    if policy == Team.TopicCreationPolicy.OWNER:
+        return user == team.owner
+    if policy == Team.TopicCreationPolicy.MEMBERS:
+        return team.is_managed_by(user) or is_athlete_member(team, user)
+    # COACHES (default): owner or managers.
+    return team.is_managed_by(user)
 
 
 def is_athlete_member(team, user):
@@ -34,7 +58,8 @@ class IsTeamTopicVisibilityAndCoachWrite(BasePermission):
       - any authenticated team participant (coach or active athlete member)
         may reach list/retrieve; the queryset filters out topics they cannot
         see.
-      - create: owner/managers only (athletes get 403).
+      - create: governed by the team's ``topic_creation`` policy (see
+        ``can_create_topic``). Non-members always get 403.
 
     has_object_permission:
       - read: only if the user can SEE the topic.
@@ -59,9 +84,9 @@ class IsTeamTopicVisibilityAndCoachWrite(BasePermission):
         if not is_member:
             return False
 
-        # CREATE topic: coaches only.
+        # CREATE topic: governed by the team's topic_creation policy.
         if getattr(view, "action", None) == "create":
-            return is_coach
+            return can_create_topic(team, user)
 
         # list / retrieve / destroy reach object-level / queryset filtering.
         return True

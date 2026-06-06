@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
 
 _TEAM_PK_PARAM = OpenApiParameter(
     name="team_pk",
@@ -115,7 +116,22 @@ class TopicViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         team = self.get_team()
-        topic = serializer.save(team=team, author=self.request.user)
+        user = self.request.user
+
+        # Audience constraint for non-coach creators: an athlete member may
+        # only create a whole-team topic. Coaches (owner/managers) keep both
+        # audiences. Permission-level (can_create_topic) already vetted that
+        # the user may create at all.
+        if not team.is_managed_by(user):
+            requested = serializer.validated_data.get(
+                "audience", TopicAudience.TEAM
+            )
+            if requested != TopicAudience.TEAM:
+                raise PermissionDenied(
+                    _("Athletes can only create whole-team topics.")
+                )
+
+        topic = serializer.save(team=team, author=user)
         self._notify_new_topic(topic)
 
     def _notify_new_topic(self, topic):

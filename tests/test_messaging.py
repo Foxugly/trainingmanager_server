@@ -122,7 +122,9 @@ def test_coach_creates_coaches_topic(api_client, coach, team):
     assert resp.json()["audience"] == "coaches"
 
 
-def test_athlete_cannot_create_topic(api_client, athlete, team, member):
+def test_athlete_cannot_create_topic_under_coaches_policy(api_client, athlete, team, member):
+    # Default policy is "coaches": athletes cannot create.
+    assert team.topic_creation == "coaches"
     api_client.force_authenticate(user=athlete)
     resp = api_client.post(
         _topics_url(team.pk),
@@ -131,6 +133,72 @@ def test_athlete_cannot_create_topic(api_client, athlete, team, member):
     )
     assert resp.status_code == 403
     assert not Topic.objects.filter(title="Nope").exists()
+
+
+def test_athlete_can_create_team_topic_under_members_policy(api_client, athlete, team, member):
+    team.topic_creation = "members"
+    team.save(update_fields=["topic_creation"])
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Athlete topic", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["audience"] == "team"
+    assert body["author"]["id"] == athlete.pk
+
+
+def test_athlete_cannot_create_coaches_topic_under_members_policy(api_client, athlete, team, member):
+    team.topic_creation = "members"
+    team.save(update_fields=["topic_creation"])
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Staff wannabe", "audience": "coaches"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not Topic.objects.filter(title="Staff wannabe").exists()
+
+
+def test_manager_cannot_create_topic_under_owner_policy(api_client, coach, manager, team):
+    team.topic_creation = "owner"
+    team.save(update_fields=["topic_creation"])
+    api_client.force_authenticate(user=manager)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Manager topic", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not Topic.objects.filter(title="Manager topic").exists()
+
+
+def test_owner_can_create_topic_under_owner_policy(api_client, coach, team):
+    team.topic_creation = "owner"
+    team.save(update_fields=["topic_creation"])
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Owner topic", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201
+
+
+def test_non_member_cannot_create_topic_under_members_policy(api_client, outsider, team):
+    team.topic_creation = "members"
+    team.save(update_fields=["topic_creation"])
+    api_client.force_authenticate(user=outsider)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "Intruder", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    assert not Topic.objects.filter(title="Intruder").exists()
 
 
 def test_outsider_cannot_list_topics(api_client, outsider, team):

@@ -26,6 +26,11 @@ class Team(models.Model):
         MANUAL = "manual", _("Manual — managers accept/reject each request")
         AUTO = "auto", _("Auto-accept — every join request is accepted immediately")
 
+    class TopicCreationPolicy(models.TextChoices):
+        OWNER = "owner", _("Owner only")
+        COACHES = "coaches", _("Owner and coaches")
+        MEMBERS = "members", _("Everyone (incl. athletes)")
+
     name = models.CharField(max_length=200, unique=True)
     sport = models.ForeignKey(
         "sport.Sport",
@@ -103,6 +108,16 @@ class Team(models.Model):
         help_text=_(
             "Manual = managers accept/reject each TeamJoinRequest. "
             "Auto = every join request is accepted immediately on submission."
+        ),
+    )
+    topic_creation = models.CharField(
+        max_length=10,
+        choices=TopicCreationPolicy.choices,
+        default=TopicCreationPolicy.COACHES,
+        help_text=_(
+            "Who may create messaging topics in this team. "
+            "owner = team owner only; coaches = owner and managers; "
+            "members = owner, managers, and active athlete members."
         ),
     )
     timezone = models.CharField(
