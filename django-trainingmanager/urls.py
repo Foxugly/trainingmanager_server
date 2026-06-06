@@ -43,6 +43,7 @@ urlpatterns = [
     path("api/v1/", include("messaging.urls")),
     path("api/v1/", include("attachment.urls")),
     path("api/v1/", include("performance.urls")),
+    path("api/v1/", include("audit.urls")),
     # Public (unauthenticated) read-only session share link
     path(
         "api/v1/public/events/<str:token>/",

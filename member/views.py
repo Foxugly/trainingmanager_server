@@ -78,7 +78,7 @@ class MemberViewSet(viewsets.ModelViewSet):
 
         THIS IS IRREVERSIBLE. There is no undo.
         """
-        member = self._get_member_for_anonymize(request, pk)
+        member, audit_team = self._get_member_for_anonymize(request, pk)
 
         with transaction.atomic():
             # Delete coach notes about this member first (may contain PII).
@@ -104,17 +104,32 @@ class MemberViewSet(viewsets.ModelViewSet):
                 ]
             )
 
+            # Audit the erasure (best-effort; never breaks the action).
+            from audit.models import AuditAction
+            from audit.services import record
+
+            record(
+                AuditAction.MEMBER_ANONYMIZED,
+                actor=request.user,
+                team=audit_team,
+                target_repr=f"Member #{member.id}",
+                request=request,
+            )
+
         member.refresh_from_db()
         serializer = self.get_serializer(member)
         return Response(serializer.data)
 
     def _get_member_for_anonymize(self, request, pk):
-        """Resolve a Member the caller is allowed to anonymize.
+        """Resolve a Member the caller is allowed to anonymize, and the team.
 
         The caller must be a coach (owner/manager) of a team the member has a
         TeamMembership in (active OR past). A member with no membership in any
         team the caller manages is indistinguishable from a non-existent one
         for this caller -> 404.
+
+        Returns a ``(member, team)`` tuple where ``team`` is one managed team
+        the member belongs to (used to scope the audit log entry).
         """
         try:
             member = Member.objects.get(pk=pk)
@@ -127,6 +142,11 @@ class MemberViewSet(viewsets.ModelViewSet):
         member_team_ids = set(
             member.memberships.values_list("team_id", flat=True)
         )
-        if coach_team_ids.isdisjoint(member_team_ids):
+        shared_team_ids = coach_team_ids & member_team_ids
+        if not shared_team_ids:
             raise NotFound(_("No such member in a team you manage."))
-        return member
+
+        from team.models import Team
+
+        audit_team = Team.objects.filter(pk__in=shared_team_ids).first()
+        return member, audit_team

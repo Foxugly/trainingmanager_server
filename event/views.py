@@ -441,6 +441,18 @@ class EventViewSet(viewsets.ModelViewSet):
             event.is_public = False
             event.save(update_fields=["is_public"])
 
+        # Audit the share-state change (best-effort; never breaks the action).
+        from audit.models import AuditAction
+        from audit.services import record
+
+        record(
+            AuditAction.SESSION_SHARED if event.is_public else AuditAction.SESSION_UNSHARED,
+            actor=request.user,
+            team=team,
+            target_repr=f"Event #{event.id}",
+            request=request,
+        )
+
         token = event.get_public_token()
         return Response(
             {

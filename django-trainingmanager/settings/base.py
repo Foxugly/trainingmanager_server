@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "messaging",
     "attachment",
     "performance",
+    "audit",
 ]
 
 SITE_ID = 1

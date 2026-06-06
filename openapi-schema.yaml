@@ -447,6 +447,59 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/audit-log/:
+    get:
+      operationId: audit_log_list
+      description: |-
+        GET /api/v1/audit-log/ — review security-sensitive actions.
+
+        Team owners and managers see audit entries scoped to teams they manage
+        (``team.queries.managed_teams``). Superusers see all entries. The optional
+        ``?team=<id>`` filter narrows to a single managed team (403 otherwise).
+        Ordered newest-first and paginated like other list endpoints.
+      summary: List audit log entries for teams you manage
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: team
+        schema:
+          type: integer
+        description: Restrict to a single team you manage. A team you do not manage
+          yields 403.
+      tags:
+      - audit-log
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogEntryList'
+          description: ''
   /api/v1/auth/account/delete/:
     post:
       operationId: auth_account_delete_create
@@ -6346,6 +6399,24 @@ components:
           writeOnly: true
       required:
       - current_password
+    ActionEnum:
+      enum:
+      - member_anonymized
+      - member_removed
+      - account_deleted
+      - session_shared
+      - session_unshared
+      - attachment_deleted
+      - team_config_updated
+      type: string
+      description: |-
+        * `member_anonymized` - Member anonymized
+        * `member_removed` - Member removed from team
+        * `account_deleted` - Account deleted
+        * `session_shared` - Session shared publicly
+        * `session_unshared` - Session sharing disabled
+        * `attachment_deleted` - Attachment deleted
+        * `team_config_updated` - Team configuration updated
     ActionProposedEnum:
       enum:
       - accept
@@ -6578,6 +6649,72 @@ components:
       description: |-
         * `team` - Whole team
         * `coaches` - Coaches only
+    AuditLogEntry:
+      type: object
+      description: |-
+        Read-only view of an audit log entry for coaches.
+
+        ``action_display`` is the localized human label for the stable ``action``
+        code. All fields are read-only — the log is append-only and only written
+        via ``audit.services.record``.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: The user who performed the action. NULL = system/anonymous.
+        actor_label:
+          type: string
+          readOnly: true
+          description: Snapshot of the actor's username/display at the time. Survives
+            actor deletion or anonymization (when the FK is SET_NULL).
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          readOnly: true
+          description: |-
+            Stable code identifying the audited action.
+
+            * `member_anonymized` - Member anonymized
+            * `member_removed` - Member removed from team
+            * `account_deleted` - Account deleted
+            * `session_shared` - Session shared publicly
+            * `session_unshared` - Session sharing disabled
+            * `attachment_deleted` - Attachment deleted
+            * `team_config_updated` - Team configuration updated
+        action_display:
+          type: string
+          readOnly: true
+        team:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Team the action is scoped to (used for read scoping). NULL
+            = not team-scoped, e.g. an account self-delete.
+        target_repr:
+          type: string
+          readOnly: true
+          description: Human-readable description of the target.
+        metadata:
+          readOnly: true
+          description: Small structured extra context (no unnecessary PII).
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - action_display
+      - actor
+      - actor_label
+      - created_at
+      - id
+      - metadata
+      - target_repr
+      - team
     CalendarToken:
       type: object
       description: |-
@@ -7984,6 +8121,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AttendanceStatus'
+    PaginatedAuditLogEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogEntry'
     PaginatedEnergySegmentList:
       type: object
       required:

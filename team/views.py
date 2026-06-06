@@ -1261,3 +1261,16 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
         if instance.left_at is None:
             instance.left_at = timezone.now()
             instance.save(update_fields=["left_at", "updated_at"])
+
+            # Audit the membership end (best-effort; never breaks the action).
+            from audit.models import AuditAction
+            from audit.services import record
+
+            member = instance.member
+            record(
+                AuditAction.MEMBER_REMOVED,
+                actor=user,
+                team=team,
+                target_repr=f"Member #{member.id} ({member.get_fullname()})",
+                request=self.request,
+            )

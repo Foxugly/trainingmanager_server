@@ -924,6 +924,19 @@ class AccountDeleteView(APIView):
         if user.owned_teams.exists():
             raise OwnsTeams()
 
+        # Audit BEFORE delete: the actor FK SET_NULLs on the cascade but the
+        # actor_label snapshot survives. Best-effort; never blocks the delete.
+        from audit.models import AuditAction
+        from audit.services import record
+
+        record(
+            AuditAction.ACCOUNT_DELETED,
+            actor=user,
+            team=None,
+            target_repr=f"User #{user.id} ({user.username})",
+            request=request,
+        )
+
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

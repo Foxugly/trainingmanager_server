@@ -336,5 +336,31 @@ class AttachmentViewSet(viewsets.GenericViewSet):
         except Exception:  # noqa: BLE001 - best-effort cleanup
             logger.exception("S3 delete failed for attachment %s (key=%s)", attachment.pk, attachment.s3_key)
 
+        # Derive the target's team defensively for audit scoping; fall back to
+        # None if the target shape is unexpected.
+        audit_team = None
+        try:
+            if target is not None:
+                if getattr(target, "refer_program", None) is not None:
+                    audit_team = target.refer_program.team
+                elif getattr(target, "topic", None) is not None:
+                    audit_team = target.topic.team
+        except Exception:  # noqa: BLE001 - audit scoping must never block the delete
+            audit_team = None
+
+        att_id, att_filename = attachment.pk, attachment.filename
         attachment.delete()
+
+        # Audit the deletion (best-effort; never breaks the action).
+        from audit.models import AuditAction
+        from audit.services import record
+
+        record(
+            AuditAction.ATTACHMENT_DELETED,
+            actor=request.user,
+            team=audit_team,
+            target_repr=f"Attachment #{att_id} ({att_filename})",
+            request=request,
+        )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
