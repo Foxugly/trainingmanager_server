@@ -3051,6 +3051,33 @@ paths:
             subscription URL is now invalid.
         '401':
           description: Access token missing or invalid.
+  /api/v1/me/export/:
+    get:
+      operationId: me_export_retrieve
+      description: |-
+        GET /api/v1/me/export/ — RGPD data portability.
+
+        Returns a single JSON document with all personal data we hold about the
+        authenticated caller, as a downloadable attachment. The password hash
+        and the live calendar_token secret are NEVER included.
+
+        The export is assembled defensively: each related area is wrapped so a
+        missing app/relation or a user without a linked Member yields an empty
+        list rather than a 500. Imports are kept local to avoid hard-coupling
+        customuser to every other app.
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: 'A downloadable JSON document (Content-Disposition: attachment)
+            with all personal data of the caller: profile, member_profile, team_memberships,
+            owned/managed teams, performances, rsvps, roti_scores, athlete-visible
+            notes_about_me, messages_authored, and uploaded_attachment metadata. The
+            password hash and calendar_token are never included.'
+        '401':
+          description: Access token missing or invalid.
   /api/v1/members/:
     get:
       operationId: members_list
@@ -3229,6 +3256,45 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/members/{id}/anonymize/:
+    post:
+      operationId: members_anonymize
+      description: |-
+        Irreversibly anonymize an athlete's personal data (RGPD erasure).
+
+        A coach (owner/manager) of a team the member belongs to (active OR
+        past membership) blanks the member's PII: firstname/lastname become a
+        neutral placeholder, email and phonenumber are cleared. Any linked
+        user account is UNLINKED (member.user = None) but NOT deleted — users
+        own their own account. Coach notes ABOUT this member are deleted (they
+        may contain PII). Training history (memberships, performances, rsvp,
+        roti) is KEPT, now tied to the anonymized member so aggregate stats
+        survive.
+
+        THIS IS IRREVERSIBLE. There is no undo.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Member.
+        required: true
+      tags:
+      - members
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+          description: PII irreversibly blanked. Returns the anonymized member.
+        '403':
+          description: The caller is not a coach (owner/manager) of any team this
+            member belongs to.
+        '404':
+          description: No such member in a team you manage.
   /api/v1/notifications/:
     get:
       operationId: notifications_list

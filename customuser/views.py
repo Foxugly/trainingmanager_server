@@ -64,6 +64,225 @@ class MeView(RetrieveUpdateAPIView):
         return self.request.user
 
 
+class DataExportView(APIView):
+    """GET /api/v1/me/export/ — RGPD data portability.
+
+    Returns a single JSON document with all personal data we hold about the
+    authenticated caller, as a downloadable attachment. The password hash
+    and the live calendar_token secret are NEVER included.
+
+    The export is assembled defensively: each related area is wrapped so a
+    missing app/relation or a user without a linked Member yields an empty
+    list rather than a 500. Imports are kept local to avoid hard-coupling
+    customuser to every other app.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="me_export_retrieve",
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    "A downloadable JSON document (Content-Disposition: "
+                    "attachment) with all personal data of the caller: "
+                    "profile, member_profile, team_memberships, owned/managed "
+                    "teams, performances, rsvps, roti_scores, athlete-visible "
+                    "notes_about_me, messages_authored, and uploaded_attachment "
+                    "metadata. The password hash and calendar_token are never "
+                    "included."
+                ),
+            ),
+            401: OpenApiResponse(description="Access token missing or invalid."),
+        },
+    )
+    def get(self, request):
+        user = request.user
+        data = self._build_export(user)
+        response = Response(data)
+        response["Content-Disposition"] = (
+            f'attachment; filename="trainingmanager-export-{user.username}.json"'
+        )
+        return response
+
+    @staticmethod
+    def _iso(value):
+        return value.isoformat() if value is not None else None
+
+    def _build_export(self, user):
+        member = getattr(user, "member_profile", None)
+
+        export = {
+            "profile": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "language": user.language,
+                "date_joined": self._iso(user.date_joined),
+                "last_login": self._iso(user.last_login),
+                "weekly_recap_opt_in": user.weekly_recap_opt_in,
+            },
+            "member_profile": None,
+            "team_memberships": [],
+            "owned_teams": [],
+            "managed_teams": [],
+            "performances": [],
+            "rsvps": [],
+            "roti_scores": [],
+            "notes_about_me": [],
+            "messages_authored": [],
+            "uploaded_attachments": [],
+        }
+
+        if member is not None:
+            export["member_profile"] = {
+                "firstname": member.firstname,
+                "lastname": member.lastname,
+                "email": member.email,
+                "phonenumber": member.phonenumber,
+            }
+
+        export["team_memberships"] = self._team_memberships(member)
+        export["owned_teams"] = self._owned_teams(user)
+        export["managed_teams"] = self._managed_teams(user)
+        export["performances"] = self._performances(member)
+        export["rsvps"] = self._rsvps(member)
+        export["roti_scores"] = self._roti_scores(member)
+        export["notes_about_me"] = self._notes_about_me(member)
+        export["messages_authored"] = self._messages_authored(user)
+        export["uploaded_attachments"] = self._uploaded_attachments(user)
+
+        return export
+
+    def _team_memberships(self, member):
+        if member is None:
+            return []
+        try:
+            return [
+                {
+                    "team": m.team.name,
+                    "joined_at": self._iso(m.joined_at),
+                    "left_at": self._iso(m.left_at),
+                }
+                for m in member.memberships.select_related("team").all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: team_memberships failed")
+            return []
+
+    def _owned_teams(self, user):
+        try:
+            return [{"id": t.id, "name": t.name} for t in user.owned_teams.all()]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: owned_teams failed")
+            return []
+
+    def _managed_teams(self, user):
+        try:
+            return [{"id": t.id, "name": t.name} for t in user.managed_teams.all()]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: managed_teams failed")
+            return []
+
+    def _performances(self, member):
+        if member is None:
+            return []
+        try:
+            return [
+                {
+                    "label": p.label,
+                    "value": str(p.value),
+                    "unit": p.unit,
+                    "recorded_on": self._iso(p.recorded_on),
+                    "notes": p.notes,
+                }
+                for p in member.performances.all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: performances failed")
+            return []
+
+    def _rsvps(self, member):
+        if member is None:
+            return []
+        try:
+            return [
+                {
+                    "event_id": r.event_id,
+                    "event_name": r.event.name,
+                    "status": r.status,
+                }
+                for r in member.rsvps.select_related("event").all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: rsvps failed")
+            return []
+
+    def _roti_scores(self, member):
+        if member is None:
+            return []
+        try:
+            return [
+                {"event_id": r.event_id, "score": r.score}
+                for r in member.rotis.all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: roti_scores failed")
+            return []
+
+    def _notes_about_me(self, member):
+        if member is None:
+            return []
+        try:
+            # Mirror the note app's athlete visibility rule: an athlete may
+            # only read a note that is shared with them AND still active.
+            return [
+                {
+                    "team": n.team.name,
+                    "content": n.content,
+                    "created_at": self._iso(n.created_at),
+                }
+                for n in member.notes.select_related("team").filter(
+                    visible_to_athlete=True, is_active=True
+                )
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: notes_about_me failed")
+            return []
+
+    def _messages_authored(self, user):
+        try:
+            return [
+                {
+                    "topic_title": m.topic.title,
+                    "content": m.content,
+                    "created_at": self._iso(m.created_at),
+                }
+                for m in user.topic_messages_authored.select_related("topic").all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: messages_authored failed")
+            return []
+
+    def _uploaded_attachments(self, user):
+        try:
+            return [
+                {
+                    "filename": a.filename,
+                    "content_type_mime": a.content_type_mime,
+                    "size_bytes": a.size_bytes,
+                    "created_at": self._iso(a.created_at),
+                }
+                for a in user.uploaded_attachments.all()
+            ]
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("export: uploaded_attachments failed")
+            return []
+
+
 class CalendarFeedView(APIView):
     """GET /api/v1/calendar/<token>.ics — public iCal subscription feed.
 

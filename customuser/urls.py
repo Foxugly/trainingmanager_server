@@ -5,6 +5,7 @@ from .views import (
     CalendarFeedView,
     CalendarTokenRotateView,
     ConfirmEmailView,
+    DataExportView,
     LogoutView,
     MeView,
     PasswordChangeView,
@@ -16,6 +17,7 @@ from .views import (
 
 urlpatterns = [
     path("me/", MeView.as_view(), name="me"),
+    path("me/export/", DataExportView.as_view(), name="me_export"),
     path(
         "me/calendar-token/rotate/",
         CalendarTokenRotateView.as_view(),
