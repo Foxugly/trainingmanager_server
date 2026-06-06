@@ -13,6 +13,7 @@ import re
 import uuid
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
 
@@ -23,8 +24,22 @@ def attachments_configured() -> bool:
 
 
 def _client():
-    """An S3 client using the default credential chain (instance role in prod)."""
-    return boto3.client("s3", region_name=settings.ATTACHMENTS_S3_REGION)
+    """An S3 client using the default credential chain (instance role in prod).
+
+    Forces SigV4 + virtual-hosted addressing so presigned URLs point at the
+    REGIONAL endpoint (``<bucket>.s3.<region>.amazonaws.com``). Without this,
+    boto3 may emit a legacy SigV2 URL against the global ``s3.amazonaws.com``
+    host; for a non-us-east-1 bucket the browser PUT then hits a redirect that
+    breaks CORS (net::ERR_FAILED). SigV4 regional URLs work with the bucket CORS.
+    """
+    return boto3.client(
+        "s3",
+        region_name=settings.ATTACHMENTS_S3_REGION,
+        config=Config(
+            signature_version="s3v4",
+            s3={"addressing_style": "virtual"},
+        ),
+    )
 
 
 # Keep alphanumerics, dash, underscore, dot; collapse everything else.
