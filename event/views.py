@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -16,10 +18,77 @@ from tools.validators import validate_reorder_ids
 from .ai import generate_training as ai_generate_training
 from .models import Event
 from .serializers import (
+    DuplicateEventRequestSerializer,
     EventSerializer,
     GenerateTrainingRequestSerializer,
     ReorderRoundsRequestSerializer,
 )
+
+
+# Fields copied verbatim from the source Event onto each duplicate. Excludes
+# id / created_at / updated_at (auto), members (per-session attendance — left
+# empty by design), rounds (deep-copied separately), and date (set per copy).
+# The AI lineage fields are preserved as-is so a duplicate of an AI-generated
+# session is still attributed to that generation.
+_EVENT_COPY_FIELDS = (
+    "name",
+    "goal",
+    "color",
+    "hour_start",
+    "hour_end",
+    "total",
+    "location",
+    "equipment",
+    "vis_distance",
+    "vis_goal",
+    "vis_rounds",
+    "refer_program",
+    "generated_by_ai",
+    "ai_prompt",
+    "ai_response",
+    "ai_generated_at",
+)
+
+
+def _duplicate_event(source, target_date):
+    """Create one independent copy of ``source`` on ``target_date``.
+
+    Scalar fields are copied verbatim (see ``_EVENT_COPY_FIELDS``); ``date`` is
+    set to the target.
+
+    Rounds vs. exercises differ deliberately:
+      * Rounds are per-event in practice (generate_training mints fresh Round
+        rows for every event; they are never shared), so we DEEP-COPY each
+        source Round into a brand-new Round attached only to the copy. This
+        keeps the copy's rounds editable/deletable in full isolation from the
+        source.
+      * Exercises are a shared, de-duplicated library (generate_training reuses
+        them via get_or_create), so we RE-LINK the same Exercise rows onto the
+        new rounds rather than cloning them.
+
+    Members (M2M) are intentionally NOT copied — attendance is per-session.
+
+    Must be called inside a transaction.atomic() by the caller.
+    """
+    new_event = Event(date=target_date)
+    for field in _EVENT_COPY_FIELDS:
+        setattr(new_event, field, getattr(source, field))
+    new_event.save()
+
+    for src_round in source.rounds.all():
+        new_round = Round.objects.create(
+            order=src_round.order,
+            count=src_round.count,
+            t_start=src_round.t_start,
+            t_break=src_round.t_break,
+            sport=src_round.sport,
+            language=src_round.language,
+        )
+        # Re-link the SAME shared Exercise rows (do not clone the library).
+        new_round.exercises.set(src_round.exercises.all())
+        new_event.rounds.add(new_round)
+
+    return new_event
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -246,3 +315,62 @@ class EventViewSet(viewsets.ModelViewSet):
                 Round.objects.filter(pk=round_id).update(order=index)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=DuplicateEventRequestSerializer,
+        responses={
+            201: OpenApiResponse(
+                response=inline_serializer(
+                    name="DuplicateEventResponse",
+                    fields={
+                        "created": inline_serializer(
+                            name="DuplicateEventCreated",
+                            many=True,
+                            fields={
+                                "id": serializers.IntegerField(),
+                                "date": serializers.DateField(),
+                            },
+                        ),
+                    },
+                ),
+                description="Session(s) duplicated successfully",
+            ),
+            400: OpenApiResponse(description="Invalid request body"),
+            403: OpenApiResponse(description="Not a manager of this event team"),
+            404: OpenApiResponse(description="Event not found / not in scope"),
+        },
+        description=(
+            "Duplicate this training session onto a new date, optionally "
+            "repeating weekly. The copy deep-copies the source's Rounds into "
+            "fresh Round rows (re-linking the shared Exercise library) so each "
+            "session is fully independent; per-session members are NOT copied. "
+            "With `repeat_weekly=true` and `occurrences=N`, N sessions are "
+            "created on `date`, `date`+7d, ..., `date`+7*(N-1)d. With "
+            "`repeat_weekly=false` exactly one copy is created (occurrences is "
+            "forced to 1). Manager/owner of the event's team only."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="duplicate")
+    def duplicate(self, request, pk=None):
+        """POST /api/v1/events/{id}/duplicate/ — copy a session, optional weekly repeat."""
+        event = self.get_object()
+
+        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        body_serializer = DuplicateEventRequestSerializer(data=request.data)
+        body_serializer.is_valid(raise_exception=True)
+        start_date = body_serializer.validated_data["date"]
+        repeat_weekly = body_serializer.validated_data["repeat_weekly"]
+        # Non-recurring duplication is always a single copy, regardless of any
+        # occurrences value the client supplied.
+        occurrences = body_serializer.validated_data["occurrences"] if repeat_weekly else 1
+
+        created = []
+        with transaction.atomic():
+            for k in range(occurrences):
+                target_date = start_date + timedelta(days=7 * k)
+                new_event = _duplicate_event(event, target_date)
+                created.append({"id": new_event.pk, "date": target_date})
+
+        return Response({"created": created}, status=status.HTTP_201_CREATED)

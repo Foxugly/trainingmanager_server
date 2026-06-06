@@ -24,6 +24,25 @@ class ReorderRoundsRequestSerializer(serializers.Serializer):
     )
 
 
+class DuplicateEventRequestSerializer(serializers.Serializer):
+    """Body for POST /events/{id}/duplicate/.
+
+    `date` is the date of the FIRST copy. When `repeat_weekly` is True, the
+    view materializes `occurrences` independent Event rows, each 7 days apart
+    starting at `date`. When False, exactly one copy is created (the view
+    forces occurrences to 1 regardless of the supplied value).
+    """
+
+    date = serializers.DateField(required=True)
+    repeat_weekly = serializers.BooleanField(required=False, default=False)
+    occurrences = serializers.IntegerField(
+        required=False,
+        default=1,
+        min_value=1,
+        max_value=52,
+    )
+
+
 class GenerateTrainingRequestSerializer(serializers.Serializer):
     """Optional payload for POST /events/{id}/generate-training/.
 

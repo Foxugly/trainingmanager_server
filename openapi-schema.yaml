@@ -1684,6 +1684,52 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/events/{id}/duplicate/:
+    post:
+      operationId: events_duplicate_create
+      description: Duplicate this training session onto a new date, optionally repeating
+        weekly. The copy deep-copies the source's Rounds into fresh Round rows (re-linking
+        the shared Exercise library) so each session is fully independent; per-session
+        members are NOT copied. With `repeat_weekly=true` and `occurrences=N`, N sessions
+        are created on `date`, `date`+7d, ..., `date`+7*(N-1)d. With `repeat_weekly=false`
+        exactly one copy is created (occurrences is forced to 1). Manager/owner of
+        the event's team only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuplicateEventRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DuplicateEventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DuplicateEventRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateEventResponse'
+          description: Session(s) duplicated successfully
+        '400':
+          description: Invalid request body
+        '403':
+          description: Not a manager of this event team
+        '404':
+          description: Event not found / not in scope
   /api/v1/events/{id}/generate-training/:
     post:
       operationId: events_generate_training_create
@@ -6035,6 +6081,49 @@ components:
       - id
       - last_name
       - username
+    DuplicateEventCreated:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - id
+    DuplicateEventRequest:
+      type: object
+      description: |-
+        Body for POST /events/{id}/duplicate/.
+
+        `date` is the date of the FIRST copy. When `repeat_weekly` is True, the
+        view materializes `occurrences` independent Event rows, each 7 days apart
+        starting at `date`. When False, exactly one copy is created (the view
+        forces occurrences to 1 regardless of the supplied value).
+      properties:
+        date:
+          type: string
+          format: date
+        repeat_weekly:
+          type: boolean
+          default: false
+        occurrences:
+          type: integer
+          maximum: 52
+          minimum: 1
+          default: 1
+      required:
+      - date
+    DuplicateEventResponse:
+      type: object
+      properties:
+        created:
+          type: array
+          items:
+            $ref: '#/components/schemas/DuplicateEventCreated'
+      required:
+      - created
     EmailConfirm:
       type: object
       description: Body for POST /api/v1/auth/email/confirm/.
