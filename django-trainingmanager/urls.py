@@ -36,6 +36,7 @@ urlpatterns = [
     path("api/v1/", include("chat.urls")),
     path("api/v1/", include("attendance.urls")),
     path("api/v1/", include("roti.urls")),
+    path("api/v1/", include("rsvp.urls")),
     path("api/v1/", include("level.urls")),
     path("api/v1/", include("notifications.urls")),
     path("api/v1/", include("messaging.urls")),

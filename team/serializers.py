@@ -70,6 +70,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "is_public",
             "logo",
             "roti_enabled",
+            "rsvp_enabled",
             "chat_mode",
             "weekly_recap_enabled",
             "attendance_statuses",

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "chat",
     "attendance",
     "roti",
+    "rsvp",
     "level",
     "notifications",
     "messaging",
@@ -295,6 +296,7 @@ SPECTACULAR_SETTINGS = {
         "InvitationStatusEnum": "team.models.TeamInvitation.STATUS_CHOICES",
         "OverlapStrategyEnum": "program.choices.OVERLAP_STRATEGY_CHOICES",
         "VisibilityMode": "event.models.VisibilityMode",
+        "RsvpStatusEnum": "rsvp.models.RsvpStatus",
     },
 }
 

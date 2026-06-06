@@ -1485,6 +1485,101 @@ paths:
               schema:
                 $ref: '#/components/schemas/RotiSummary'
           description: ''
+  /api/v1/events/{event_pk}/rsvp/:
+    get:
+      operationId: events_rsvp_retrieve
+      description: Returns the aggregate availability for the event (counts, total_members)
+        plus the caller's own status (my_status). Managers additionally get the per-member
+        breakdown (by_member); athletes get an empty by_member. Coaches and athlete-members
+        of the team may read.
+      summary: Get RSVP summary for an event (incl. my_status)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RsvpSummary'
+          description: ''
+    put:
+      operationId: events_rsvp_update
+      description: 'Athlete-only: resolves the caller''s Member within the event''s
+        team and update_or_creates their Rsvp(event, member) with the given status.
+        Returns 403 if the team has rsvp_enabled=False or the caller is not an athlete-member;
+        400 if the status is invalid.'
+      summary: Upsert the caller's own RSVP (going/maybe/not_going)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RsvpUpsert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RsvpUpsert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RsvpUpsert'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RsvpSummary'
+          description: ''
+        '400':
+          description: Invalid status
+        '403':
+          description: RSVP disabled or caller not an athlete-member
+  /api/v1/events/{event_pk}/rsvp/apply_to_attendance/:
+    post:
+      operationId: events_rsvp_apply_to_attendance
+      description: 'Managers/owner only. For each member with an RSVP on the event,
+        upserts their Attendance: GOING -> the ''present'' AttendanceStatus, NOT_GOING
+        -> ''absent''. MAYBE is skipped (attendance left untouched). RSVPs whose target
+        status code is not seeded are also skipped. Returns how many rows were applied
+        and skipped.'
+      summary: Pre-fill attendance from RSVPs (managers only)
+      parameters:
+      - in: path
+        name: event_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RsvpApplyToAttendanceResult'
+          description: ''
+        '403':
+          description: Not a team manager
   /api/v1/events/{id}/:
     get:
       operationId: events_retrieve
@@ -6958,6 +7053,9 @@ components:
             $ref: '#/components/schemas/NotificationPreference'
       required:
       - preferences
+    NullEnum:
+      enum:
+      - null
     OverlapStrategyEnum:
       enum:
       - add_only
@@ -8360,6 +8458,10 @@ components:
           type: boolean
           description: If True, athletes can submit a per-session difficulty rating
             (ROTI, 1..5) for the team's events.
+        rsvp_enabled:
+          type: boolean
+          description: 'If True, athletes can declare their availability (RSVP: going
+            / maybe / not going) for the team''s events.'
         chat_mode:
           allOf:
           - $ref: '#/components/schemas/ChatModeEnum'
@@ -8799,6 +8901,98 @@ components:
       - sport_id
       - updated_at
       - usage_count
+    RsvpApplyToAttendanceResult:
+      type: object
+      description: 200 response for POST .../rsvp/apply_to_attendance/.
+      properties:
+        applied:
+          type: integer
+          description: Number of Attendance rows created or updated from RSVPs.
+        skipped:
+          type: integer
+          description: RSVPs left untouched (MAYBE, or a status with no mapped AttendanceStatus).
+      required:
+      - applied
+      - skipped
+    RsvpByMember:
+      type: object
+      description: One row of the manager-facing per-member RSVP breakdown.
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        status:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/RsvpStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - member_id
+      - name
+      - status
+    RsvpCounts:
+      type: object
+      description: Per-status tally for an event's RSVPs, plus members who didn't
+        reply.
+      properties:
+        going:
+          type: integer
+        maybe:
+          type: integer
+        not_going:
+          type: integer
+        no_response:
+          type: integer
+      required:
+      - going
+      - maybe
+      - no_response
+      - not_going
+    RsvpStatusEnum:
+      enum:
+      - going
+      - maybe
+      - not_going
+      type: string
+      description: |-
+        * `going` - Going
+        * `maybe` - Maybe
+        * `not_going` - Not going
+    RsvpSummary:
+      type: object
+      description: |-
+        Aggregate availability for an event, plus the caller's own status.
+
+        `by_member` is only populated for team managers (coach view); athletes
+        get at least `my_status` (and the aggregate `counts`).
+      properties:
+        counts:
+          $ref: '#/components/schemas/RsvpCounts'
+        total_members:
+          type: integer
+        my_status:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/RsvpStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        by_member:
+          type: array
+          items:
+            $ref: '#/components/schemas/RsvpByMember'
+      required:
+      - by_member
+      - counts
+      - my_status
+      - total_members
+    RsvpUpsert:
+      type: object
+      description: Request body for PUT .../rsvp/ — only the caller's own status.
+      properties:
+        status:
+          $ref: '#/components/schemas/RsvpStatusEnum'
+      required:
+      - status
     Sport:
       type: object
       description: |-
@@ -9105,6 +9299,10 @@ components:
           type: boolean
           description: If True, athletes can submit a per-session difficulty rating
             (ROTI, 1..5) for the team's events.
+        rsvp_enabled:
+          type: boolean
+          description: 'If True, athletes can declare their availability (RSVP: going
+            / maybe / not going) for the team''s events.'
         chat_mode:
           allOf:
           - $ref: '#/components/schemas/ChatModeEnum'

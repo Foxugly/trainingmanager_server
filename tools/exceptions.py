@@ -94,11 +94,20 @@ class RotiDisabled(PermissionDenied):
 
 class NotAnAthleteMember(PermissionDenied):
     """403 raised when the caller is not an active athlete-member of the
-    event's team and tries to submit a ROTI. Frontend matches on
+    event's team and tries to submit a ROTI / RSVP. Frontend matches on
     `code == "not_an_athlete_member"`."""
 
     default_detail = _("Only athlete-members of the team can submit a ROTI.")
     default_code = "not_an_athlete_member"
+
+
+class RsvpDisabled(PermissionDenied):
+    """403 raised when an athlete tries to submit an RSVP on a team whose
+    `rsvp_enabled` toggle is False. Frontend matches on
+    `code == "rsvp_disabled"`."""
+
+    default_detail = _("RSVP is not enabled for this team.")
+    default_code = "rsvp_disabled"
 
 
 def custom_exception_handler(exc, context):

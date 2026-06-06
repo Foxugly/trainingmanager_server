@@ -79,6 +79,13 @@ class Team(models.Model):
             "(ROTI, 1..5) for the team's events."
         ),
     )
+    rsvp_enabled = models.BooleanField(
+        default=False,
+        help_text=_(
+            "If True, athletes can declare their availability (RSVP: going / "
+            "maybe / not going) for the team's events."
+        ),
+    )
     chat_mode = models.CharField(
         max_length=20,
         choices=ChatMode.choices,
