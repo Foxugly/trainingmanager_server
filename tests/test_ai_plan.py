@@ -114,6 +114,44 @@ def test_POST_generate_events_updates_program_ai_fields(
     assert program.ai_generated_at is not None
 
 
+def test_POST_generate_events_sets_time_and_location(
+    auth_client_trainer, trainer_user, settings
+):
+    """The AI plan fills hour_start / hour_end / location on each session."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+    events_payload = [
+        {
+            "name": "Seance 1",
+            "goal": "Endurance",
+            "date": start.isoformat(),
+            "hour_start": "18:00",
+            "hour_end": "19:30",
+            "location": "Piscine communale",
+            "total_distance": 3000,
+            "color": "#3498db",
+        }
+    ]
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(events=events_payload)
+        resp = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    ev = Event.objects.filter(refer_program=program, date=start).first()
+    assert ev is not None
+    assert ev.hour_start.strftime("%H:%M") == "18:00"
+    assert ev.hour_end.strftime("%H:%M") == "19:30"
+    assert ev.location == "Piscine communale"
+
+
 # ----------------------------- Permissions ---------------------------
 
 

@@ -1,4 +1,5 @@
 from datetime import date as _date
+from datetime import datetime as _datetime
 
 from django.db import transaction
 from django.db.models import Q
@@ -24,6 +25,20 @@ from tools.throttling import AIPlanGenerationThrottle
 from .ai import generate_plan
 from .models import Program
 from .serializers import GeneratePlanRequestSerializer, ProgramSerializer
+
+
+def _parse_hhmm(value):
+    """Parse an AI-supplied 'HH:MM' string into a time, or None if absent/invalid.
+
+    Defensive: the AI is asked for 24h HH:MM but a bad value must never break
+    the whole plan creation — we just drop the time for that session.
+    """
+    if not value:
+        return None
+    try:
+        return _datetime.strptime(value.strip(), "%H:%M").time()
+    except (ValueError, AttributeError):
+        return None
 
 
 @extend_schema_view(
@@ -198,6 +213,9 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 name=ev_data["name"][:100],
                 goal=ev_data["goal"][:100],
                 date=ev_date,
+                hour_start=_parse_hhmm(ev_data.get("hour_start")),
+                hour_end=_parse_hhmm(ev_data.get("hour_end")),
+                location=(ev_data.get("location") or "")[:255],
                 color=ev_data["color"],
                 total=ev_data["total_distance"],
             )

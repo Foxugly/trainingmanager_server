@@ -26,8 +26,9 @@ PLAN_TOOL_SCHEMA = {
     "name": "create_training_plan",
     "description": (
         "Generate a training plan as a list of high-level Events (one per "
-        "planned session). Each Event has a short name, a goal, a date, an "
-        "approximate total distance, and a color from the allowed palette."
+        "planned session). Each Event has a short name, a goal, a date, a "
+        "start and end time, a location (venue/pool), an approximate total "
+        "distance, and a color from the allowed palette."
     ),
     "input_schema": {
         "type": "object",
@@ -52,6 +53,25 @@ PLAN_TOOL_SCHEMA = {
                             "format": "date",
                             "description": "Date in YYYY-MM-DD format",
                         },
+                        "hour_start": {
+                            "type": "string",
+                            "pattern": "^[0-9]{2}:[0-9]{2}$",
+                            "description": "Start time, 24h HH:MM (e.g. 18:00)",
+                        },
+                        "hour_end": {
+                            "type": "string",
+                            "pattern": "^[0-9]{2}:[0-9]{2}$",
+                            "description": "End time, 24h HH:MM, after hour_start (e.g. 19:30)",
+                        },
+                        "location": {
+                            "type": "string",
+                            "maxLength": 255,
+                            "description": (
+                                "Venue / pool where the session takes place. "
+                                "Reuse one of the team's known locations when "
+                                "provided; otherwise leave it empty."
+                            ),
+                        },
                         "total_distance": {
                             "type": "integer",
                             "minimum": 0,
@@ -63,7 +83,15 @@ PLAN_TOOL_SCHEMA = {
                             "description": "Color from the allowed palette",
                         },
                     },
-                    "required": ["name", "goal", "date", "total_distance", "color"],
+                    "required": [
+                        "name",
+                        "goal",
+                        "date",
+                        "hour_start",
+                        "hour_end",
+                        "total_distance",
+                        "color",
+                    ],
                 },
             },
             "rationale": {
@@ -95,6 +123,7 @@ def build_user_prompt(
     frequency_per_week,
     description,
     team=None,
+    pools=None,
     additional_prompt="",
 ):
     duration_days = (date_end - date_start).days + 1
@@ -108,6 +137,13 @@ def build_user_prompt(
     if team and team.level:
         level_line = f"- Team skill level: {team.level.name} — {team.level.description}\n"
 
+    pools_line = ""
+    if pools:
+        pools_line = (
+            f"- Known training locations for this team (reuse one consistently "
+            f"for the 'location' of each session): {', '.join(pools)}\n"
+        )
+
     base = (
         f"Generate a training plan with these constraints:\n"
         f"- Sport: {sport_name}\n"
@@ -116,6 +152,7 @@ def build_user_prompt(
         f"({duration_days} days, ~{weeks} weeks)\n"
         f"- Frequency: {frequency_per_week} sessions per week "
         f"(~{expected_events} sessions total)\n"
+        f"{pools_line}"
         f"- Description and constraints provided by the coach: "
         f"{description or '(none)'}\n"
         f"\n"
@@ -128,6 +165,12 @@ def build_user_prompt(
         f"- Generate approximately {expected_events} sessions distributed "
         f"intelligently across the period. Each session must have a date "
         f"within the requested range.\n"
+        f"- Set a realistic start time (hour_start) and end time (hour_end, "
+        f"after the start) for every session — keep them consistent (typical "
+        f"training slots) unless the coach's description implies otherwise.\n"
+        f"- Set a 'location' for every session: reuse one of the team's known "
+        f"locations listed above when provided; if none are listed, leave "
+        f"location empty.\n"
         f"- Vary effort types (endurance, technique, intensity, recovery) "
         f"following a coherent progression.\n"
         f"- Respond ENTIRELY in {language_label}: all event names, goals, "
@@ -196,6 +239,18 @@ def generate_plan(
         len(additional_prompt or ""),
     )
 
+    # Distinct, non-empty session locations already used across this team's
+    # events, so the AI reuses a real venue for each generated session.
+    from event.models import Event
+
+    pools = list(
+        Event.objects.filter(refer_program__team_id=program.team_id)
+        .exclude(location="")
+        .values_list("location", flat=True)
+        .distinct()
+        .order_by("location")
+    )
+
     system = build_system_prompt(sport_name)
     user_prompt = build_user_prompt(
         sport_name=sport_name,
@@ -205,6 +260,7 @@ def generate_plan(
         frequency_per_week=frequency_per_week,
         description=description,
         team=program.team,
+        pools=pools,
         additional_prompt=additional_prompt,
     )
     logger.info(
