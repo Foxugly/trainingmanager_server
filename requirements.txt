@@ -12,6 +12,7 @@ django-filter==25.2
 drf-nested-routers==0.95.0
 django-modeltranslation==0.20.3
 bleach==6.3.0
+icalendar==7.1.2             # RFC 5545 .ics generation for the per-user calendar feed
 anthropic==0.97.0
 psycopg[binary]>=3.2,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 

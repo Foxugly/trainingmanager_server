@@ -2,6 +2,7 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import Http404, HttpResponse
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
@@ -15,6 +16,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from customuser.calendar import build_calendar_for_user
 from tools.exceptions import CaptchaFailed, OwnsTeams
 from tools.throttling import (
     LoginThrottle,
@@ -28,6 +30,7 @@ from tools.turnstile import get_remote_ip, verify_turnstile_token
 from .models import CustomUser
 from .serializers import (
     AccountDeleteSerializer,
+    CalendarTokenSerializer,
     EmailConfirmSerializer,
     EmailResendSerializer,
     LogoutSerializer,
@@ -59,6 +62,63 @@ class MeView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class CalendarFeedView(APIView):
+    """GET /api/v1/calendar/<token>.ics — public iCal subscription feed.
+
+    The opaque ``token`` IS the authentication: the user pastes the full URL
+    into their calendar client (Google/Apple/Outlook/Thunderbird/Proton/
+    Nextcloud), which polls it periodically. We look the user up by
+    ``calendar_token`` (404 for any unknown/rotated token) and return a
+    valid ``text/calendar`` VCALENDAR of their teams' sessions.
+
+    Excluded from the OpenAPI schema: it returns a file, not JSON, so it
+    has no place in the typed frontend client.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(exclude=True)
+    def get(self, request, token):
+        user = CustomUser.objects.filter(calendar_token=token).first()
+        if user is None:
+            raise Http404("No calendar for this token.")
+
+        content = build_calendar_for_user(user)
+        response = HttpResponse(content, content_type="text/calendar; charset=utf-8")
+        response["Content-Disposition"] = 'inline; filename="trainingmanager.ics"'
+        return response
+
+
+class CalendarTokenRotateView(APIView):
+    """POST /api/v1/me/calendar-token/rotate/ — rotate the caller's token.
+
+    Generates a brand-new ``calendar_token`` for the authenticated user,
+    which immediately invalidates the previous .ics subscription URL, and
+    returns the new token so the SPA can rebuild the URL.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        operation_id="me_calendar_token_rotate",
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=CalendarTokenSerializer,
+                description=(
+                    "Token rotated. Returns {calendar_token}. The previous "
+                    ".ics subscription URL is now invalid."
+                ),
+            ),
+            401: OpenApiResponse(description="Access token missing or invalid."),
+        },
+    )
+    def post(self, request):
+        new_token = request.user.rotate_calendar_token()
+        return Response(CalendarTokenSerializer({"calendar_token": new_token}).data)
 
 
 def _jwt_pair(user):

@@ -1,7 +1,9 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from .views import (
     AccountDeleteView,
+    CalendarFeedView,
+    CalendarTokenRotateView,
     ConfirmEmailView,
     LogoutView,
     MeView,
@@ -14,6 +16,18 @@ from .views import (
 
 urlpatterns = [
     path("me/", MeView.as_view(), name="me"),
+    path(
+        "me/calendar-token/rotate/",
+        CalendarTokenRotateView.as_view(),
+        name="me_calendar_token_rotate",
+    ),
+    # Public per-user iCal feed. The token is URL-safe base64 (letters,
+    # digits, '-', '_'); match up to the literal ".ics" suffix.
+    re_path(
+        r"^calendar/(?P<token>[\w-]+)\.ics$",
+        CalendarFeedView.as_view(),
+        name="calendar_feed",
+    ),
     path("auth/register/", RegisterView.as_view(), name="auth_register"),
     path("auth/email/confirm/", ConfirmEmailView.as_view(), name="auth_email_confirm"),
     path("auth/email/resend/", ResendEmailView.as_view(), name="auth_email_resend"),

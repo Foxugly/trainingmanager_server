@@ -2656,6 +2656,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Me'
           description: ''
+  /api/v1/me/calendar-token/rotate/:
+    post:
+      operationId: me_calendar_token_rotate
+      description: |-
+        POST /api/v1/me/calendar-token/rotate/ — rotate the caller's token.
+
+        Generates a brand-new ``calendar_token`` for the authenticated user,
+        which immediately invalidates the previous .ics subscription URL, and
+        returns the new token so the SPA can rebuild the URL.
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarToken'
+          description: Token rotated. Returns {calendar_token}. The previous .ics
+            subscription URL is now invalid.
+        '401':
+          description: Access token missing or invalid.
   /api/v1/members/:
     get:
       operationId: members_list
@@ -5795,6 +5818,20 @@ components:
       description: |-
         * `team` - Whole team
         * `coaches` - Coaches only
+    CalendarToken:
+      type: object
+      description: |-
+        Response body of POST /api/v1/me/calendar-token/rotate/.
+
+        Returns the freshly-generated calendar_token so the SPA can rebuild the
+        user's .ics subscription URL ({API_BASE}/api/v1/calendar/{token}.ics).
+      properties:
+        calendar_token:
+          type: string
+          readOnly: true
+          description: The new calendar token. The previous .ics URL is now invalid.
+      required:
+      - calendar_token
     ChatModeEnum:
       enum:
       - all
@@ -6618,7 +6655,14 @@ components:
           allOf:
           - $ref: '#/components/schemas/TeamQuotaStatus'
           readOnly: true
+        calendar_token:
+          type: string
+          readOnly: true
+          description: Unguessable token embedded in the user's personal iCal (.ics)
+            subscription URL. The token IS the authentication for that (otherwise
+            anonymous) feed. Rotate it to revoke an old URL.
       required:
+      - calendar_token
       - date_joined
       - email
       - id
@@ -7932,6 +7976,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/TeamQuotaStatus'
           readOnly: true
+        calendar_token:
+          type: string
+          readOnly: true
+          description: Unguessable token embedded in the user's personal iCal (.ics)
+            subscription URL. The token IS the authentication for that (otherwise
+            anonymous) feed. Rotate it to revoke an old URL.
     PatchedMember:
       type: object
       properties:

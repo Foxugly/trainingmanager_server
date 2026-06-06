@@ -53,6 +53,7 @@ class MeSerializer(serializers.ModelSerializer):
             "last_login",
             "date_joined",
             "team_quota",
+            "calendar_token",
         ]
         # is_staff is exposed READ-ONLY so the SPA can gate its admin back-office
         # (/admin referential CRUD). It is the user's own flag; server-side
@@ -66,6 +67,7 @@ class MeSerializer(serializers.ModelSerializer):
             "last_login",
             "date_joined",
             "team_quota",
+            "calendar_token",
         ]
 
     @extend_schema_field(TeamQuotaStatusSerializer)
@@ -76,6 +78,18 @@ class MeSerializer(serializers.ModelSerializer):
             "max": obj.team_quota,
             "can_create": used < obj.team_quota,
         }
+
+
+class CalendarTokenSerializer(serializers.Serializer):
+    """Response body of POST /api/v1/me/calendar-token/rotate/.
+
+    Returns the freshly-generated calendar_token so the SPA can rebuild the
+    user's .ics subscription URL ({API_BASE}/api/v1/calendar/{token}.ics)."""
+
+    calendar_token = serializers.CharField(
+        read_only=True,
+        help_text="The new calendar token. The previous .ics URL is now invalid.",
+    )
 
 
 class RegisterSerializer(serializers.Serializer):
