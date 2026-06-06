@@ -43,6 +43,14 @@ fi
 echo ">>> Running migrations..."
 "$VENV/bin/python" manage.py migrate --noinput
 
+echo ">>> Compiling translation catalogs (.po -> .mo)..."
+# .mo files are gitignored (binary build artifacts); compile them on each
+# deploy so backend gettext strings (error messages, audit action labels,
+# emails, model verbose names) localize to fr/nl/it/es. Requires msgfmt
+# (gettext) on the box. Non-fatal: a missing toolchain must not abort a
+# deploy — the app simply falls back to the English msgids.
+"$VENV/bin/python" manage.py compilemessages || echo "WARN: compilemessages failed; continuing with English fallback."
+
 echo ">>> Collecting static files..."
 "$VENV/bin/python" manage.py collectstatic --noinput
 
