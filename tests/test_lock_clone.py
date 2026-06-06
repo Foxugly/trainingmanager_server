@@ -34,6 +34,47 @@ def test_PATCH_exercise_locked_returns_409(auth_client_trainer, trainer_sport):
     assert response.status_code == 409
 
 
+def test_PATCH_shared_exercise_with_round_id_forks_and_relinks(auth_client_trainer, trainer_sport):
+    """Editing a shared exercise with round_id forks it: the named round gets a
+    clone with the change, the OTHER round keeps the untouched original."""
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality, notes="original")
+    r_edit = RoundFactory(sport=trainer_sport, exercises=[ex])
+    r_other = RoundFactory(sport=trainer_sport, exercises=[ex])
+
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/",
+        {"notes": "forked", "round_id": r_edit.pk},
+        format="json",
+    )
+
+    assert response.status_code == 200
+    new_id = response.json()["id"]
+    assert new_id != ex.pk  # a fork, not an in-place edit
+    assert response.json()["notes"] == "forked"
+
+    # The edited round now points at the clone; the other round still has the
+    # original, which is unchanged.
+    assert list(r_edit.exercises.values_list("pk", flat=True)) == [new_id]
+    assert list(r_other.exercises.values_list("pk", flat=True)) == [ex.pk]
+    ex.refresh_from_db()
+    assert ex.notes == "original"
+
+
+def test_PATCH_shared_exercise_without_round_id_still_409(auth_client_trainer, trainer_sport):
+    """No round_id → we can't fork safely, so a shared exercise stays locked."""
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    RoundFactory(sport=trainer_sport, exercises=[ex])
+    RoundFactory(sport=trainer_sport, exercises=[ex])
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/",
+        {"notes": "no round provided"},
+        format="json",
+    )
+    assert response.status_code == 409
+
+
 def test_PATCH_round_unlocked_returns_200(auth_client_trainer, trainer_sport):
     r = RoundFactory(sport=trainer_sport)
     EventFactory(rounds=[r])

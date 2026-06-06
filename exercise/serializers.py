@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -160,10 +161,12 @@ class ExerciseSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
         help_text=_(
-            "Optional. If provided on POST, the newly created Exercise is atomically "
-            "attached to this Round. The request user must manage at least one team "
-            "of at least one Event linked to this Round (library rounds with no "
-            "events are accepted as-is). Ignored on PATCH/PUT."
+            "Optional. On POST, the newly created Exercise is atomically attached "
+            "to this Round. On PATCH/PUT, if the Exercise is shared by several "
+            "Rounds (usage_count > 1), it is forked: a clone with the changes is "
+            "swapped into THIS Round and the shared original is left untouched. "
+            "The request user must manage at least one team of an Event linked to "
+            "this Round (library rounds with no events are accepted as-is)."
         ),
     )
     usage_count = serializers.SerializerMethodField()
@@ -194,26 +197,65 @@ class ExerciseSerializer(serializers.ModelSerializer):
     def get_usage_count(self, obj) -> int:
         return obj.usage_count
 
+    # Scalar fields copied when forking a shared exercise on edit.
+    _FORK_FIELDS = (
+        "order",
+        "repetition",
+        "distance",
+        "notes",
+        "t_start",
+        "t_break",
+        "modality",
+        "energysegment",
+        "language",
+    )
+
+    def _assert_can_write_round(self, target_round):
+        """Raise unless the request user manages a team of an event tied to the
+        round. Library rounds with no events are accepted as-is."""
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        linked_events = list(target_round.event_set.select_related("refer_program__team").all())
+        if linked_events:
+            authorized = any(
+                e.refer_program is not None and e.refer_program.team.is_managed_by(user)
+                for e in linked_events
+            )
+            if user is None or not authorized:
+                raise NotAuthorizedRound()
+
     def create(self, validated_data):
         target_round = validated_data.pop("_target_round", None)
         if target_round is not None:
-            request = self.context.get("request")
-            user = getattr(request, "user", None)
-            linked_events = list(target_round.event_set.select_related("refer_program__team").all())
-            if linked_events:
-                authorized = any(
-                    e.refer_program is not None and e.refer_program.team.is_managed_by(user)
-                    for e in linked_events
-                )
-                if user is None or not authorized:
-                    raise NotAuthorizedRound()
+            self._assert_can_write_round(target_round)
         exercise = super().create(validated_data)
         if target_round is not None:
             target_round.exercises.add(exercise)
         return exercise
 
     def update(self, instance, validated_data):
+        target_round = validated_data.pop("_target_round", None)
+        # An Exercise is a shared/deduplicated library row. If it is used by more
+        # than one Round, editing it in place would silently mutate every other
+        # round that references it. Instead, FORK-ON-EDIT: clone the row with the
+        # requested changes and swap it into the caller's round, leaving the
+        # shared original untouched for everyone else. The caller must say which
+        # round to relink (round_id); without it we cannot fork safely.
         if instance.usage_count > 1:
-            raise ResourceLocked()
-        validated_data.pop("_target_round", None)
+            if target_round is None:
+                raise ResourceLocked()
+            self._assert_can_write_round(target_round)
+            if not target_round.exercises.filter(pk=instance.pk).exists():
+                # The exercise isn't part of the round the caller named.
+                raise ResourceLocked()
+            clone_kwargs = {
+                field: validated_data.get(field, getattr(instance, field))
+                for field in self._FORK_FIELDS
+            }
+            with transaction.atomic():
+                clone = Exercise.objects.create(**clone_kwargs)
+                target_round.exercises.remove(instance)
+                target_round.exercises.add(clone)
+            return clone
+        # Not shared (0/1 round): a plain in-place update is safe.
         return super().update(instance, validated_data)
