@@ -3400,6 +3400,239 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnreadCount'
           description: ''
+  /api/v1/performances/:
+    get:
+      operationId: performances_list
+      description: 'Returns the performances the caller may see: their own (as the
+        member''s linked user) plus those of any team they coach. Optional filters:
+        team, member, label (icontains). Order by recorded_on.'
+      summary: List athlete performances (scoped + filtered)
+      parameters:
+      - in: query
+        name: label
+        schema:
+          type: string
+        description: Filter by label (icontains).
+      - in: query
+        name: member
+        schema:
+          type: integer
+        description: Filter by member id.
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: team
+        schema:
+          type: integer
+        description: Filter by team id.
+      tags:
+      - performances
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPerformanceList'
+          description: ''
+    post:
+      operationId: performances_create
+      description: |-
+        CRUD on athlete performance records, scoped to a team + member.
+
+        URL: /api/v1/performances/
+
+        READ scope: a user sees a Performance if they are the member's linked
+        user OR a coach (owner/manager) of the performance's team.
+        WRITE: the member's own user OR a coach of the team. Athletes may only
+        create for their own member, in a team they belong to.
+      summary: Log a performance
+      tags:
+      - performances
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Performance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Performance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Performance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Performance'
+          description: ''
+  /api/v1/performances/{id}/:
+    get:
+      operationId: performances_retrieve
+      description: |-
+        CRUD on athlete performance records, scoped to a team + member.
+
+        URL: /api/v1/performances/
+
+        READ scope: a user sees a Performance if they are the member's linked
+        user OR a coach (owner/manager) of the performance's team.
+        WRITE: the member's own user OR a coach of the team. Athletes may only
+        create for their own member, in a team they belong to.
+      summary: Retrieve a performance
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this performance.
+        required: true
+      tags:
+      - performances
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Performance'
+          description: ''
+    put:
+      operationId: performances_update
+      description: |-
+        CRUD on athlete performance records, scoped to a team + member.
+
+        URL: /api/v1/performances/
+
+        READ scope: a user sees a Performance if they are the member's linked
+        user OR a coach (owner/manager) of the performance's team.
+        WRITE: the member's own user OR a coach of the team. Athletes may only
+        create for their own member, in a team they belong to.
+      summary: Replace a performance
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this performance.
+        required: true
+      tags:
+      - performances
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Performance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Performance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Performance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Performance'
+          description: ''
+    patch:
+      operationId: performances_partial_update
+      description: |-
+        CRUD on athlete performance records, scoped to a team + member.
+
+        URL: /api/v1/performances/
+
+        READ scope: a user sees a Performance if they are the member's linked
+        user OR a coach (owner/manager) of the performance's team.
+        WRITE: the member's own user OR a coach of the team. Athletes may only
+        create for their own member, in a team they belong to.
+      summary: Edit a performance
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this performance.
+        required: true
+      tags:
+      - performances
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPerformance'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPerformance'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPerformance'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Performance'
+          description: ''
+    delete:
+      operationId: performances_destroy
+      description: |-
+        CRUD on athlete performance records, scoped to a team + member.
+
+        URL: /api/v1/performances/
+
+        READ scope: a user sees a Performance if they are the member's linked
+        user OR a coach (owner/manager) of the performance's team.
+        WRITE: the member's own user OR a coach of the team. Athletes may only
+        create for their own member, in a team they belong to.
+      summary: Delete a performance
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this performance.
+        required: true
+      tags:
+      - performances
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/programs/:
     get:
       operationId: programs_list
@@ -7892,6 +8125,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Notification'
+    PaginatedPerformanceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Performance'
     PaginatedProgramList:
       type: object
       required:
@@ -8811,6 +9067,55 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedPerformance:
+      type: object
+      description: |-
+        Read/write serializer for a single Performance row.
+
+        `team` and `member` are writable PrimaryKeyRelatedFields on create; on
+        update they are ignored (a performance never moves to another member or
+        team — the view drops them from validated_data in update()). `created_by`
+        is set by the view from request.user and is read-only here.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        member:
+          type: integer
+        label:
+          type: string
+          description: Discipline / test name, e.g. '100m freestyle' or 'Cooper test'.
+          maxLength: 120
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
+          description: Numeric result, interpreted by unit (seconds for time, meters
+            for distance, etc.).
+        unit:
+          $ref: '#/components/schemas/UnitEnum'
+        is_lower_better:
+          type: boolean
+          readOnly: true
+        recorded_on:
+          type: string
+          format: date
+          description: Date the performance was achieved.
+        notes:
+          type: string
+        created_by:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedProgram:
       type: object
       properties:
@@ -9216,6 +9521,66 @@ components:
           type: string
           format: date-time
           readOnly: true
+    Performance:
+      type: object
+      description: |-
+        Read/write serializer for a single Performance row.
+
+        `team` and `member` are writable PrimaryKeyRelatedFields on create; on
+        update they are ignored (a performance never moves to another member or
+        team — the view drops them from validated_data in update()). `created_by`
+        is set by the view from request.user and is read-only here.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        member:
+          type: integer
+        label:
+          type: string
+          description: Discipline / test name, e.g. '100m freestyle' or 'Cooper test'.
+          maxLength: 120
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
+          description: Numeric result, interpreted by unit (seconds for time, meters
+            for distance, etc.).
+        unit:
+          $ref: '#/components/schemas/UnitEnum'
+        is_lower_better:
+          type: boolean
+          readOnly: true
+        recorded_on:
+          type: string
+          format: date
+          description: Date the performance was achieved.
+        notes:
+          type: string
+        created_by:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - is_lower_better
+      - label
+      - member
+      - recorded_on
+      - team
+      - updated_at
+      - value
     PresignUploadHeaders:
       type: object
       properties:
@@ -10423,6 +10788,20 @@ components:
         * `note_for_athlete` - A note was shared with you
         * `message_new_topic` - A new topic was created in your team
         * `message_new_reply` - A new message was posted in a topic
+    UnitEnum:
+      enum:
+      - s
+      - m
+      - reps
+      - kg
+      - pts
+      type: string
+      description: |-
+        * `s` - Seconds
+        * `m` - Meters
+        * `reps` - Repetitions
+        * `kg` - Kilograms
+        * `pts` - Points
     UnreadCount:
       type: object
       description: Response shape for GET /notifications/unread_count/.

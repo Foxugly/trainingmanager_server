@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "notifications",
     "messaging",
     "attachment",
+    "performance",
 ]
 
 SITE_ID = 1
@@ -298,6 +299,7 @@ SPECTACULAR_SETTINGS = {
         "OverlapStrategyEnum": "program.choices.OVERLAP_STRATEGY_CHOICES",
         "VisibilityMode": "event.models.VisibilityMode",
         "RsvpStatusEnum": "rsvp.models.RsvpStatus",
+        "UnitEnum": "performance.models.Unit",
     },
 }
 
