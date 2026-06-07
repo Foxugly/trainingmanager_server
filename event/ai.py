@@ -110,6 +110,27 @@ def build_system_prompt(sport_name):
     )
 
 
+def _duration_minutes(start, end):
+    """Whole minutes between two ``datetime.time`` values, or None.
+
+    Returns None when either bound is missing or the range is non-positive
+    (e.g. equal times or an overnight slot we don't try to interpret).
+    """
+    if start is None or end is None:
+        return None
+    delta = (end.hour * 60 + end.minute) - (start.hour * 60 + start.minute)
+    return delta if delta > 0 else None
+
+
+def _venue_text(event):
+    """Human venue string: managed Place (name + address) wins over free text."""
+    if event.place_id:
+        name = event.place.name
+        address = (event.place.address or "").strip()
+        return f"{name} ({address})" if address else name
+    return (event.location or "").strip()
+
+
 def build_user_prompt(
     *, event, modalities_catalog, energysegments_catalog, team=None, additional_prompt=""
 ):
@@ -138,6 +159,19 @@ def build_user_prompt(
     if event.refer_program and (event.refer_program.description or "").strip():
         program_line = f"- Program objective: {event.refer_program.description}\n"
 
+    duration = _duration_minutes(event.hour_start, event.hour_end)
+    duration_line = (
+        f"- Session duration: about {duration} minutes\n" if duration else ""
+    )
+
+    equipment_text = strip_html(event.equipment or "").strip()
+    equipment_line = (
+        f"- Available equipment: {equipment_text}\n" if equipment_text else ""
+    )
+
+    venue = _venue_text(event)
+    venue_line = f"- Venue: {venue}\n" if venue else ""
+
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
@@ -145,6 +179,9 @@ def build_user_prompt(
         f"{level_line}"
         f"{program_line}"
         f"- Planned date: {event.date.isoformat() if event.date else '(not specified)'}\n"
+        f"{duration_line}"
+        f"{venue_line}"
+        f"{equipment_line}"
         f"- Target total distance: {event.total or 0} meters\n\n"
         f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
         f"Authorized energysegments catalog (id: abv — description):\n{cat_segments}\n\n"
@@ -159,10 +196,31 @@ def build_user_prompt(
         f"  * a cool-down round\n"
         f"- The sum of (exercise.distance * exercise.repetition * round.count) "
         f"across the whole session must approach {event.total or 0} meters.\n"
-        f"- Use ONLY the ids provided in the catalogs.\n"
-        f"- Respond ENTIRELY in {language_label}: all notes and the rationale "
-        f"must be in {language_label}.\n"
-        f"- Use the 'create_training_session' tool only.\n"
+        + (
+            "- Size the whole session (volume and rest) to realistically fit the "
+            "stated duration.\n"
+            if duration
+            else ""
+        )
+        + (
+            "- Use the available equipment listed above where it fits the goal; "
+            "do not require equipment that is not listed.\n"
+            if equipment_text
+            else ""
+        )
+        + (
+            "- The venue may indicate the pool/track length (e.g. 25 m or 50 m); "
+            "keep exercise distances coherent with it (use multiples of the "
+            "length).\n"
+            if venue
+            else ""
+        )
+        + (
+            f"- Use ONLY the ids provided in the catalogs.\n"
+            f"- Respond ENTIRELY in {language_label}: all notes and the rationale "
+            f"must be in {language_label}.\n"
+            f"- Use the 'create_training_session' tool only.\n"
+        )
     )
 
     extra = (additional_prompt or "").strip()

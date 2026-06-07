@@ -434,3 +434,73 @@ def test_POST_generate_training_additional_prompt_too_long_returns_400(
     body = response.json()
     field_errors = body.get("fields", {}).get("additional_prompt", [])
     assert any(err.get("code") == "additional_prompt_too_long" for err in field_errors), body
+
+
+# ----------------------------- Session context ------------------------
+
+
+def test_generate_training_prompt_includes_equipment_duration_and_venue(
+    auth_client_trainer, trainer_event, settings
+):
+    """Equipment (HTML-stripped), the duration derived from hour_start/hour_end,
+    and the venue (managed Place name + address) are fed to the AI."""
+    from datetime import time
+
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    place = Place.objects.create(
+        team=trainer_event.refer_program.team,
+        name="Piscine 50m",
+        address="Av. des Sports 1",
+    )
+    trainer_event.equipment = "<p>Pull-buoy, plaquettes</p>"
+    trainer_event.hour_start = time(18, 0)
+    trainer_event.hour_end = time(19, 30)
+    trainer_event.place = place
+    trainer_event.location = place.name
+    trainer_event.save(
+        update_fields=["equipment", "hour_start", "hour_end", "place", "location"]
+    )
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Available equipment: Pull-buoy, plaquettes" in sent_prompt
+    assert "<p>" not in sent_prompt  # HTML stripped
+    assert "Session duration: about 90 minutes" in sent_prompt
+    assert "Venue: Piscine 50m (Av. des Sports 1)" in sent_prompt
+
+
+def test_generate_training_prompt_omits_missing_session_context(
+    auth_client_trainer, trainer_event, settings
+):
+    """With no equipment, no times and no venue, those lines are absent (no
+    empty 'duration'/'equipment'/'venue' placeholders leak into the prompt)."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    # trainer_event has no equipment, hour_start/end or place by default.
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Session duration" not in sent_prompt
+    assert "Available equipment" not in sent_prompt
+    assert "Venue:" not in sent_prompt
