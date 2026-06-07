@@ -55,6 +55,15 @@ class Event(models.Model):
         verbose_name=_("equipment"),
         help_text=_("Material/gear athletes should bring. Always visible to athletes."),
     )
+    equipment_items = models.ManyToManyField(
+        "equipment.Equipment",
+        blank=True,
+        related_name="events",
+        help_text=_(
+            "Managed equipment (Matériel) used by this session. When set, the "
+            "canonical free-text 'equipment' is synced to the joined item names."
+        ),
+    )
     place = models.ForeignKey(
         "place.Place",
         null=True,

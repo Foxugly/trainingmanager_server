@@ -15,12 +15,15 @@ from tests.factories import (
 pytestmark = pytest.mark.django_db
 
 
-def _mock_training_response(rounds, rationale="Plan rationale"):
+def _mock_training_response(rounds, rationale="Plan rationale", equipment_used=None):
     response = MagicMock()
     tool_block = MagicMock()
     tool_block.type = "tool_use"
     tool_block.name = "create_training_session"
-    tool_block.input = {"rounds": rounds, "rationale": rationale}
+    tool_input = {"rounds": rounds, "rationale": rationale}
+    if equipment_used is not None:
+        tool_input["equipment_used"] = equipment_used
+    tool_block.input = tool_input
     response.content = [tool_block]
     response.model = "claude-haiku-4-5-20251001"
     response.usage.input_tokens = 500
@@ -504,3 +507,94 @@ def test_generate_training_prompt_omits_missing_session_context(
     assert "Session duration" not in sent_prompt
     assert "Available equipment" not in sent_prompt
     assert "Venue:" not in sent_prompt
+
+
+# ----------------------------- Equipment catalog ----------------------
+
+
+def test_generate_training_feeds_equipment_catalog_and_links_used(
+    auth_client_trainer, trainer_event, settings
+):
+    """The team equipment catalog is listed in the prompt; the AI-reported
+    equipment_used (restricted to the catalog) is attached to the event and the
+    free-text equipment string is synced to the joined names."""
+    from equipment.models import Equipment
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    team = trainer_event.refer_program.team
+    pb = Equipment.objects.create(team=team, name="Pull-buoy")
+    Equipment.objects.create(team=team, name="Plaquettes")
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(
+            rounds_payload, equipment_used=["Pull-buoy"]
+        )
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Team equipment catalog" in sent_prompt
+    assert "Pull-buoy" in sent_prompt and "Plaquettes" in sent_prompt
+
+    trainer_event.refresh_from_db()
+    assert set(trainer_event.equipment_items.values_list("id", flat=True)) == {pb.pk}
+    assert trainer_event.equipment == "Pull-buoy"
+
+
+def test_generate_training_ignores_equipment_not_in_catalog(
+    auth_client_trainer, trainer_event, settings
+):
+    """An equipment name the AI returns that is not in the catalog is dropped
+    (never auto-created), per the catalogue-only rule."""
+    from equipment.models import Equipment
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    team = trainer_event.refer_program.team
+    Equipment.objects.create(team=team, name="Pull-buoy")
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(
+            rounds_payload, equipment_used=["Élastiques"]  # not in catalog
+        )
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    assert not Equipment.objects.filter(team=team, name="Élastiques").exists()
+    trainer_event.refresh_from_db()
+    assert trainer_event.equipment_items.count() == 0
+
+
+def test_generate_training_no_catalog_omits_equipment_block(
+    auth_client_trainer, trainer_event, settings
+):
+    """With no team equipment, the catalog block and equipment_used field are
+    absent from the prompt/schema."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    rounds_payload = _build_rounds_payload(trainer_event)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/",
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Team equipment catalog" not in sent_prompt
+    tool_arg = mock_client.messages.create.call_args.kwargs["tools"][0]
+    assert "equipment_used" not in tool_arg["input_schema"]["properties"]

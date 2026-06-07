@@ -1371,6 +1371,204 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/equipment/:
+    get:
+      operationId: equipment_list
+      description: Returns the team's managed equipment, ordered by name. Scoped to
+        the teams the requester is a strict member of (owner/manager/active athlete).
+        Pass ?team=<id> to filter to a single team; without it, equipment across all
+        the requester's member teams is returned.
+      summary: List managed equipment (Matériel) of a team
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: team
+        schema:
+          type: integer
+        description: Restrict to one team the requester is a member of.
+      tags:
+      - equipment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEquipmentList'
+          description: ''
+    post:
+      operationId: equipment_create
+      description: Create a managed equipment item for a team. The requester must
+        own or manage the team. A duplicate (team, name) returns 400 with code `equipment_already_exists`.
+      summary: Create an equipment item (manager only)
+      tags:
+      - equipment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
+          description: ''
+  /api/v1/equipment/{id}/:
+    get:
+      operationId: equipment_retrieve
+      description: |-
+        CRUD on managed team equipment (Matériel).
+
+        Read: any strict member of the equipment's team. Write
+        (create/update/delete): owner or manager of the team only.
+      summary: Retrieve an equipment item
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Equipment.
+        required: true
+      tags:
+      - equipment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
+          description: ''
+    put:
+      operationId: equipment_update
+      description: |-
+        CRUD on managed team equipment (Matériel).
+
+        Read: any strict member of the equipment's team. Write
+        (create/update/delete): owner or manager of the team only.
+      summary: Update an equipment item (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Equipment.
+        required: true
+      tags:
+      - equipment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Equipment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
+          description: ''
+    patch:
+      operationId: equipment_partial_update
+      description: |-
+        CRUD on managed team equipment (Matériel).
+
+        Read: any strict member of the equipment's team. Write
+        (create/update/delete): owner or manager of the team only.
+      summary: Patch an equipment item (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Equipment.
+        required: true
+      tags:
+      - equipment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEquipment'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Equipment'
+          description: ''
+    delete:
+      operationId: equipment_destroy
+      description: Hard-deletes the item and removes it from any session that referenced
+        it (the M2M link is dropped).
+      summary: Delete an equipment item (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Equipment.
+        required: true
+      tags:
+      - equipment
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/events/:
     get:
       operationId: events_list
@@ -7406,6 +7604,52 @@ components:
           type: boolean
       required:
       - id
+    Equipment:
+      type: object
+      description: |-
+        Read/write serializer for managed team equipment (Matériel).
+
+        `team` is a writable PK on create; the view enforces that the requester
+        manages the team. The (team, name) unique constraint is surfaced as a 400
+        with code `equipment_already_exists` instead of a DB IntegrityError.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        name:
+          type: string
+          description: Display name of the equipment (e.g. 'Pull-buoy').
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - team
+      - updated_at
+    EquipmentMinimal:
+      type: object
+      description: Compact nested read shape for Event.equipment_items.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Display name of the equipment (e.g. 'Pull-buoy').
+      required:
+      - id
+      - name
     Event:
       type: object
       properties:
@@ -7434,6 +7678,17 @@ components:
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
+        equipment_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EquipmentMinimal'
+          readOnly: true
+        equipment_item_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
         color:
           type: string
           maxLength: 10
@@ -7530,6 +7785,7 @@ components:
       - ai_generated_at
       - ai_response
       - created_at
+      - equipment_items
       - generated_by_ai
       - id
       - is_public
@@ -8631,6 +8887,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EnergySystem'
+    PaginatedEquipmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Equipment'
     PaginatedEventList:
       type: object
       required:
@@ -9291,6 +9570,32 @@ components:
           maxLength: 20
         is_active:
           type: boolean
+    PatchedEquipment:
+      type: object
+      description: |-
+        Read/write serializer for managed team equipment (Matériel).
+
+        `team` is a writable PK on create; the view enforces that the requester
+        manages the team. The (team, name) unique constraint is surfaced as a 400
+        with code `equipment_already_exists` instead of a DB IntegrityError.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        name:
+          type: string
+          description: Display name of the equipment (e.g. 'Pull-buoy').
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedEvent:
       type: object
       properties:
@@ -9319,6 +9624,17 @@ components:
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
+        equipment_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EquipmentMinimal'
+          readOnly: true
+        equipment_item_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
         color:
           type: string
           maxLength: 10

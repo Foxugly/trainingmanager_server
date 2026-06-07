@@ -11,9 +11,14 @@ from tools.i18n import resolve_language_label
 logger = logging.getLogger(__name__)
 
 
-def build_training_tool_schema(*, modality_ids, energysegment_ids):
-    """Tool schema with the catalog ids fixed via enum to prevent hallucination."""
-    return {
+def build_training_tool_schema(*, modality_ids, energysegment_ids, equipment_names=None):
+    """Tool schema with the catalog ids fixed via enum to prevent hallucination.
+
+    When ``equipment_names`` is provided (the team's managed equipment catalog),
+    an ``equipment_used`` array is added whose values are constrained by enum to
+    that catalog — the AI may only report equipment the team actually owns.
+    """
+    schema = {
         "name": "create_training_session",
         "description": (
             "Generate the detail of a training session: a list of rounds, "
@@ -98,6 +103,16 @@ def build_training_tool_schema(*, modality_ids, energysegment_ids):
             "required": ["rounds", "rationale"],
         },
     }
+    if equipment_names:
+        schema["input_schema"]["properties"]["equipment_used"] = {
+            "type": "array",
+            "items": {"type": "string", "enum": list(equipment_names)},
+            "description": (
+                "The team's equipment this session requires. Use ONLY items from "
+                "the provided catalog; omit or leave empty if none is needed."
+            ),
+        }
+    return schema
 
 
 def build_system_prompt(sport_name):
@@ -132,7 +147,13 @@ def _venue_text(event):
 
 
 def build_user_prompt(
-    *, event, modalities_catalog, energysegments_catalog, team=None, additional_prompt=""
+    *,
+    event,
+    modalities_catalog,
+    energysegments_catalog,
+    team=None,
+    equipment_names=None,
+    additional_prompt="",
 ):
     language = (
         event.refer_program.team.language
@@ -172,6 +193,15 @@ def build_user_prompt(
     venue = _venue_text(event)
     venue_line = f"- Venue: {venue}\n" if venue else ""
 
+    equipment_catalog = list(equipment_names or [])
+    equipment_catalog_block = ""
+    if equipment_catalog:
+        equipment_catalog_block = (
+            "Team equipment catalog (use ONLY these in 'equipment_used'):\n"
+            + "".join(f"  - {name}\n" for name in equipment_catalog)
+            + "\n"
+        )
+
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
@@ -185,6 +215,7 @@ def build_user_prompt(
         f"- Target total distance: {event.total or 0} meters\n\n"
         f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
         f"Authorized energysegments catalog (id: abv — description):\n{cat_segments}\n\n"
+        f"{equipment_catalog_block}"
         f"IMPORTANT instructions:\n"
         f"- The 'Session name' and 'Goal' above are provided by the coach in "
         f"{language_label}. They may contain indications about intensity, "
@@ -213,6 +244,13 @@ def build_user_prompt(
             "keep exercise distances coherent with it (use multiples of the "
             "length).\n"
             if venue
+            else ""
+        )
+        + (
+            "- In 'equipment_used', list the team equipment this session requires, "
+            "using ONLY items from the catalog above (exact names). Omit it if no "
+            "equipment is needed.\n"
+            if equipment_catalog
             else ""
         )
         + (
@@ -268,6 +306,21 @@ def generate_training(*, event, user=None, additional_prompt=""):
 
     program = event.refer_program
     team = program.team if program and program.team else None
+
+    # The team's managed equipment catalog constrains what the AI may report in
+    # 'equipment_used' (enum) — per the "catalogue uniquement" rule, it can only
+    # pick equipment the team actually owns; nothing is auto-created.
+    from equipment.models import Equipment
+
+    equipment_names = (
+        list(
+            Equipment.objects.filter(team=team)
+            .order_by("name")
+            .values_list("name", flat=True)
+        )
+        if team is not None
+        else []
+    )
     logger.info(
         "generate_training inputs: event=%s program=%s team=%s sport=%r "
         "modalities=%s energysegments=%s event_total=%s event_date=%s "
@@ -286,6 +339,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
     tool = build_training_tool_schema(
         modality_ids=modality_ids,
         energysegment_ids=energysegment_ids,
+        equipment_names=equipment_names,
     )
     system = build_system_prompt(sport_name)
     user_prompt = build_user_prompt(
@@ -293,6 +347,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
         modalities_catalog=modalities,
         energysegments_catalog=energysegments,
         team=team,
+        equipment_names=equipment_names,
         additional_prompt=additional_prompt,
     )
     logger.info(
@@ -364,9 +419,19 @@ def generate_training(*, event, user=None, additional_prompt=""):
                 )
                 raise AIServiceError(_("AI used an invalid energysegment id."))
 
+    # Keep only equipment that is actually in the team catalog (the enum already
+    # constrains the model, but we never trust the response blindly).
+    valid_equipment = set(equipment_names)
+    equipment_used = [
+        name
+        for name in (tool_input.get("equipment_used") or [])
+        if name in valid_equipment
+    ]
+
     return {
         "rounds": rounds_data,
         "rationale": rationale,
+        "equipment_used": equipment_used,
         "prompt_sent": user_prompt,
         "model": result["model"],
         "input_tokens": result["input_tokens"],

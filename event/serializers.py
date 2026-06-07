@@ -1,6 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from equipment.models import Equipment
+from equipment.serializers import EquipmentMinimalSerializer
 from place.models import Place
 from place.serializers import PlaceMinimalSerializer
 from program.models import Program
@@ -106,6 +108,14 @@ class EventSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    equipment_items = EquipmentMinimalSerializer(many=True, read_only=True)
+    equipment_item_ids = serializers.PrimaryKeyRelatedField(
+        source="equipment_items",
+        queryset=Equipment.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = Event
@@ -117,6 +127,8 @@ class EventSerializer(serializers.ModelSerializer):
             "place",
             "place_id",
             "equipment",
+            "equipment_items",
+            "equipment_item_ids",
             "color",
             "date",
             "hour_start",
@@ -171,27 +183,37 @@ class EventSerializer(serializers.ModelSerializer):
             return value
         return sanitize_html(value)
 
-    def validate(self, data):
-        """Validate that a chosen Place belongs to the event's team.
-
-        `place` is resolved from `place_id` (sourced to `place`). The team is
-        taken from the create/update `refer_program` if present, else the
-        existing instance's program. A Place from another team is a 400.
-        """
-        # `place` is present in `data` only when `place_id` was sent (possibly
-        # explicitly null). Absence means "leave place untouched".
-        if "place" not in data:
-            return data
-        place = data["place"]
-        if place is None:
-            return data
+    def _event_team(self, data):
+        """The event's team for cross-field validation (create or update)."""
         program = data.get("refer_program") or getattr(self.instance, "refer_program", None)
-        team = program.team if program is not None else None
-        if team is None or place.team_id != team.id:
-            raise serializers.ValidationError(
-                {"place_id": _("The selected place does not belong to this event's team.")},
-                code="place_team_mismatch",
-            )
+        return program.team if program is not None else None
+
+    def validate(self, data):
+        """Validate that a chosen Place and equipment items belong to the team.
+
+        `place` is resolved from `place_id` (sourced to `place`), the equipment
+        items from `equipment_item_ids` (sourced to `equipment_items`). The team
+        is taken from the create/update `refer_program` if present, else the
+        existing instance's program. A foreign Place / item is a 400.
+        """
+        # `place`/`equipment_items` are present in `data` only when their write
+        # field was sent. Absence means "leave untouched".
+        if "place" in data and data["place"] is not None:
+            team = self._event_team(data)
+            if team is None or data["place"].team_id != team.id:
+                raise serializers.ValidationError(
+                    {"place_id": _("The selected place does not belong to this event's team.")},
+                    code="place_team_mismatch",
+                )
+        if data.get("equipment_items"):
+            team = self._event_team(data)
+            if team is None or any(it.team_id != team.id for it in data["equipment_items"]):
+                raise serializers.ValidationError(
+                    {"equipment_item_ids": _(
+                        "An equipment item does not belong to this event's team."
+                    )},
+                    code="equipment_team_mismatch",
+                )
         return data
 
     def _sync_location(self, validated_data):
@@ -209,12 +231,25 @@ class EventSerializer(serializers.ModelSerializer):
             validated_data["location"] = place.name
         return validated_data
 
+    def _sync_equipment(self, validated_data):
+        """Sync the free-text 'equipment' to the joined item names when items
+        are supplied (the managed list wins), so iCal / public / AI readers see
+        the same equipment. Absence of `equipment_item_ids` leaves text as-is.
+        """
+        if "equipment_items" not in validated_data:
+            return validated_data
+        items = validated_data["equipment_items"]
+        validated_data["equipment"] = ", ".join(it.name for it in items)
+        return validated_data
+
     def create(self, validated_data):
         validated_data = self._sync_location(validated_data)
+        validated_data = self._sync_equipment(validated_data)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         validated_data = self._sync_location(validated_data)
+        validated_data = self._sync_equipment(validated_data)
         return super().update(instance, validated_data)
 
     def _requester_is_manager(self, instance):

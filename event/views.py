@@ -276,6 +276,22 @@ class EventViewSet(viewsets.ModelViewSet):
 
                 event.rounds.add(round_obj)
 
+            # Attach the equipment the AI reported (restricted to the team
+            # catalog) and sync the canonical free-text field to the joined
+            # names, so the event records exactly what the session needs.
+            used_names = ai_result.get("equipment_used") or []
+            if used_names:
+                from equipment.models import Equipment
+
+                items = list(
+                    Equipment.objects.filter(
+                        team=event.refer_program.team, name__in=used_names
+                    )
+                )
+                if items:
+                    event.equipment_items.add(*items)
+                    event.equipment = ", ".join(sorted(i.name for i in items))
+
             event.generated_by_ai = True
             event.ai_prompt = ai_result["prompt_sent"]
             event.ai_response = ai_result["rationale"]
