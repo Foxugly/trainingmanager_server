@@ -358,16 +358,12 @@ def generate_plan(
     # venue for each generated session.
     location_hint = (default_pool or "").strip()
 
-    # The team's managed venues (Lieux) are the canonical "known venues" list
+    # The team's linked venues (Lieux) are the canonical "known venues" list
     # given to the AI so it can map the coach's per-day venue mentions to a real
     # Place. Fall back to the distinct free-text locations already used on this
-    # team's events only when no Place is configured yet.
-    from place.models import Place
-
+    # team's events only when no Place is linked yet.
     places = list(
-        Place.objects.filter(team_id=program.team_id)
-        .order_by("name")
-        .values("name", "address")
+        program.team.places.order_by("name").values("name", "address")
     )
     if places:
         pools = []

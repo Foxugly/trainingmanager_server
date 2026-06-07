@@ -535,10 +535,11 @@ def test_generate_events_prompt_lists_team_places(
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
-    Place.objects.create(
-        team=program.team, name="Piscine olympique", address="12 rue des Bains"
+    p1 = Place.objects.create(
+        sport=program.team.sport, name="Piscine olympique", address="12 rue des Bains"
     )
-    Place.objects.create(team=program.team, name="Bassin nordique")
+    p2 = Place.objects.create(sport=program.team.sport, name="Bassin nordique")
+    program.team.places.add(p1, p2)
     start = date(2026, 5, 1)
     end = date(2026, 5, 14)
 
@@ -568,7 +569,8 @@ def test_generate_events_links_existing_place(
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
-    place = Place.objects.create(team=program.team, name="Piscine Nord")
+    place = Place.objects.create(sport=program.team.sport, name="Piscine Nord")
+    program.team.places.add(place)
     start = date(2026, 5, 1)
     end = date(2026, 5, 14)
 
@@ -584,7 +586,7 @@ def test_generate_events_links_existing_place(
         )
 
     assert resp.status_code == 200
-    assert Place.objects.filter(team=program.team).count() == 1  # no duplicate
+    assert program.team.places.count() == 1  # no duplicate
     ev = Event.objects.get(refer_program=program, date=start)
     assert ev.place_id == place.id
     assert ev.location == "Piscine Nord"  # synced to the canonical Place name
@@ -613,7 +615,8 @@ def test_generate_events_creates_unknown_place(
         )
 
     assert resp.status_code == 200
-    created = Place.objects.get(team=program.team, name="Stade nautique")
+    created = program.team.places.get(name="Stade nautique")
+    assert created.sport_id == program.team.sport_id
     ev = Event.objects.get(refer_program=program, date=start)
     assert ev.place_id == created.id
     assert ev.location == "Stade nautique"
@@ -644,8 +647,8 @@ def test_generate_events_reuses_created_place_across_sessions(
         )
 
     assert resp.status_code == 200
-    assert Place.objects.filter(team=program.team, name="Lac municipal").count() == 1
-    place = Place.objects.get(team=program.team, name="Lac municipal")
+    assert program.team.places.filter(name="Lac municipal").count() == 1
+    place = program.team.places.get(name="Lac municipal")
     linked = Event.objects.filter(refer_program=program, place=place).count()
     assert linked == 2
 
@@ -673,7 +676,7 @@ def test_generate_events_empty_location_leaves_place_null(
         )
 
     assert resp.status_code == 200
-    assert Place.objects.filter(team=program.team).count() == 0
+    assert program.team.places.count() == 0
     ev = Event.objects.get(refer_program=program, date=start)
     assert ev.place_id is None
     assert ev.location == ""

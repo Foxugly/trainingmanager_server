@@ -5,6 +5,6 @@ from .models import Place
 
 @admin.register(Place)
 class PlaceAdmin(admin.ModelAdmin):
-    list_display = ("name", "team", "address", "created_at")
-    list_filter = ("team",)
+    list_display = ("name", "sport", "address", "created_at")
+    list_filter = ("sport",)
     search_fields = ("name", "address")

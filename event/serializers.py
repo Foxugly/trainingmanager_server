@@ -200,10 +200,10 @@ class EventSerializer(serializers.ModelSerializer):
         # field was sent. Absence means "leave untouched".
         if "place" in data and data["place"] is not None:
             team = self._event_team(data)
-            if team is None or data["place"].team_id != team.id:
+            if team is None or not team.places.filter(pk=data["place"].pk).exists():
                 raise serializers.ValidationError(
-                    {"place_id": _("The selected place does not belong to this event's team.")},
-                    code="place_team_mismatch",
+                    {"place_id": _("The selected place is not one of this team's venues.")},
+                    code="place_not_in_team",
                 )
         if data.get("equipment_items"):
             team = self._event_team(data)

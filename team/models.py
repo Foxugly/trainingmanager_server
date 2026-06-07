@@ -216,6 +216,15 @@ class Team(models.Model):
         default="",
         help_text=_("Default venue/pool for this team's sessions (used by the season-plan generator)."),
     )
+    places = models.ManyToManyField(
+        "place.Place",
+        related_name="teams",
+        blank=True,
+        help_text=_(
+            "Venues (Lieux) from the global sport-scoped pool this team uses. A "
+            "place can belong to several teams in parallel."
+        ),
+    )
     default_place = models.ForeignKey(
         "place.Place",
         null=True,
@@ -223,9 +232,9 @@ class Team(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
         help_text=_(
-            "Optional managed default venue (Lieu). When set, the canonical "
-            "free-text 'default_pool' is synced to the place's name so the AI "
-            "plan generator keeps reading default_pool unchanged."
+            "The team's default venue (Lieu), one of its linked places. When "
+            "set, the canonical free-text 'default_pool' is synced to the "
+            "place's name so the AI plan generator keeps reading it unchanged."
         ),
     )
     season_start = models.DateField(

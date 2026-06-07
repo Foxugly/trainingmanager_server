@@ -56,6 +56,14 @@ class TeamSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    places = PlaceMinimalSerializer(many=True, read_only=True)
+    place_ids = serializers.PrimaryKeyRelatedField(
+        source="places",
+        queryset=Place.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
     default_place = PlaceMinimalSerializer(read_only=True)
     default_place_id = serializers.PrimaryKeyRelatedField(
         source="default_place",
@@ -86,6 +94,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "managers",
             "managers_ids",
             "default_pool",
+            "places",
+            "place_ids",
             "default_place",
             "default_place_id",
             "equipment",
@@ -128,37 +138,21 @@ class TeamSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def validate(self, data):
-        """Validate that a chosen default Place belongs to this team."""
-        if "default_place" not in data:
-            return data
-        place = data["default_place"]
-        if place is None:
-            return data
-        # On update the team is the instance; on create there is no team yet
-        # (default_place would have nothing to belong to), so require an
-        # instance.
-        team = self.instance
-        if team is None or place.team_id != team.id:
-            raise serializers.ValidationError(
-                {"default_place_id": _("The selected place does not belong to this team.")},
-                code="default_place_team_mismatch",
-            )
-        return data
-
     def update(self, instance, validated_data):
-        """Sync default_pool to the chosen default_place name.
+        """Persist places/default_place and sync default_pool.
 
-        - default_place non-null -> default_pool = place.name (keeps the AI
-          plan path, which reads default_pool, working unchanged).
-        - default_place null      -> clear default_place; default_pool is left
-          as-is (canonical free text remains).
+        - default_place non-null -> default_pool = place.name (keeps the AI plan
+          path, which reads default_pool, working unchanged) and the place is
+          ensured to be one of the team's linked places.
+        - default_place null      -> clear default_place; default_pool left as-is.
         """
-        if "default_place" in validated_data:
-            place = validated_data["default_place"]
-            if place is not None:
-                validated_data["default_pool"] = place.name
-        return super().update(instance, validated_data)
+        if "default_place" in validated_data and validated_data["default_place"] is not None:
+            validated_data["default_pool"] = validated_data["default_place"].name
+        team = super().update(instance, validated_data)
+        # A team's default must be one of its venues — auto-link it.
+        if team.default_place_id and not team.places.filter(pk=team.default_place_id).exists():
+            team.places.add(team.default_place_id)
+        return team
 
     def validate_timezone(self, value):
         # Reject anything that is not a valid IANA zone name. We check

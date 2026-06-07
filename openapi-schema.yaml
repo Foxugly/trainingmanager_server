@@ -3922,11 +3922,11 @@ paths:
   /api/v1/places/:
     get:
       operationId: places_list
-      description: Returns the team's managed venues, ordered by name. Scoped to the
-        teams the requester is a strict member of (owner/manager/active athlete).
-        Pass ?team=<id> to filter to a single team; without it, places across all
-        the requester's member teams are returned.
-      summary: List managed places (Lieux) of a team
+      description: Returns venues from the global, sport-scoped pool. ?team=<id> restricts
+        to a team's linked places (members only); ?sport=<id> returns the whole pool
+        for a sport (to attach/share). Without filters, returns places linked to the
+        requester's member teams.
+      summary: List venues (Lieux) from the sport pool
       parameters:
       - name: ordering
         required: false
@@ -3953,10 +3953,15 @@ paths:
         schema:
           type: string
       - in: query
+        name: sport
+        schema:
+          type: integer
+        description: Return the whole pool for a sport.
+      - in: query
         name: team
         schema:
           type: integer
-        description: Restrict to one team the requester is a member of.
+        description: Restrict to a team's linked places.
       tags:
       - places
       security:
@@ -3970,9 +3975,9 @@ paths:
           description: ''
     post:
       operationId: places_create
-      description: Create a managed venue for a team. The requester must own or manage
-        the team. A duplicate (team, name) returns 400 with code `place_already_exists`.
-      summary: Create a place (manager only)
+      description: Creates a venue in the pool and links it to the given team (the
+        requester must manage that team); the place's sport is the team's sport.
+      summary: Create a place and link it to a team (manager only)
       tags:
       - places
       requestBody:
@@ -4000,10 +4005,11 @@ paths:
     get:
       operationId: places_retrieve
       description: |-
-        CRUD on the managed team venue (Lieu).
+        CRUD on the shared, sport-scoped venue pool (Lieu).
 
-        Read: any strict member of the place's team. Write (create/update/delete):
-        owner or manager of the team only.
+        Read: members see places linked to their teams, or a whole sport's pool via
+        ?sport. Write: create links a new place to a team the requester manages;
+        update/delete require managing a team the place is linked to.
       summary: Retrieve a place
       parameters:
       - in: path
@@ -4026,11 +4032,12 @@ paths:
     put:
       operationId: places_update
       description: |-
-        CRUD on the managed team venue (Lieu).
+        CRUD on the shared, sport-scoped venue pool (Lieu).
 
-        Read: any strict member of the place's team. Write (create/update/delete):
-        owner or manager of the team only.
-      summary: Update a place (manager only)
+        Read: members see places linked to their teams, or a whole sport's pool via
+        ?sport. Write: create links a new place to a team the requester manages;
+        update/delete require managing a team the place is linked to.
+      summary: Update a place (manager of a linked team)
       parameters:
       - in: path
         name: id
@@ -4064,11 +4071,12 @@ paths:
     patch:
       operationId: places_partial_update
       description: |-
-        CRUD on the managed team venue (Lieu).
+        CRUD on the shared, sport-scoped venue pool (Lieu).
 
-        Read: any strict member of the place's team. Write (create/update/delete):
-        owner or manager of the team only.
-      summary: Patch a place (manager only)
+        Read: members see places linked to their teams, or a whole sport's pool via
+        ?sport. Write: create links a new place to a team the requester manages;
+        update/delete require managing a team the place is linked to.
+      summary: Patch a place (manager of a linked team)
       parameters:
       - in: path
         name: id
@@ -4100,9 +4108,9 @@ paths:
           description: ''
     delete:
       operationId: places_destroy
-      description: Hard-deletes the venue. Events referencing it keep their free-text
-        `location` (their `place` FK is SET_NULL).
-      summary: Delete a place (manager only)
+      description: Hard-deletes the venue across all teams that linked it. Events
+        referencing it keep their free-text location (place FK is SET_NULL).
+      summary: Delete a place (manager of a linked team)
       parameters:
       - in: path
         name: id
@@ -9980,17 +9988,20 @@ components:
     PatchedPlace:
       type: object
       description: |-
-        Read/write serializer for the managed team venue (Lieu).
+        Read/write serializer for a venue (Lieu) in the global sport-scoped pool.
 
-        `team` is a writable PK on create; the view enforces that the requester
-        manages the team. The (team, name) unique constraint is surfaced as a
-        400 with code `place_already_exists` instead of a DB IntegrityError.
+        A place is shared (M2M ``Team.places``). On create the requester passes the
+        ``team`` it is creating the place for (write-only): the view links it and
+        derives the place's ``sport`` from that team. ``sport`` is read-only output.
       properties:
         id:
           type: integer
           readOnly: true
-        team:
+        sport:
           type: integer
+          readOnly: true
+          nullable: true
+          description: Sport this venue belongs to (e.g. Natation).
         name:
           type: string
           description: Display name of the venue (e.g. 'Piscine olympique').
@@ -9999,6 +10010,9 @@ components:
           type: string
           description: Optional postal address / directions for the venue.
           maxLength: 500
+        team:
+          type: integer
+          writeOnly: true
         created_at:
           type: string
           format: date-time
@@ -10213,6 +10227,17 @@ components:
           readOnly: true
           description: Default venue/pool for this team's sessions (used by the season-plan
             generator).
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
         default_place:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
@@ -10499,17 +10524,20 @@ components:
     Place:
       type: object
       description: |-
-        Read/write serializer for the managed team venue (Lieu).
+        Read/write serializer for a venue (Lieu) in the global sport-scoped pool.
 
-        `team` is a writable PK on create; the view enforces that the requester
-        manages the team. The (team, name) unique constraint is surfaced as a
-        400 with code `place_already_exists` instead of a DB IntegrityError.
+        A place is shared (M2M ``Team.places``). On create the requester passes the
+        ``team`` it is creating the place for (write-only): the view links it and
+        derives the place's ``sport`` from that team. ``sport`` is read-only output.
       properties:
         id:
           type: integer
           readOnly: true
-        team:
+        sport:
           type: integer
+          readOnly: true
+          nullable: true
+          description: Sport this venue belongs to (e.g. Natation).
         name:
           type: string
           description: Display name of the venue (e.g. 'Piscine olympique').
@@ -10518,6 +10546,9 @@ components:
           type: string
           description: Optional postal address / directions for the venue.
           maxLength: 500
+        team:
+          type: integer
+          writeOnly: true
         created_at:
           type: string
           format: date-time
@@ -10530,11 +10561,12 @@ components:
       - created_at
       - id
       - name
-      - team
+      - sport
       - updated_at
     PlaceMinimal:
       type: object
-      description: Compact nested read shape for Event.place / Team.default_place.
+      description: Compact nested read shape for Event.place / Team.default_place
+        / places.
       properties:
         id:
           type: integer
@@ -11262,6 +11294,17 @@ components:
           readOnly: true
           description: Default venue/pool for this team's sessions (used by the season-plan
             generator).
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
         default_place:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
@@ -11411,6 +11454,7 @@ components:
       - managers
       - name
       - owner
+      - places
       - sport
       - sport_id
       - updated_at
