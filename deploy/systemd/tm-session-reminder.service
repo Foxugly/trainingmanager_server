@@ -1,0 +1,21 @@
+[Unit]
+Description=Training Manager — send daily session reminders (management command)
+After=network-online.target tm-env-fetch.service
+Wants=network-online.target
+# Needs the SSM-fetched env (DB + Graph email creds) to run.
+Requires=tm-env-fetch.service
+
+[Service]
+# One-shot batch job triggered by tm-session-reminder.timer.
+Type=oneshot
+User=django
+Group=www-data
+UMask=0027
+WorkingDirectory=/var/www/django_websites/trainingmanager_server
+# Settings package is named with a hyphen ("django-trainingmanager"); select
+# prod explicitly (manage.py defaults to .settings.dev otherwise).
+Environment=DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod
+EnvironmentFile=/run/tm/.env
+ExecStart=/var/www/django_websites/trainingmanager_server/.venv/bin/python /var/www/django_websites/trainingmanager_server/manage.py send_session_reminders
+StandardOutput=journal
+StandardError=journal

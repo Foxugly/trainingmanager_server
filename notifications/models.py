@@ -17,6 +17,9 @@ class NotificationType(models.TextChoices):
     NOTE_FOR_ATHLETE = "note_for_athlete", _("A note was shared with you")
     MESSAGE_NEW_TOPIC = "message_new_topic", _("A new topic was created in your team")
     MESSAGE_NEW_REPLY = "message_new_reply", _("A new message was posted in a topic")
+    PERFORMANCE_LOGGED = "performance_logged", _("A performance was logged for you")
+    PLAN_GENERATED = "plan_generated", _("A new training plan was scheduled")
+    SESSION_REMINDER = "session_reminder", _("You have a session tomorrow")
 
 
 class Notification(models.Model):

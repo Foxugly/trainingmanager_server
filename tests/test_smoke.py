@@ -33,6 +33,26 @@ def test_GET_me_unauthenticated_returns_401(api_client):
     assert response.status_code == 401
 
 
+def test_GET_me_member_id_is_null_when_no_member(auth_client):
+    """member_id exposes the caller's linked Member id; null when unlinked."""
+    response = auth_client.get("/api/v1/me/")
+    assert response.status_code == 200
+    body = response.json()
+    assert "member_id" in body
+    assert body["member_id"] is None
+
+
+def test_GET_me_member_id_returns_linked_member(auth_client, authenticated_user):
+    from member.models import Member
+
+    member = Member.objects.create(
+        firstname="Me", lastname="Mber", user=authenticated_user
+    )
+    response = auth_client.get("/api/v1/me/")
+    assert response.status_code == 200
+    assert response.json()["member_id"] == member.id
+
+
 def test_GET_me_exposes_is_staff_readonly_but_not_is_superuser(auth_client):
     """is_staff is exposed READ-ONLY so the SPA can gate its admin back-office;
     is_superuser is never exposed. Server-side permissions still enforce every

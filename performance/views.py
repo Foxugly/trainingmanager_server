@@ -121,7 +121,46 @@ class PerformanceViewSet(viewsets.ModelViewSet):
                 }
             )
 
-        serializer.save(created_by=user)
+        performance = serializer.save(created_by=user)
+        self._notify_athlete_on_create(performance, member, is_athlete)
+
+    def _notify_athlete_on_create(self, performance, member, is_athlete):
+        """Notify the athlete when a COACH logged a performance for them.
+
+        Skipped when the athlete logged their own (``is_athlete``) or when the
+        member has no linked user. ``notify()`` itself swallows mail errors and
+        never raises, but we still guard the whole call so an unexpected failure
+        can never break the create request.
+        """
+        if is_athlete or member.user_id is None:
+            return
+        try:
+            from notifications.models import NotificationType
+            from notifications.services import notify
+
+            coach_name = (
+                self.request.user.get_full_name() or self.request.user.username
+            )
+            notify(
+                member.user,
+                NotificationType.PERFORMANCE_LOGGED,
+                title=_("New performance"),
+                body=_("%(coach)s logged %(label)s: %(value)s%(unit)s")
+                % {
+                    "coach": coach_name,
+                    "label": performance.label,
+                    "value": performance.value,
+                    "unit": performance.unit,
+                },
+                url=f"/teams/{performance.team_id}/members/{member.id}",
+                actor=self.request.user,
+            )
+        except Exception:  # pragma: no cover - defensive: never break the create
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Failed to send performance-logged notification"
+            )
 
     def _check_object_write(self, obj):
         user = self.request.user

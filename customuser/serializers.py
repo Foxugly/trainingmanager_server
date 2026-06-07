@@ -38,6 +38,7 @@ class TeamQuotaStatusSerializer(serializers.Serializer):
 
 class MeSerializer(serializers.ModelSerializer):
     team_quota = serializers.SerializerMethodField()
+    member_id = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -54,6 +55,7 @@ class MeSerializer(serializers.ModelSerializer):
             "date_joined",
             "team_quota",
             "calendar_token",
+            "member_id",
         ]
         # is_staff is exposed READ-ONLY so the SPA can gate its admin back-office
         # (/admin referential CRUD). It is the user's own flag; server-side
@@ -68,6 +70,7 @@ class MeSerializer(serializers.ModelSerializer):
             "date_joined",
             "team_quota",
             "calendar_token",
+            "member_id",
         ]
 
     @extend_schema_field(TeamQuotaStatusSerializer)
@@ -78,6 +81,15 @@ class MeSerializer(serializers.ModelSerializer):
             "max": obj.team_quota,
             "can_create": used < obj.team_quota,
         }
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_member_id(self, obj):
+        """The id of the Member linked 1:1 to this user, or null if none.
+
+        Lets the SPA know the caller's own athlete member id for self-service
+        (e.g. viewing/logging their own performances)."""
+        member = getattr(obj, "member_profile", None)
+        return member.id if member is not None else None
 
 
 class CalendarTokenSerializer(serializers.Serializer):

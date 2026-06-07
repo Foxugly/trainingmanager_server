@@ -192,6 +192,11 @@ class ProgramViewSet(viewsets.ModelViewSet):
             program.ai_generated_at = timezone.now()
             program.save()
 
+        # After the plan is committed, notify the team's active athletes once
+        # per generation (not per session). Guarded so a notify failure can
+        # never undo or break a successful generation.
+        self._notify_athletes_plan_generated(program, created_count)
+
         return Response(
             {
                 "created_count": created_count,
@@ -205,6 +210,45 @@ class ProgramViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    def _notify_athletes_plan_generated(self, program, created_count):
+        """Notify each active athlete of the program's team that a plan was
+        generated. One efficient query for the team's active memberships;
+        members without a linked user are skipped, and the actor is never
+        notified (``notify`` enforces that). Fully guarded — a notification
+        failure must never break a successful generation."""
+        try:
+            from member.models import Member
+            from notifications.models import NotificationType
+            from notifications.services import notify
+
+            actor = self.request.user
+            members = (
+                Member.objects.filter(
+                    memberships__team=program.team,
+                    memberships__left_at__isnull=True,
+                    user__isnull=False,
+                )
+                .select_related("user")
+                .distinct()
+            )
+            url = f"/programs/{program.id}"
+            for member in members:
+                notify(
+                    member.user,
+                    NotificationType.PLAN_GENERATED,
+                    title=_("New training plan scheduled"),
+                    body=_("%(n)s sessions added to %(name)s")
+                    % {"n": created_count, "name": program.name},
+                    url=url,
+                    actor=actor,
+                )
+        except Exception:  # pragma: no cover - defensive: never break generation
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Failed to send plan-generated notifications"
+            )
 
     def _apply_overlap_strategy(self, *, program, new_events_data, strategy, date_start, date_end):
         deleted_count = 0

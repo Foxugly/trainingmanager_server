@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: trainingmanager 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-06 18:20+0200\n"
+"POT-Creation-Date: 2026-06-07 07:53+0200\n"
 "PO-Revision-Date: 2026-04-28 00:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: French\n"
@@ -16,138 +16,182 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
+#: .\ai\views.py:53
 msgid "prompt must be a non-empty string."
 msgstr "prompt doit être une chaîne non vide."
 
+#: .\ai\views.py:60
 msgid "prompt too long (max 5000 chars for ping)."
 msgstr "prompt trop long (max 5000 caractères pour le ping)."
 
+#: .\aiusage\models.py:11
 msgid "Ping"
 msgstr "Ping"
 
+#: .\aiusage\models.py:12
 msgid "Generate plan"
 msgstr "Générer le plan"
 
+#: .\aiusage\models.py:13
 msgid "Generate training"
 msgstr "Générer l'entraînement"
 
+#: .\aiusage\views.py:40
 msgid "Only the owner and managers of this team can view AI usage."
 msgstr ""
 "Seuls le propriétaire et les managers de cette équipe peuvent consulter "
 "l'utilisation de l'IA."
 
+#: .\attachment\permissions.py:35 .\attachment\permissions.py:57
 msgid "Unsupported target_type."
 msgstr "target_type non pris en charge."
 
+#: .\attachment\views.py:33
 msgid "File attachments are not configured on this server."
 msgstr "Les pièces jointes ne sont pas configurées sur ce serveur."
 
+#: .\attachment\views.py:59
 msgid "Attachment not found."
 msgstr "Pièce jointe introuvable."
 
+#: .\attachment\views.py:110 .\attachment\views.py:285
 msgid "Target not found."
 msgstr "Cible introuvable."
 
+#: .\attachment\views.py:112
 msgid "You may not attach files to this target."
 msgstr "Vous ne pouvez pas joindre de fichiers à cette cible."
 
+#: .\attachment\views.py:118
 msgid "This file type is not allowed."
 msgstr "Ce type de fichier n'est pas autorisé."
 
+#: .\attachment\views.py:122
 msgid "File exceeds the maximum allowed size."
 msgstr "Le fichier dépasse la taille maximale autorisée."
 
+#: .\attachment\views.py:180
 msgid "You may not complete this attachment."
 msgstr "Vous ne pouvez pas finaliser cette pièce jointe."
 
+#: .\attachment\views.py:185
 msgid "Uploaded file not found in storage."
 msgstr "Fichier téléversé introuvable dans le stockage."
 
+#: .\attachment\views.py:223
 msgid "You may not access this attachment."
 msgstr "Vous ne pouvez pas accéder à cette pièce jointe."
 
+#: .\attachment\views.py:227
 msgid "Attachment is not ready."
 msgstr "La pièce jointe n'est pas prête."
 
+#: .\attachment\views.py:273
 msgid "target_type and target_id are required."
 msgstr "target_type et target_id sont requis."
 
+#: .\attachment\views.py:280
 msgid "target_id must be an integer."
 msgstr "target_id doit être un entier."
 
+#: .\attachment\views.py:287
 msgid "You may not access this target."
 msgstr "Vous ne pouvez pas accéder à cette cible."
 
+#: .\attachment\views.py:329
 msgid "You may not delete this attachment."
 msgstr "Vous ne pouvez pas supprimer cette pièce jointe."
 
+#: .\attendance\models.py:15
 msgid "Snake_case identifier (e.g. 'present', 'absent', 'excused')"
 msgstr "Identifiant en snake_case (ex. 'present', 'absent', 'excused')"
 
+#: .\attendance\models.py:19
 msgid "Display label, translated via modeltranslation."
 msgstr "Libellé d'affichage, traduit via modeltranslation."
 
+#: .\attendance\models.py:23
 msgid "If True, pre-selected as default in the frontend UI."
 msgstr "Si True, présélectionné par défaut dans l'interface frontend."
 
+#: .\attendance\models.py:27
 msgid "Display order for buttons in the frontend."
 msgstr "Ordre d'affichage des boutons dans le frontend."
 
+#: .\attendance\models.py:32
 msgid "Hex color (#xxxxxx) for the frontend, optional."
 msgstr "Couleur hexadécimale (#xxxxxx) pour le frontend, optionnelle."
 
+#: .\attendance\views.py:114
 msgid "You don't have permission to access this event's attendance."
 msgstr ""
 "Vous n'avez pas la permission d'accéder aux présences de cet évènement."
 
+#: .\attendance\views.py:223 .\roti\views.py:125 .\roti\views.py:153
+#: .\roti\views.py:192 .\rsvp\views.py:157 .\rsvp\views.py:184
+#: .\rsvp\views.py:230
 msgid "Event has no team (orphan event)."
 msgstr "L'évènement n'a pas d'équipe (évènement orphelin)."
 
+#: .\attendance\views.py:230
 msgid "This member is not in the team."
 msgstr "Ce membre n'appartient pas à l'équipe."
 
+#: .\attendance\views.py:237
 msgid "Attendance already exists for this member. Use PATCH to update."
 msgstr ""
 "Une présence existe déjà pour ce membre. Utilisez PATCH pour la mettre à "
 "jour."
 
+#: .\attendance\views.py:268
 msgid "Only team owner and managers can bulk-set attendances."
 msgstr ""
 "Seuls le propriétaire et les managers de l'équipe peuvent définir les "
 "présences en lot."
 
+#: .\attendance\views.py:285
 #, python-brace-format
 msgid "Members not in team: {ids}"
 msgstr "Membres absents de l'équipe : {ids}"
 
+#: .\attendance\views.py:297
 #, python-brace-format
 msgid "Status codes not found or inactive: {codes}"
 msgstr "Codes de statut introuvables ou inactifs : {codes}"
 
+#: .\audit\models.py:13
 msgid "Member anonymized"
 msgstr "Membre anonymisé"
 
+#: .\audit\models.py:14
 msgid "Member removed from team"
 msgstr "Membre retiré de l'équipe"
 
+#: .\audit\models.py:15
 msgid "Account deleted"
 msgstr "Compte supprimé"
 
+#: .\audit\models.py:16
 msgid "Session shared publicly"
 msgstr "Séance partagée publiquement"
 
+#: .\audit\models.py:17
 msgid "Session sharing disabled"
 msgstr "Partage de la séance désactivé"
 
+#: .\audit\models.py:18
 msgid "Attachment deleted"
 msgstr "Pièce jointe supprimée"
 
+#: .\audit\models.py:19
 msgid "Team configuration updated"
 msgstr "Configuration de l'équipe mise à jour"
 
+#: .\audit\models.py:36
 msgid "The user who performed the action. NULL = system/anonymous."
 msgstr "L'utilisateur ayant effectué l'action. NULL = système/anonyme."
 
+#: .\audit\models.py:43
 msgid ""
 "Snapshot of the actor's username/display at the time. Survives actor "
 "deletion or anonymization (when the FK is SET_NULL)."
@@ -156,9 +200,11 @@ msgstr ""
 "Subsiste après la suppression ou l'anonymisation de l'acteur (lorsque la clé "
 "étrangère est SET_NULL)."
 
+#: .\audit\models.py:50
 msgid "Stable code identifying the audited action."
 msgstr "Code stable identifiant l'action auditée."
 
+#: .\audit\models.py:59
 msgid ""
 "Team the action is scoped to (used for read scoping). NULL = not team-"
 "scoped, e.g. an account self-delete."
@@ -167,50 +213,100 @@ msgstr ""
 "lecture). NULL = non rattachée à une équipe, ex. une auto-suppression de "
 "compte."
 
+#: .\audit\models.py:67
 msgid "Human-readable description of the target."
 msgstr "Description lisible de la cible."
 
+#: .\audit\models.py:72
 msgid "Small structured extra context (no unnecessary PII)."
 msgstr ""
 "Petit contexte supplémentaire structuré (sans données personnelles "
 "superflues)."
 
+#: .\audit\models.py:81
 msgid "audit log entry"
 msgstr "entrée du journal d'audit"
 
+#: .\audit\models.py:82
 msgid "audit log entries"
 msgstr "entrées du journal d'audit"
 
+#: .\chat\models.py:24 .\messaging\models.py:95
 msgid "Author of the message. SET_NULL on user deletion."
 msgstr "Auteur du message. SET_NULL lors de la suppression de l'utilisateur."
 
+#: .\chat\models.py:27 .\messaging\models.py:98 .\note\models.py:34
 msgid "Rich HTML content (sanitized via bleach on save)."
 msgstr "Contenu HTML enrichi (assaini via bleach à l'enregistrement)."
 
+#: .\chat\models.py:32
 msgid "Set when the message is edited after creation."
 msgstr "Renseigné lorsque le message est modifié après sa création."
 
+#: .\chat\models.py:37
 msgid "Soft delete timestamp. Non-null = deleted."
 msgstr "Horodatage de suppression logique. Non null = supprimé."
 
+#: .\chat\permissions.py:21
 msgid "You don't have permission to access this team's chat."
 msgstr "Vous n'avez pas la permission d'accéder au chat de cette équipe."
 
+#: .\chat\serializers.py:43 .\chat\serializers.py:50
+#: .\messaging\serializers.py:31 .\messaging\serializers.py:38
 msgid "Message content cannot be empty."
 msgstr "Le contenu du message ne peut pas être vide."
 
+#: .\customuser\admin.py:24
 msgid "Personal info"
 msgstr "Informations personnelles"
 
+#: .\customuser\admin.py:25
 msgid "Permissions"
 msgstr "Permissions"
 
+#: .\customuser\admin.py:26
 msgid "Important dates"
 msgstr "Dates importantes"
 
+#: .\customuser\magic_link.py:66
+msgid "Your sign-in link"
+msgstr "Votre lien de connexion"
+
+#: .\customuser\magic_link.py:68
+#: .\customuser\management\commands\send_weekly_recaps.py:109
+#: .\customuser\views.py:657 .\team\views.py:1189
 msgid "Hello"
 msgstr "Bonjour"
 
+#: .\customuser\magic_link.py:69
+msgid "Click the link below to sign in without a password:"
+msgstr "Cliquez sur le lien ci-dessous pour vous connecter sans mot de passe :"
+
+#: .\customuser\magic_link.py:71
+msgid "This link expires in 15 minutes and can be used only once."
+msgstr "Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois."
+
+#: .\customuser\magic_link.py:72 .\customuser\views.py:661
+msgid "If you did not request this, you can safely ignore this email."
+msgstr ""
+"Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce "
+"message en toute sécurité."
+
+#: .\customuser\management\commands\send_session_reminders.py:79
+#: .\customuser\management\commands\send_session_reminders.py:80
+msgid "TBD"
+msgstr "À définir"
+
+#: .\customuser\management\commands\send_session_reminders.py:97
+msgid "Session tomorrow"
+msgstr "Séance demain"
+
+#: .\customuser\management\commands\send_session_reminders.py:98
+#, python-format
+msgid "%(name)s at %(hour)s — %(location)s"
+msgstr "%(name)s à %(hour)s — %(location)s"
+
+#: .\customuser\management\commands\send_weekly_recaps.py:111
 #, python-format
 msgid ""
 "Here is your weekly TrainingManager recap for the week of %(from)s to %(to)s."
@@ -218,21 +314,27 @@ msgstr ""
 "Voici votre récapitulatif hebdomadaire TrainingManager pour la semaine du "
 "%(from)s au %(to)s."
 
+#: .\customuser\management\commands\send_weekly_recaps.py:118
 msgid "n/a"
 msgstr "n/d"
 
+#: .\customuser\management\commands\send_weekly_recaps.py:122
 msgid "Sessions"
 msgstr "Séances"
 
+#: .\customuser\management\commands\send_weekly_recaps.py:123
 msgid "Attendance rate"
 msgstr "Taux de présence"
 
+#: .\customuser\management\commands\send_weekly_recaps.py:124
 msgid "Total volume"
 msgstr "Volume total"
 
+#: .\customuser\management\commands\send_weekly_recaps.py:126
 msgid "Upcoming sessions next week"
 msgstr "Séances à venir la semaine prochaine"
 
+#: .\customuser\management\commands\send_weekly_recaps.py:131
 msgid ""
 "You receive this because you own or manage these teams. To stop, disable the "
 "weekly recap in your account preferences."
@@ -241,12 +343,15 @@ msgstr ""
 "le recevoir, désactivez le récapitulatif hebdomadaire dans les préférences "
 "de votre compte."
 
+#: .\customuser\management\commands\send_weekly_recaps.py:236
 msgid "Votre récap hebdo"
 msgstr "Votre récap hebdo"
 
+#: .\customuser\models.py:57
 msgid "language"
 msgstr "langue"
 
+#: .\customuser\models.py:65
 msgid ""
 "Per-user preference for the weekly recap email. Opt-out model: default True. "
 "When False, this user receives no weekly recap even for teams they own/"
@@ -257,6 +362,7 @@ msgstr ""
 "aucun récapitulatif hebdomadaire, même pour les équipes qu'il possède/gère "
 "et qui l'ont activé."
 
+#: .\customuser\models.py:73
 msgid ""
 "Maximum number of active teams this user can own. Defaults to 0 — creating a "
 "team is a paid feature; admins bump this per user (or via a future billing "
@@ -267,6 +373,7 @@ msgstr ""
 "augmentent cette valeur par utilisateur (ou via un futur flux de "
 "facturation)."
 
+#: .\customuser\models.py:83
 msgid ""
 "Unguessable token embedded in the user's personal iCal (.ics) subscription "
 "URL. The token IS the authentication for that (otherwise anonymous) feed. "
@@ -276,93 +383,117 @@ msgstr ""
 "l'utilisateur. Le jeton EST l'authentification de ce flux (par ailleurs "
 "anonyme). Faites-le tourner pour révoquer une ancienne URL."
 
+#: .\customuser\serializers.py:135 .\team\serializers.py:564
 msgid "This username is already taken."
 msgstr "Ce nom d'utilisateur est déjà pris."
 
+#: .\customuser\serializers.py:145 .\customuser\serializers.py:149
 msgid "This email is already in use."
 msgstr "Cette adresse email est déjà utilisée."
 
+#: .\customuser\views.py:424
 msgid "Account created. Please check your email to confirm your registration."
 msgstr ""
 "Compte créé. Veuillez consulter votre email pour confirmer votre inscription."
 
+#: .\customuser\views.py:469 .\customuser\views.py:478
 msgid "Invalid or expired confirmation token."
 msgstr "Jeton de confirmation invalide ou expiré."
 
+#: .\customuser\views.py:532
 msgid ""
 "If a matching unverified account exists, a confirmation email has been sent."
 msgstr ""
 "Si un compte non vérifié correspond, un email de confirmation a été envoyé."
 
+#: .\customuser\views.py:655
 msgid "Password reset"
 msgstr "Réinitialisation du mot de passe"
 
+#: .\customuser\views.py:658
 msgid "You (or someone) requested a password reset for your account."
 msgstr ""
 "Vous (ou quelqu'un d'autre) avez demandé la réinitialisation du mot de passe "
 "de votre compte."
 
+#: .\customuser\views.py:659
 msgid "To set a new password, click the link below:"
 msgstr "Pour définir un nouveau mot de passe, cliquez sur le lien ci-dessous :"
 
-msgid "If you did not request this, you can safely ignore this email."
-msgstr ""
-"Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce "
-"message en toute sécurité."
-
+#: .\customuser\views.py:676
 msgid "If a matching account exists, a password reset email has been sent."
 msgstr ""
 "Si un compte correspond à cet email, un message de réinitialisation a été "
 "envoyé."
 
+#: .\customuser\views.py:741 .\customuser\views.py:750
+#: .\customuser\views.py:756
 msgid "Invalid or expired password reset token."
 msgstr "Lien de réinitialisation invalide ou expiré."
 
+#: .\customuser\views.py:984 .\customuser\views.py:1049
 msgid "Current password is incorrect."
 msgstr "Le mot de passe actuel est incorrect."
 
+#: .\customuser\views.py:990
 msgid "The new password must be different from the current one."
 msgstr "Le nouveau mot de passe doit être différent de l'actuel."
 
+#: .\customuser\views.py:997
 msgid "Password updated."
 msgstr "Mot de passe mis à jour."
 
+#: .\customuser\views.py:1119 .\customuser\views.py:1127
+#: .\customuser\views.py:1136
 msgid "Invalid or expired refresh token."
 msgstr "Jeton de rafraîchissement invalide ou expiré."
 
+#: .\event\ai.py:204
 msgid "No modalities defined for this sport. Cannot generate."
 msgstr "Aucune modalité définie pour ce sport. Génération impossible."
 
+#: .\event\ai.py:206
 msgid "No energy segments defined. Cannot generate."
 msgstr "Aucun segment énergétique défini. Génération impossible."
 
+#: .\event\ai.py:284
 msgid "AI returned empty or invalid rounds."
 msgstr "L'IA a renvoyé des séries vides ou invalides."
 
+#: .\event\ai.py:298
 msgid "AI used an invalid modality id."
 msgstr "L'IA a utilisé un identifiant de modalité invalide."
 
+#: .\event\ai.py:307
 msgid "AI used an invalid energysegment id."
 msgstr "L'IA a utilisé un identifiant de segment énergétique invalide."
 
+#: .\event\models.py:30
 msgid "Always"
 msgstr "Toujours"
 
+#: .\event\models.py:31
 msgid "After the session"
 msgstr "Après la séance"
 
+#: .\event\models.py:32
 msgid "Never"
 msgstr "Jamais"
 
+#: .\event\models.py:40 .\exercise\models.py:9 .\exercise\models.py:26
+#: .\program\models.py:6
 msgid "name"
 msgstr "nom"
 
+#: .\event\models.py:41
 msgid "goal"
 msgstr "objectif"
 
+#: .\event\models.py:46
 msgid "location"
 msgstr "lieu"
 
+#: .\event\models.py:48
 msgid ""
 "Where the session takes place (venue, pool, track, address). Always visible "
 "to athletes."
@@ -370,33 +501,42 @@ msgstr ""
 "Lieu où se déroule la séance (site, piscine, piste, adresse). Toujours "
 "visible par les athlètes."
 
+#: .\event\models.py:55
 msgid "equipment"
 msgstr "équipement"
 
+#: .\event\models.py:56
 msgid "Material/gear athletes should bring. Always visible to athletes."
 msgstr ""
 "Matériel/équipement que les athlètes doivent apporter. Toujours visible par "
 "les athlètes."
 
+#: .\event\models.py:58
 msgid "color"
 msgstr "couleur"
 
+#: .\event\models.py:82
 msgid "refer_program"
 msgstr "refer_program"
 
+#: .\event\models.py:91
 msgid "Visibility of this session's total distance to athletes."
 msgstr "Visibilité de la distance totale de cette séance pour les athlètes."
 
+#: .\event\models.py:97
 msgid "Visibility of this session's goal to athletes."
 msgstr "Visibilité de l'objectif de cette séance pour les athlètes."
 
+#: .\event\models.py:103
 msgid "Visibility of this session's rounds (and exercises) to athletes."
 msgstr ""
 "Visibilité des séries (et exercices) de cette séance pour les athlètes."
 
+#: .\event\models.py:107
 msgid "Whether this session is currently shared via its public link."
 msgstr "Indique si cette séance est actuellement partagée via son lien public."
 
+#: .\event\models.py:116
 msgid ""
 "Unguessable token in the public share URL. Null = never shared. The token "
 "authenticates the otherwise-anonymous public view."
@@ -404,78 +544,111 @@ msgstr ""
 "Jeton indevinable dans l'URL de partage public. Null = jamais partagée. Le "
 "jeton authentifie la vue publique (par ailleurs anonyme)."
 
+#: .\event\models.py:128
 msgid "Event"
 msgstr "Évènement"
 
+#: .\event\serializers.py:79 .\program\serializers.py:94
 #, python-format
 msgid "Additional prompt cannot exceed %(n)d characters."
 msgstr "Le prompt additionnel ne peut pas dépasser %(n)d caractères."
 
+#: .\event\views.py:117
 msgid "refer_program is required."
 msgstr "refer_program est requis."
 
+#: .\event\views.py:119
 msgid "You do not manage the team of this program."
 msgstr "Vous ne gérez pas l'équipe de ce programme."
 
+#: .\event\views.py:200 .\event\views.py:384 .\event\views.py:444
 msgid "You must be owner or manager of this event's team."
-msgstr ""
-"Vous devez être propriétaire ou manager de l'équipe de cet évènement."
+msgstr "Vous devez être propriétaire ou manager de l'équipe de cet évènement."
 
+#: .\event\views.py:212
+msgid "You can only generate a training for a session in the future."
+msgstr "Vous ne pouvez générer un entraînement que pour une séance future."
+
+#: .\event\views.py:222
 msgid "Event already has rounds. Remove them before regenerating."
 msgstr ""
 "L'évènement contient déjà des séries. Supprimez-les avant de régénérer."
 
+#: .\event\views.py:324
 msgid "You must manage this event's team to reorder its rounds."
-msgstr ""
-"Vous devez gérer l'équipe de cet évènement pour réordonner ses séries."
+msgstr "Vous devez gérer l'équipe de cet évènement pour réordonner ses séries."
 
+#: .\event\views.py:456
 msgid "Public sharing is disabled for this team."
 msgstr "Le partage public est désactivé pour cette équipe."
 
+#: .\exercise\models.py:34
 msgid "abv"
 msgstr "abv"
 
+#: .\exercise\models.py:36
 msgid "description"
 msgstr "description"
 
+#: .\exercise\models.py:46
 msgid "order"
 msgstr "ordre"
 
+#: .\exercise\models.py:52 .\round\models.py:17
 msgid "start"
 msgstr "début"
 
+#: .\exercise\models.py:59 .\round\models.py:24
 msgid "break"
 msgstr "pause"
 
+#: .\exercise\models.py:61
 msgid "repetition"
 msgstr "répétition"
 
+#: .\exercise\models.py:62
 msgid "distance"
 msgstr "distance"
 
+#: .\exercise\models.py:64
 msgid "modality"
 msgstr "modalité"
 
+#: .\exercise\models.py:70
 msgid "Energy Segment"
 msgstr "Segment énergétique"
 
+#: .\exercise\models.py:76
 msgid "notes"
 msgstr "notes"
 
+#: .\exercise\models.py:90 .\exercise\models.py:93
 msgid "Exercise"
 msgstr "Exercice"
 
+#: .\exercise\serializers.py:24
 msgid "You are not authorized to attach an exercise to this round."
 msgstr "Vous n'êtes pas autorisé à attacher un exercice à cette série."
 
+#: .\exercise\serializers.py:141 .\exercise\serializers.py:148
+#: .\round\serializers.py:63 .\round\serializers.py:70
 msgid "MM:SS format, e.g. 1:30."
 msgstr "Format MM:SS, ex. 1:30."
 
+#: .\exercise\serializers.py:164
+#, fuzzy
+#| msgid ""
+#| "Optional. If provided on POST, the newly created Exercise is atomically "
+#| "attached to this Round. The request user must manage at least one team of "
+#| "at least one Event linked to this Round (library rounds with no events "
+#| "are accepted as-is). Ignored on PATCH/PUT."
 msgid ""
-"Optional. If provided on POST, the newly created Exercise is atomically "
-"attached to this Round. The request user must manage at least one team of at "
-"least one Event linked to this Round (library rounds with no events are "
-"accepted as-is). Ignored on PATCH/PUT."
+"Optional. On POST, the newly created Exercise is atomically attached to this "
+"Round. On PATCH/PUT, if the Exercise is shared by several Rounds "
+"(usage_count > 1), it is forked: a clone with the changes is swapped into "
+"THIS Round and the shared original is left untouched. The request user must "
+"manage at least one team of an Event linked to this Round (library rounds "
+"with no events are accepted as-is)."
 msgstr ""
 "Facultatif. Si fourni lors d'un POST, l'exercice nouvellement créé est "
 "attaché de manière atomique à cette série. L'utilisateur de la requête doit "
@@ -483,48 +656,62 @@ msgstr ""
 "séries de bibliothèque sans évènement sont acceptées telles quelles). Ignoré "
 "lors d'un PATCH/PUT."
 
+#: .\member\models.py:9
 msgid "Firstname"
 msgstr "Prénom"
 
+#: .\member\models.py:13
 msgid "Lastname"
 msgstr "Nom"
 
+#: .\member\models.py:19
 msgid "Phonenumber"
 msgstr "Numéro de téléphone"
 
+#: .\member\models.py:25
 msgid "Email"
 msgstr "Email"
 
+#: .\member\models.py:52
 msgid "Member"
 msgstr "Membre"
 
+#: .\member\serializers.py:66
 msgid "This user already has a member profile."
 msgstr "Cet utilisateur possède déjà un profil membre."
 
+#: .\member\serializers.py:95
 msgid "The user must already belong to at least one of the member's teams."
 msgstr ""
 "L'utilisateur doit déjà appartenir à au moins l'une des équipes du membre."
 
+#: .\member\views.py:37
 msgid "You must manage at least one team to create members."
 msgstr "Vous devez gérer au moins une équipe pour créer des membres."
 
+#: .\member\views.py:137
 msgid "No such member."
 msgstr "Membre inexistant."
 
+#: .\member\views.py:147
 msgid "No such member in a team you manage."
 msgstr "Aucun membre de ce type dans une équipe que vous gérez."
 
+#: .\messaging\models.py:16
 msgid "Whole team"
 msgstr "Toute l'équipe"
 
+#: .\messaging\models.py:17
 msgid "Coaches only"
 msgstr "Entraîneurs uniquement"
 
+#: .\messaging\models.py:42
 msgid "The coach who created the topic. SET_NULL on user deletion."
 msgstr ""
 "L'entraîneur qui a créé le sujet. SET_NULL lors de la suppression de "
 "l'utilisateur."
 
+#: .\messaging\models.py:50
 msgid ""
 "team = visible to all team members; coaches = visible only to the owner and "
 "managers (staff channel)."
@@ -532,6 +719,7 @@ msgstr ""
 "team = visible par tous les membres de l'équipe ; coaches = visible "
 "uniquement par le propriétaire et les managers (canal staff)."
 
+#: .\messaging\models.py:57
 msgid ""
 "Only meaningful when audience=team. When True, athlete members may post "
 "messages; coaches can always post."
@@ -540,43 +728,53 @@ msgstr ""
 "athlètes peuvent publier des messages ; les entraîneurs peuvent toujours "
 "publier."
 
+#: .\messaging\models.py:64
 msgid "Bumped on each new message for activity-based ordering."
-msgstr ""
-"Mis à jour à chaque nouveau message pour un tri basé sur l'activité."
+msgstr "Mis à jour à chaque nouveau message pour un tri basé sur l'activité."
 
+#: .\messaging\permissions.py:71
 msgid "You don't have permission to access this team's topics."
 msgstr "Vous n'avez pas la permission d'accéder aux sujets de cette équipe."
 
+#: .\messaging\permissions.py:120
 msgid "You don't have permission to post in this topic."
 msgstr "Vous n'avez pas la permission de publier dans ce sujet."
 
+#: .\messaging\serializers.py:83
 msgid "Title cannot be empty."
 msgstr "Le titre ne peut pas être vide."
 
+#: .\messaging\views.py:131
 msgid "Athletes can only create whole-team topics."
 msgstr ""
 "Les athlètes ne peuvent créer que des sujets destinés à toute l'équipe."
 
+#: .\messaging\views.py:149
 #, python-format
 msgid "New topic: %(title)s"
 msgstr "Nouveau sujet : %(title)s"
 
+#: .\messaging\views.py:150
 msgid "A new topic was created in your team."
 msgstr "Un nouveau sujet a été créé dans votre équipe."
 
+#: .\messaging\views.py:230
 #, python-format
 msgid "New message in: %(title)s"
 msgstr "Nouveau message dans : %(title)s"
 
+#: .\messaging\views.py:231
 msgid "A new message was posted in a topic you follow."
 msgstr "Un nouveau message a été publié dans un sujet que vous suivez."
 
+#: .\note\models.py:31
 msgid ""
 "The coach who wrote this note. SET_NULL if the author account is deleted."
 msgstr ""
 "L'entraîneur qui a rédigé cette note. SET_NULL si le compte de l'auteur est "
 "supprimé."
 
+#: .\note\models.py:39
 msgid ""
 "If True, the concerned athlete can read this note (when it is also active). "
 "Default False — notes are coach-only unless explicitly shared."
@@ -585,59 +783,89 @@ msgstr ""
 "active). False par défaut — les notes sont réservées aux entraîneurs sauf "
 "partage explicite."
 
+#: .\note\permissions.py:23
 msgid "You don't have permission to access these notes."
 msgstr "Vous n'avez pas la permission d'accéder à ces notes."
 
+#: .\note\views.py:81 .\performance\views.py:119
 msgid "This member does not belong to this team."
 msgstr "Ce membre n'appartient pas à cette équipe."
 
+#: .\note\views.py:108 .\notifications\models.py:17
 msgid "A note was shared with you"
 msgstr "Une note a été partagée avec vous"
 
+#: .\note\views.py:109
 msgid "Your coach added a note for you."
 msgstr "Votre entraîneur a ajouté une note pour vous."
 
+#: .\note\views.py:122
 #, python-format
 msgid "Note added on %(name)s"
 msgstr "Note ajoutée sur %(name)s"
 
+#: .\note\views.py:123
 #, python-format
 msgid "A new note was added on %(name)s."
 msgstr "Une nouvelle note a été ajoutée sur %(name)s."
 
+#: .\notifications\models.py:16
 msgid "Note added on an athlete"
 msgstr "Note ajoutée sur un athlète"
 
+#: .\notifications\models.py:18
 msgid "A new topic was created in your team"
 msgstr "Un nouveau sujet a été créé dans votre équipe"
 
+#: .\notifications\models.py:19
 msgid "A new message was posted in a topic"
 msgstr "Un nouveau message a été publié dans un sujet"
 
+#: .\notifications\models.py:20
+msgid "A performance was logged for you"
+msgstr "Une performance a été enregistrée pour vous"
+
+#: .\notifications\models.py:21
+msgid "A new training plan was scheduled"
+msgstr "Un nouveau programme a été planifié"
+
+#: .\notifications\models.py:22
+msgid "You have a session tomorrow"
+msgstr "Vous avez une séance demain"
+
+#: .\notifications\models.py:46
 msgid "Frontend deep-link path, e.g. /teams/3."
 msgstr "Chemin de lien profond du frontend, ex. /teams/3."
 
+#: .\performance\models.py:7
 msgid "Seconds"
 msgstr "Secondes"
 
+#: .\performance\models.py:8
 msgid "Meters"
 msgstr "Mètres"
 
+#: .\performance\models.py:9
 msgid "Repetitions"
 msgstr "Répétitions"
 
+#: .\performance\models.py:10
 msgid "Kilograms"
 msgstr "Kilogrammes"
 
+#: .\performance\models.py:11
 msgid "Points"
 msgstr "Points"
 
+#: .\performance\models.py:35
 msgid "label"
 msgstr "libellé"
 
+#: .\performance\models.py:36
 msgid "Discipline / test name, e.g. '100m freestyle' or 'Cooper test'."
 msgstr "Nom de discipline / test, ex. '100m nage libre' ou 'test de Cooper'."
 
+#: .\performance\models.py:42
 msgid ""
 "Numeric result, interpreted by unit (seconds for time, meters for distance, "
 "etc.)."
@@ -645,53 +873,92 @@ msgstr ""
 "Résultat numérique, interprété selon l'unité (secondes pour le temps, mètres "
 "pour la distance, etc.)."
 
+#: .\performance\models.py:52
 msgid "Date the performance was achieved."
 msgstr "Date à laquelle la performance a été réalisée."
 
+#: .\performance\views.py:104
 msgid "You cannot log a performance for this member."
 msgstr "Vous ne pouvez pas enregistrer une performance pour ce membre."
 
+#: .\performance\views.py:112
 msgid "You can only log performances in a team you belong to."
 msgstr ""
 "Vous ne pouvez enregistrer des performances que dans une équipe à laquelle "
 "vous appartenez."
 
+#: .\performance\views.py:147
+msgid "New performance"
+msgstr "Nouvelle performance"
+
+#: .\performance\views.py:148
+#, python-format
+msgid "%(coach)s logged %(label)s: %(value)s%(unit)s"
+msgstr "%(coach)s a enregistré %(label)s : %(value)s%(unit)s"
+
+#: .\performance\views.py:169
 msgid "You cannot modify this performance."
 msgstr "Vous ne pouvez pas modifier cette performance."
 
+#: .\program\ai.py:286
 msgid "AI returned an invalid date format."
 msgstr "L'IA a renvoyé un format de date invalide."
 
+#: .\program\ai.py:404
 msgid "AI returned an empty or invalid event list."
 msgstr "L'IA a renvoyé une liste d'évènements vide ou invalide."
 
+#: .\program\ai.py:417
 msgid "AI generated an event with an out-of-range date."
 msgstr "L'IA a généré un évènement avec une date hors plage."
 
+#: .\program\models.py:34
 msgid "Program"
 msgstr "Programme"
 
+#: .\program\serializers.py:103
 msgid "date_end must be after date_start."
 msgstr "date_end doit être postérieure à date_start."
 
+#: .\program\serializers.py:108
 msgid "Range cannot exceed 365 days."
 msgstr "La plage ne peut pas dépasser 365 jours."
 
+#: .\program\views.py:85 .\team\serializers.py:322
 msgid "You do not manage this team."
 msgstr "Vous ne gérez pas cette équipe."
 
+#: .\program\views.py:140
 msgid "You must be owner or manager of this program's team."
 msgstr "Vous devez être propriétaire ou manager de l'équipe de ce programme."
 
+#: .\program\views.py:160
+msgid "This team has no training template; frequency_per_week is required."
+msgstr "Cette équipe n'a pas de modèle d'entraînement ; frequency_per_week est requis."
+
+#: .\program\views.py:240
+msgid "New training plan scheduled"
+msgstr "Nouveau programme planifié"
+
+#: .\program\views.py:241
+#, fuzzy, python-format
+#| msgid "Note added on %(name)s"
+msgid "%(n)s sessions added to %(name)s"
+msgstr "Note ajoutée sur %(name)s"
+
+#: .\roti\views.py:40
 msgid "You don't have permission to access this event's ROTI."
 msgstr "Vous n'avez pas la permission d'accéder au ROTI de cet évènement."
 
+#: .\round\models.py:47 .\round\models.py:50
 msgid "Round"
 msgstr "Round"
 
+#: .\round\serializers.py:41
 msgid "You are not authorized to attach a round to this event."
 msgstr "Vous n'êtes pas autorisé à attacher une série à cet évènement."
 
+#: .\round\serializers.py:78
 msgid ""
 "Optional. If provided on POST, the newly created Round is atomically "
 "attached to this Event. The request user must manage the Event's team. "
@@ -701,18 +968,23 @@ msgstr ""
 "attachée de manière atomique à cet évènement. L'utilisateur de la requête "
 "doit gérer l'équipe de l'évènement. Ignoré lors d'un PATCH/PUT."
 
+#: .\round\utils.py:17
 msgid "An exercise has a modality.sport that doesn't match round.sport."
 msgstr "Un exercice a un modality.sport qui ne correspond pas à round.sport."
 
+#: .\round\utils.py:23
 msgid "An exercise has a language that doesn't match round.language."
 msgstr "Un exercice a une langue qui ne correspond pas à round.language."
 
+#: .\round\views.py:81
 msgid "exercise_id is required."
 msgstr "exercise_id est requis."
 
+#: .\round\views.py:94
 msgid "Exercise not found or not accessible."
 msgstr "Exercice introuvable ou inaccessible."
 
+#: .\round\views.py:138
 msgid ""
 "You must manage at least one team owning an event linked to this round to "
 "reorder its exercises."
@@ -720,56 +992,70 @@ msgstr ""
 "Vous devez gérer au moins une équipe possédant un évènement lié à cette "
 "série pour réordonner ses exercices."
 
+#: .\rsvp\models.py:6
 msgid "Going"
 msgstr "Présent"
 
+#: .\rsvp\models.py:7
 msgid "Maybe"
 msgstr "Peut-être"
 
+#: .\rsvp\models.py:8
 msgid "Not going"
 msgstr "Absent"
 
+#: .\rsvp\views.py:45
 msgid "You don't have permission to access this event's RSVP."
 msgstr ""
 "Vous n'avez pas la permission d'accéder aux réponses de présence de cet "
 "évènement."
 
+#: .\rsvp\views.py:235
 msgid "Only team owner and managers can apply RSVPs to attendance."
 msgstr ""
 "Seuls le propriétaire et les managers de l'équipe peuvent appliquer les "
 "réponses de présence aux présences."
 
+#: .\team\models.py:22
 msgid "All members can post"
 msgstr "Tous les membres peuvent poster"
 
+#: .\team\models.py:23
 msgid "Only coaches can post"
 msgstr "Seuls les entraîneurs peuvent poster"
 
+#: .\team\models.py:26
 msgid "Manual — managers accept/reject each request"
 msgstr "Manuel — les managers acceptent/refusent chaque demande"
 
+#: .\team\models.py:27
 msgid "Auto-accept — every join request is accepted immediately"
 msgstr ""
 "Acceptation automatique — chaque demande d'inscription est acceptée "
 "immédiatement"
 
+#: .\team\models.py:30
 msgid "Owner only"
 msgstr "Propriétaire uniquement"
 
+#: .\team\models.py:31
 msgid "Owner and coaches"
 msgstr "Propriétaire et entraîneurs"
 
+#: .\team\models.py:32
 msgid "Everyone (incl. athletes)"
 msgstr "Tout le monde (y compris les athlètes)"
 
+#: .\team\models.py:70
 msgid ""
 "Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...'). "
 "Stored inline in the DB; no file storage."
 msgstr ""
-"Petite data-URL en base64 pour le logo de l'équipe (ex. "
-"'data:image/png;base64,...'). Stockée directement dans la base de données ; "
-"aucun stockage de fichier."
+"Petite data-URL en base64 pour le logo de l'équipe (ex. 'data:image/"
+"png;base64,...'). Stockée directement dans la base de données ; aucun "
+"stockage de fichier."
 
+#: .\team\models.py:78
 msgid ""
 "If True, athletes can submit a per-session difficulty rating (ROTI, 1..5) "
 "for the team's events."
@@ -777,6 +1063,7 @@ msgstr ""
 "Si True, les athlètes peuvent soumettre une note de difficulté par séance "
 "(ROTI, 1..5) pour les évènements de l'équipe."
 
+#: .\team\models.py:85
 msgid ""
 "If True, athletes can declare their availability (RSVP: going / maybe / not "
 "going) for the team's events."
@@ -784,9 +1071,11 @@ msgstr ""
 "Si True, les athlètes peuvent déclarer leur disponibilité (réponse de "
 "présence : présent / peut-être / absent) pour les évènements de l'équipe."
 
+#: .\team\models.py:93
 msgid "Defines who can post messages in the team chat."
 msgstr "Définit qui peut poster des messages dans le chat de l'équipe."
 
+#: .\team\models.py:98
 msgid ""
 "If True, this team is included in the weekly recap email sent to its owner "
 "and managers. Default False (opt-in per team)."
@@ -795,6 +1084,7 @@ msgstr ""
 "envoyé à son propriétaire et à ses managers. False par défaut (opt-in par "
 "équipe)."
 
+#: .\team\models.py:107
 msgid ""
 "Statuses available for marking attendance in this team's events. Default: "
 "present, absent, excused."
@@ -802,6 +1092,7 @@ msgstr ""
 "Statuts disponibles pour marquer les présences dans les évènements de cette "
 "équipe. Par défaut : present, absent, excused."
 
+#: .\team\models.py:116
 msgid ""
 "Manual = managers accept/reject each TeamJoinRequest. Auto = every join "
 "request is accepted immediately on submission."
@@ -809,6 +1100,7 @@ msgstr ""
 "Manuel = les managers acceptent/refusent chaque TeamJoinRequest. Auto = "
 "chaque demande d'inscription est acceptée immédiatement à la soumission."
 
+#: .\team\models.py:125
 msgid ""
 "Who may create messaging topics in this team. owner = team owner only; "
 "coaches = owner and managers; members = owner, managers, and active athlete "
@@ -818,6 +1110,7 @@ msgstr ""
 "propriétaire de l'équipe uniquement ; coaches = propriétaire et managers ; "
 "members = propriétaire, managers et membres athlètes actifs."
 
+#: .\team\models.py:134
 msgid ""
 "IANA timezone name (e.g. 'Europe/Brussels'). Used to decide, in the team's "
 "local time, whether a session is over for per-aspect athlete visibility "
@@ -827,6 +1120,7 @@ msgstr ""
 "selon l'heure locale de l'équipe, si une séance est terminée pour la "
 "visibilité par aspect des athlètes (vis_distance/vis_goal/vis_rounds)."
 
+#: .\team\models.py:144
 msgid ""
 "Default visibility of a session's total distance to athletes. Inherited by "
 "new events; overridable per event."
@@ -834,6 +1128,7 @@ msgstr ""
 "Visibilité par défaut de la distance totale d'une séance pour les athlètes. "
 "Héritée par les nouveaux évènements ; modifiable par évènement."
 
+#: .\team\models.py:153
 msgid ""
 "Default visibility of a session's goal to athletes. Inherited by new events; "
 "overridable per event."
@@ -841,14 +1136,15 @@ msgstr ""
 "Visibilité par défaut de l'objectif d'une séance pour les athlètes. Héritée "
 "par les nouveaux évènements ; modifiable par évènement."
 
+#: .\team\models.py:162
 msgid ""
 "Default visibility of a session's rounds (and their exercises) to athletes. "
 "Inherited by new events; overridable per event."
 msgstr ""
 "Visibilité par défaut des séries (et de leurs exercices) d'une séance pour "
-"les athlètes. Héritée par les nouveaux évènements ; modifiable par "
-"évènement."
+"les athlètes. Héritée par les nouveaux évènements ; modifiable par évènement."
 
+#: .\team\models.py:168
 msgid ""
 "Allow individual sessions of this team to be shared via a public read-only "
 "link."
@@ -856,17 +1152,20 @@ msgstr ""
 "Autoriser le partage des séances individuelles de cette équipe via un lien "
 "public en lecture seule."
 
+#: .\team\models.py:172
 msgid "Show a shared session's total distance on its public link."
-msgstr ""
-"Afficher la distance totale d'une séance partagée sur son lien public."
+msgstr "Afficher la distance totale d'une séance partagée sur son lien public."
 
+#: .\team\models.py:176
 msgid "Show a shared session's goal on its public link."
 msgstr "Afficher l'objectif d'une séance partagée sur son lien public."
 
+#: .\team\models.py:180
 msgid "Show a shared session's rounds & exercises on its public link."
 msgstr ""
 "Afficher les séries et exercices d'une séance partagée sur son lien public."
 
+#: .\team\models.py:185
 msgid ""
 "When join_request_policy=manual, send the owner and managers an email with "
 "accept/reject magic links on each new request. Ignored when policy=auto (no "
@@ -876,6 +1175,7 @@ msgstr ""
 "un email avec des liens magiques d'acceptation/refus à chaque nouvelle "
 "demande. Ignoré lorsque policy=auto (aucune décision manuelle requise)."
 
+#: .\team\models.py:193
 msgid ""
 "When True, the team owner and managers (except the author) are notified each "
 "time a note is added on one of the team's athletes."
@@ -884,6 +1184,7 @@ msgstr ""
 "sont notifiés chaque fois qu'une note est ajoutée sur l'un des athlètes de "
 "l'équipe."
 
+#: .\team\models.py:200
 msgid ""
 "When True, an athlete with a linked user account is notified when a note "
 "shared with them (visible_to_athlete=True) is added."
@@ -891,123 +1192,230 @@ msgstr ""
 "Lorsque True, un athlète disposant d'un compte utilisateur lié est notifié "
 "lorsqu'une note partagée avec lui (visible_to_athlete=True) est ajoutée."
 
+#: .\team\models.py:208
+msgid ""
+"Default venue/pool for this team's sessions (used by the season-plan "
+"generator)."
+msgstr "Lieu/bassin par défaut pour les séances de cette équipe (utilisé par le générateur de programme de saison)."
+
+#: .\team\models.py:213
+msgid "Default season start date, pre-fills the plan generator."
+msgstr "Date de début de saison par défaut, pré-remplit le générateur de programme."
+
+#: .\team\models.py:218
+msgid "Default season end date, pre-fills the plan generator."
+msgstr "Date de fin de saison par défaut, pré-remplit le générateur de programme."
+
+#: .\team\models.py:265
 msgid "When this athlete joined the team."
 msgstr "Date à laquelle cet athlète a rejoint l'équipe."
 
+#: .\team\models.py:270
 msgid "When this athlete left the team. NULL = currently active."
 msgstr ""
 "Date à laquelle cet athlète a quitté l'équipe. NULL = actuellement actif."
 
+#: .\team\models.py:382
+msgid "Monday"
+msgstr "Lundi"
+
+#: .\team\models.py:383
+msgid "Tuesday"
+msgstr "Mardi"
+
+#: .\team\models.py:384
+msgid "Wednesday"
+msgstr "Mercredi"
+
+#: .\team\models.py:385
+msgid "Thursday"
+msgstr "Jeudi"
+
+#: .\team\models.py:386
+msgid "Friday"
+msgstr "Vendredi"
+
+#: .\team\models.py:387
+msgid "Saturday"
+msgstr "Samedi"
+
+#: .\team\models.py:388
+msgid "Sunday"
+msgstr "Dimanche"
+
+#: .\team\models.py:410
+msgid "Day of the week (Python convention: Monday=0 … Sunday=6)."
+msgstr "Jour de la semaine (convention Python : lundi=0 … dimanche=6)."
+
+#: .\team\models.py:412
+msgid "Slot start time (local team time)."
+msgstr "Heure de début du créneau (heure locale de l'équipe)."
+
+#: .\team\models.py:413
+#, fuzzy
+#| msgid "date_end must be after date_start."
+msgid "Slot end time; must be after hour_start."
+msgstr "date_end doit être postérieure à date_start."
+
+#: .\team\permissions.py:15
 msgid "Only the team owner can delete the team."
 msgstr "Seul le propriétaire de l'équipe peut la supprimer."
 
+#: .\team\permissions.py:52
 msgid ""
 "Only trainers (owners or managers of an active team) can modify the catalog."
 msgstr ""
 "Seuls les entraîneurs (propriétaires ou managers d'une équipe active) "
 "peuvent modifier le catalogue."
 
+#: .\team\serializers.py:101 .\team\serializers.py:108
 #, python-format
 msgid "'%(tz)s' is not a valid IANA timezone name."
 msgstr "'%(tz)s' n'est pas un nom de fuseau horaire IANA valide."
 
+#: .\team\serializers.py:118
 #, python-format
 msgid "Logo is too large (max %(max)d characters)."
 msgstr "Le logo est trop volumineux (max %(max)d caractères)."
 
+#: .\team\serializers.py:123
 msgid ""
 "Logo must be a base64 data-URL of an image (png, jpeg, jpg, webp or svg+xml)."
 msgstr ""
 "Le logo doit être une data-URL en base64 d'une image (png, jpeg, jpg, webp "
 "ou svg+xml)."
 
+#: .\team\serializers.py:263
 msgid "You are already a member of this team."
 msgstr "Vous êtes déjà membre de cette équipe."
 
+#: .\team\serializers.py:268
 msgid "You already have a pending request for this team."
 msgstr "Vous avez déjà une demande en attente pour cette équipe."
 
+#: .\team\serializers.py:273 .\team\serializers.py:327
 msgid "This team is inactive."
 msgstr "Cette équipe est inactive."
 
+#: .\team\serializers.py:278
 msgid "This team is not public."
 msgstr "Cette équipe n'est pas publique."
 
+#: .\team\serializers.py:339
 msgid "An invitation is already pending for this email on this team."
-msgstr ""
-"Une invitation est déjà en attente pour cet email sur cette équipe."
+msgstr "Une invitation est déjà en attente pour cet email sur cette équipe."
 
+#: .\team\serializers.py:525
+msgid "weekday must be between 0 (Monday) and 6 (Sunday)."
+msgstr "weekday doit être compris entre 0 (lundi) et 6 (dimanche)."
+
+#: .\team\serializers.py:533
+#, fuzzy
+#| msgid "date_end must be after date_start."
+msgid "hour_end must be after hour_start."
+msgstr "date_end doit être postérieure à date_start."
+
+#: .\team\views.py:329
+#, fuzzy
+#| msgid "Only the team owner or managers can view team statistics."
+msgid "Only the team owner or managers can edit the training template."
+msgstr ""
+"Seuls le propriétaire ou les managers de l'équipe peuvent consulter les "
+"statistiques de l'équipe."
+
+#: .\team\views.py:375
 msgid "Only the team owner or managers can view team statistics."
 msgstr ""
 "Seuls le propriétaire ou les managers de l'équipe peuvent consulter les "
 "statistiques de l'équipe."
 
+#: .\team\views.py:383
 msgid "member must be an integer id."
 msgstr "member doit être un identifiant entier."
 
+#: .\team\views.py:395
 msgid "No such member in this team."
 msgstr "Aucun membre de ce type dans cette équipe."
 
+#: .\team\views.py:402
 msgid "You can only view your own statistics."
 msgstr "Vous ne pouvez consulter que vos propres statistiques."
 
+#: .\team\views.py:426
 msgid "Invalid date. Use ISO format YYYY-MM-DD."
 msgstr "Date invalide. Utilisez le format ISO AAAA-MM-JJ."
 
+#: .\team\views.py:443
 msgid "`from` must be on or before `to`."
 msgstr "`from` doit être antérieur ou égal à `to`."
 
+#: .\team\views.py:827
 msgid "Join request from"
 msgstr "Demande d'inscription de"
 
+#: .\team\views.py:830
 msgid "wants to join your team"
 msgstr "souhaite rejoindre votre équipe"
 
+#: .\team\views.py:831
 msgid "Message"
 msgstr "Message"
 
+#: .\team\views.py:831
 msgid "(none)"
 msgstr "(aucun)"
 
+#: .\team\views.py:832
 msgid "Accept"
 msgstr "Accepter"
 
+#: .\team\views.py:833
 msgid "Reject"
 msgstr "Refuser"
 
+#: .\team\views.py:834
 msgid ""
 "Links are valid for 48 hours. You can also respond from the team dashboard."
 msgstr ""
 "Les liens sont valides pendant 48 heures. Vous pouvez aussi répondre depuis "
 "le tableau de bord de l'équipe."
 
+#: .\team\views.py:857
 msgid "This request has already been handled."
 msgstr "Cette demande a déjà été traitée."
 
+#: .\team\views.py:864
 msgid "Only the requester can cancel this request."
 msgstr "Seul l'auteur de la demande peut l'annuler."
 
+#: .\team\views.py:873
 msgid "Only a manager can accept or reject this request."
 msgstr "Seul un manager peut accepter ou refuser cette demande."
 
+#: .\team\views.py:885
 msgid "Unauthorized status transition."
 msgstr "Transition de statut non autorisée."
 
+#: .\team\views.py:941
 msgid "Invalid or expired magic-action token."
 msgstr "Jeton d'action magique invalide ou expiré."
 
+#: .\team\views.py:947
 msgid "You are not a manager of this team."
 msgstr "Vous n'êtes pas manager de cette équipe."
 
+#: .\team\views.py:1065
 msgid "token is required."
 msgstr "token est requis."
 
+#: .\team\views.py:1075
 msgid ""
 "This join request was cancelled by the requester and cannot be acted on."
 msgstr ""
 "Cette demande d'inscription a été annulée par l'auteur et ne peut plus être "
 "traitée."
 
+#: .\team\views.py:1155
 msgid ""
 "Cet utilisateur est déjà enregistré. Une invitation directe n'est pas "
 "possible pour les comptes existants."
@@ -1015,42 +1423,54 @@ msgstr ""
 "Cet utilisateur est déjà enregistré. Une invitation directe n'est pas "
 "possible pour les comptes existants."
 
+#: .\team\views.py:1187
 msgid "You are invited to"
 msgstr "Vous êtes invité(e) à rejoindre"
 
+#: .\team\views.py:1190
 msgid "has invited you to join the team"
 msgstr "vous a invité(e) à rejoindre l'équipe"
 
+#: .\team\views.py:1192
 msgid "To finalize your registration, click the link below:"
 msgstr "Pour finaliser votre inscription, cliquez sur le lien ci-dessous :"
 
+#: .\team\views.py:1194
 msgid "The link is valid until"
 msgstr "Le lien est valide jusqu'au"
 
+#: .\team\views.py:1210
 msgid "Only pending invitations can be cancelled."
 msgstr "Seules les invitations en attente peuvent être annulées."
 
+#: .\team\views.py:1239
 msgid "Invitation expired."
 msgstr "Invitation expirée."
 
+#: .\team\views.py:1245 .\team\views.py:1282
 msgid "Invitation is not pending."
 msgstr "L'invitation n'est pas en attente."
 
+#: .\team\views.py:1316
 msgid "Account created and invitation finalized."
 msgstr "Compte créé et invitation finalisée."
 
+#: .\team\views.py:1378
 msgid "Only owner and managers can add members to a team."
 msgstr ""
 "Seuls le propriétaire et les managers peuvent ajouter des membres à une "
 "équipe."
 
+#: .\team\views.py:1383
 msgid "This member is already in the team."
 msgstr "Ce membre fait déjà partie de l'équipe."
 
+#: .\team\views.py:1395
 msgid "You can only remove yourself or you must be a team manager."
 msgstr ""
 "Vous ne pouvez retirer que vous-même ou vous devez être manager de l'équipe."
 
+#: .\team\views.py:1399
 msgid ""
 "Team owner cannot leave their own team. Transfer ownership first or delete "
 "the team."
@@ -1058,42 +1478,54 @@ msgstr ""
 "Le propriétaire de l'équipe ne peut pas quitter sa propre équipe. Transférez "
 "d'abord la propriété ou supprimez l'équipe."
 
+#: .\tools\ai.py:34
 msgid "AI service unavailable. Please retry later."
 msgstr "Service IA indisponible. Veuillez réessayer plus tard."
 
+#: .\tools\ai.py:40
 msgid "AI service is not configured."
 msgstr "Le service IA n'est pas configuré."
 
+#: .\tools\ai.py:47
 msgid "ANTHROPIC_API_KEY is not set. Configure it in .env."
 msgstr "ANTHROPIC_API_KEY n'est pas défini. Configurez-le dans .env."
 
+#: .\tools\ai.py:82 .\tools\ai.py:151
 msgid "AI authentication failed. Check API key."
 msgstr "Échec de l'authentification IA. Vérifiez la clé d'API."
 
+#: .\tools\ai.py:85 .\tools\ai.py:154
 msgid "AI request timed out."
 msgstr "La requête IA a expiré."
 
+#: .\tools\ai.py:88 .\tools\ai.py:157
 msgid "AI request failed."
 msgstr "La requête IA a échoué."
 
+#: .\tools\ai.py:91 .\tools\ai.py:160
 msgid "Unexpected AI error."
 msgstr "Erreur IA inattendue."
 
+#: .\tools\ai.py:190
 msgid "AI did not call the expected tool."
 msgstr "L'IA n'a pas appelé l'outil attendu."
 
+#: .\tools\exceptions.py:10
 msgid "You must be owner or manager of this team."
 msgstr "Vous devez être propriétaire ou manager de cette équipe."
 
+#: .\tools\exceptions.py:18
 msgid "You must manage this event's team to perform this action."
 msgstr ""
 "Vous devez gérer l'équipe de cet évènement pour effectuer cette action."
 
+#: .\tools\exceptions.py:26
 msgid "You must manage at least one team owning an event linked to this round."
 msgstr ""
 "Vous devez gérer au moins une équipe possédant un évènement lié à cette "
 "série."
 
+#: .\tools\exceptions.py:33
 msgid ""
 "This resource is locked because it is used in multiple places. Clone it to "
 "modify."
@@ -1101,6 +1533,7 @@ msgstr ""
 "Cette ressource est verrouillée car elle est utilisée à plusieurs endroits. "
 "Clonez-la pour la modifier."
 
+#: .\tools\exceptions.py:46
 msgid ""
 "Email not verified. Please check your inbox or request a new confirmation "
 "link."
@@ -1108,9 +1541,11 @@ msgstr ""
 "Email non vérifié. Veuillez consulter votre boîte de réception ou demander "
 "un nouveau lien de confirmation."
 
+#: .\tools\exceptions.py:57
 msgid "Captcha verification failed. Please try again."
 msgstr "La vérification du captcha a échoué. Veuillez réessayer."
 
+#: .\tools\exceptions.py:68
 msgid ""
 "You have reached your team quota. Soft-delete an existing team or contact an "
 "admin to raise your quota."
@@ -1118,46 +1553,57 @@ msgstr ""
 "Vous avez atteint votre quota d'équipes. Supprimez (en mode soft) une équipe "
 "existante ou contactez un admin pour augmenter votre quota."
 
+#: .\tools\exceptions.py:82
 msgid "Transfer or delete your teams before deleting your account."
 msgstr "Transférez ou supprimez vos équipes avant de supprimer votre compte."
 
+#: .\tools\exceptions.py:91
 msgid "ROTI is not enabled for this team."
 msgstr "Le ROTI n'est pas activé pour cette équipe."
 
+#: .\tools\exceptions.py:100
 msgid "Only athlete-members of the team can submit a ROTI."
 msgstr "Seuls les membres athlètes de l'équipe peuvent soumettre un ROTI."
 
+#: .\tools\exceptions.py:109
 msgid "RSVP is not enabled for this team."
 msgstr "Les réponses de présence ne sont pas activées pour cette équipe."
 
+#: .\tools\exceptions.py:146
 msgid "Validation failed."
 msgstr "Échec de la validation."
 
+#: .\tools\exceptions.py:166
 msgid "Some fields are invalid."
 msgstr "Certains champs sont invalides."
 
+#: .\tools\permissions.py:13
 msgid "Only staff users can modify the catalog referential."
 msgstr ""
 "Seuls les utilisateurs staff peuvent modifier le référentiel du catalogue."
 
+#: .\tools\validators.py:13
 msgid "Expected format: MM:SS (e.g. 1:30)."
 msgstr "Format attendu : MM:SS (ex. 1:30)."
 
+#: .\tools\validators.py:30
 #, python-brace-format
 msgid "{field} cannot be empty."
 msgstr "{field} ne peut pas être vide."
 
+#: .\tools\validators.py:35
 #, python-brace-format
 msgid "{field} contains duplicate IDs."
 msgstr "{field} contient des identifiants en double."
 
+#: .\tools\validators.py:44
 #, python-brace-format
 msgid "{field} contains IDs not attached to this {container}: {ids}"
-msgstr "{field} contient des identifiants non rattachés à ce {container} : {ids}"
+msgstr ""
+"{field} contient des identifiants non rattachés à ce {container} : {ids}"
 
+#: .\tools\validators.py:55
 #, python-brace-format
 msgid "{field} is missing IDs attached to this {container}: {ids}"
-msgstr "Il manque à {field} des identifiants rattachés à ce {container} : {ids}"
-
-#~ msgid "User already exists; Member created and linked."
-#~ msgstr "L'utilisateur existe déjà ; un Member a été créé et associé."
+msgstr ""
+"Il manque à {field} des identifiants rattachés à ce {container} : {ids}"

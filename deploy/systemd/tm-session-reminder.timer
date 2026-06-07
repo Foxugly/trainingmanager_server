@@ -1,0 +1,13 @@
+[Unit]
+Description=Training Manager — daily session reminder schedule (07:00)
+
+[Timer]
+# Every day at 07:00 local time. The command notifies athletes of sessions
+# happening TOMORROW, so a morning run gives a full day's notice.
+OnCalendar=*-*-* 07:00:00
+# Catch up if the box was down at the scheduled time.
+Persistent=true
+Unit=tm-session-reminder.service
+
+[Install]
+WantedBy=timers.target
