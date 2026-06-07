@@ -7,6 +7,8 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from tools.ai import AIServiceError, call_claude_with_tool, truncate_for_log
+from tools.ai_prompt import append_coach_instructions
+from tools.ai_prompt import build_system_prompt as _build_system_prompt
 from tools.i18n import resolve_language_label
 
 logger = logging.getLogger(__name__)
@@ -109,12 +111,14 @@ PLAN_TOOL_SCHEMA = {
 
 
 def build_system_prompt(sport_name):
-    return (
-        f"You are an expert coach in {sport_name} training planning. "
-        f"You generate structured and progressive training plans for athletes. "
-        f"You adapt frequency, intensity, and variety based on the goals. "
-        f"You MUST always respond using the 'create_training_plan' tool. "
-        f"Never write free-form text."
+    return _build_system_prompt(
+        sport_name,
+        body=(
+            "You generate structured and progressive training plans for "
+            "athletes. You adapt frequency, intensity, and variety based on the "
+            "goals."
+        ),
+        tool_name=PLAN_TOOL_SCHEMA["name"],
     )
 
 
@@ -277,33 +281,19 @@ def build_user_prompt(
         f"- Use the 'create_training_plan' tool only.\n"
     )
 
-    extra = (additional_prompt or "").strip()
-    if extra:
-        # Appended AFTER the structured context as a marked block to deter
-        # prompt-injection: the system rules above stay binding even if the
-        # coach's text says "ignore previous instructions".
-        override_note = (
-            "These take precedence over the defaults above. The fixed weekly "
-            "slots are the default schedule, but if these instructions CLEARLY "
-            "ask for a different schedule (different days, times, frequency or "
-            "venue), follow the coach's instructions instead. Stay consistent "
-            "with the team sport, language, and the requested period.\n"
-            if has_template
-            else (
-                "These take precedence over generic defaults but must remain "
-                "consistent with the team sport, language, and the requested "
-                "period.\n"
-            )
+    override_note = (
+        "These take precedence over the defaults above. The fixed weekly "
+        "slots are the default schedule, but if these instructions CLEARLY "
+        "ask for a different schedule (different days, times, frequency or "
+        "venue), follow the coach's instructions instead. Stay consistent "
+        "with the team sport, language, and the requested period."
+        if has_template
+        else (
+            "These take precedence over generic defaults but must remain "
+            "consistent with the team sport, language, and the requested period."
         )
-        base += (
-            "\n---\n"
-            "Additional instructions provided by the coach:\n"
-            f"{override_note}"
-            f"{extra}\n"
-            "---\n"
-        )
-
-    return base
+    )
+    return append_coach_instructions(base, additional_prompt, note=override_note)
 
 
 def _parse_date_strict(s):

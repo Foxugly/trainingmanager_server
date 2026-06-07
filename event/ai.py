@@ -5,6 +5,8 @@ import logging
 from django.utils.translation import gettext_lazy as _
 
 from tools.ai import AIServiceError, call_claude_with_tool, truncate_for_log
+from tools.ai_prompt import append_coach_instructions
+from tools.ai_prompt import build_system_prompt as _build_system_prompt
 from tools.html_sanitizer import strip_html
 from tools.i18n import resolve_language_label
 
@@ -116,12 +118,13 @@ def build_training_tool_schema(*, modality_ids, energysegment_ids, equipment_nam
 
 
 def build_system_prompt(sport_name):
-    return (
-        f"You are an expert coach in {sport_name} training. "
-        f"You generate detailed and progressive training sessions using "
-        f"ONLY the modalities and energysegments from the provided catalog. "
-        f"You MUST always respond using the 'create_training_session' tool. "
-        f"Never write free-form text."
+    return _build_system_prompt(
+        sport_name,
+        body=(
+            "You generate detailed and progressive training sessions using "
+            "ONLY the modalities and energysegments from the provided catalog."
+        ),
+        tool_name="create_training_session",
     )
 
 
@@ -261,21 +264,15 @@ def build_user_prompt(
         )
     )
 
-    extra = (additional_prompt or "").strip()
-    if extra:
-        # Appended AFTER the structured context so the system/base
-        # instructions are not overridable via prompt-injection by the coach;
-        # the marker line makes the boundary explicit for the model.
-        base += (
-            "\n---\n"
-            "Additional instructions provided by the coach (these take "
-            "precedence over generic defaults but must remain consistent "
-            "with the team sport, language, and existing event metadata):\n"
-            f"{extra}\n"
-            "---\n"
-        )
-
-    return base
+    return append_coach_instructions(
+        base,
+        additional_prompt,
+        note=(
+            "These take precedence over generic defaults but must remain "
+            "consistent with the team sport, language, and existing event "
+            "metadata."
+        ),
+    )
 
 
 def generate_training(*, event, user=None, additional_prompt=""):

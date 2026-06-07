@@ -84,8 +84,8 @@ class TeamViewSet(viewsets.ModelViewSet):
             return Team.objects.none()
         return (
             user_visible_teams(self.request.user)
-            .select_related("sport", "owner")
-            .prefetch_related("managers")
+            .select_related("sport", "owner", "default_place")
+            .prefetch_related("managers", "places", "equipment", "attendance_statuses")
         )
 
     def perform_create(self, serializer):

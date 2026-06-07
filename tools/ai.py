@@ -126,15 +126,21 @@ def call_claude_with_tool(
     """
     client = _get_client()
 
+    # Prompt caching: the tool schema and system prompt are identical across
+    # calls of the same generator (only the user prompt varies), so mark them as
+    # cacheable. Below the model's minimum cacheable size the markers are
+    # silently ignored — harmless. Cuts input-token cost on repeat generations.
     kwargs = {
         "model": model or settings.ANTHROPIC_MODEL_DEFAULT,
         "max_tokens": max_tokens or settings.ANTHROPIC_MAX_TOKENS_DEFAULT,
         "messages": [{"role": "user", "content": prompt}],
-        "tools": [tool],
+        "tools": [{**tool, "cache_control": {"type": "ephemeral"}}],
         "tool_choice": {"type": "tool", "name": tool["name"]},
     }
     if system:
-        kwargs["system"] = system
+        kwargs["system"] = [
+            {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
+        ]
 
     logger.info(
         "Anthropic call_with_tool: model=%s max_tokens=%s tool=%r prompt_chars=%s",
