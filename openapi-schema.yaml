@@ -3839,6 +3839,204 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/places/:
+    get:
+      operationId: places_list
+      description: Returns the team's managed venues, ordered by name. Scoped to the
+        teams the requester is a strict member of (owner/manager/active athlete).
+        Pass ?team=<id> to filter to a single team; without it, places across all
+        the requester's member teams are returned.
+      summary: List managed places (Lieux) of a team
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: team
+        schema:
+          type: integer
+        description: Restrict to one team the requester is a member of.
+      tags:
+      - places
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlaceList'
+          description: ''
+    post:
+      operationId: places_create
+      description: Create a managed venue for a team. The requester must own or manage
+        the team. A duplicate (team, name) returns 400 with code `place_already_exists`.
+      summary: Create a place (manager only)
+      tags:
+      - places
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Place'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Place'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Place'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+          description: ''
+  /api/v1/places/{id}/:
+    get:
+      operationId: places_retrieve
+      description: |-
+        CRUD on the managed team venue (Lieu).
+
+        Read: any strict member of the place's team. Write (create/update/delete):
+        owner or manager of the team only.
+      summary: Retrieve a place
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this place.
+        required: true
+      tags:
+      - places
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+          description: ''
+    put:
+      operationId: places_update
+      description: |-
+        CRUD on the managed team venue (Lieu).
+
+        Read: any strict member of the place's team. Write (create/update/delete):
+        owner or manager of the team only.
+      summary: Update a place (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this place.
+        required: true
+      tags:
+      - places
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Place'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Place'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Place'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+          description: ''
+    patch:
+      operationId: places_partial_update
+      description: |-
+        CRUD on the managed team venue (Lieu).
+
+        Read: any strict member of the place's team. Write (create/update/delete):
+        owner or manager of the team only.
+      summary: Patch a place (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this place.
+        required: true
+      tags:
+      - places
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlace'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Place'
+          description: ''
+    delete:
+      operationId: places_destroy
+      description: Hard-deletes the venue. Events referencing it keep their free-text
+        `location` (their `place` FK is SET_NULL).
+      summary: Delete a place (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this place.
+        required: true
+      tags:
+      - places
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/programs/:
     get:
       operationId: programs_list
@@ -7225,6 +7423,14 @@ components:
           description: Where the session takes place (venue, pool, track, address).
             Always visible to athletes.
           maxLength: 255
+        place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
@@ -7329,6 +7535,7 @@ components:
       - is_public
       - members
       - name
+      - place
       - public_token
       - refer_program
       - refer_program_id
@@ -8608,6 +8815,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Performance'
+    PaginatedPlaceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
     PaginatedProgramList:
       type: object
       required:
@@ -9078,6 +9308,14 @@ components:
           description: Where the session takes place (venue, pool, track, address).
             Always visible to athletes.
           maxLength: 255
+        place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
@@ -9581,6 +9819,36 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedPlace:
+      type: object
+      description: |-
+        Read/write serializer for the managed team venue (Lieu).
+
+        `team` is a writable PK on create; the view enforces that the requester
+        manages the team. The (team, name) unique constraint is surfaced as a
+        400 with code `place_already_exists` instead of a DB IntegrityError.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        name:
+          type: string
+          description: Display name of the venue (e.g. 'Piscine olympique').
+          maxLength: 255
+        address:
+          type: string
+          description: Optional postal address / directions for the venue.
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedProgram:
       type: object
       properties:
@@ -9782,6 +10050,19 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
+        default_pool:
+          type: string
+          readOnly: true
+          description: Default venue/pool for this team's sessions (used by the season-plan
+            generator).
+        default_place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        default_place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         language:
           $ref: '#/components/schemas/LanguageEnum'
         is_active:
@@ -10046,6 +10327,61 @@ components:
       - team
       - updated_at
       - value
+    Place:
+      type: object
+      description: |-
+        Read/write serializer for the managed team venue (Lieu).
+
+        `team` is a writable PK on create; the view enforces that the requester
+        manages the team. The (team, name) unique constraint is surfaced as a
+        400 with code `place_already_exists` instead of a DB IntegrityError.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team:
+          type: integer
+        name:
+          type: string
+          description: Display name of the venue (e.g. 'Piscine olympique').
+          maxLength: 255
+        address:
+          type: string
+          description: Optional postal address / directions for the venue.
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - team
+      - updated_at
+    PlaceMinimal:
+      type: object
+      description: Compact nested read shape for Event.place / Team.default_place.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+          description: Display name of the venue (e.g. 'Piscine olympique').
+        address:
+          type: string
+          readOnly: true
+          description: Optional postal address / directions for the venue.
+      required:
+      - address
+      - id
+      - name
     PresignUploadHeaders:
       type: object
       properties:
@@ -10752,6 +11088,19 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
+        default_pool:
+          type: string
+          readOnly: true
+          description: Default venue/pool for this team's sessions (used by the season-plan
+            generator).
+        default_place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        default_place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         language:
           $ref: '#/components/schemas/LanguageEnum'
         is_active:
@@ -10874,6 +11223,8 @@ components:
           readOnly: true
       required:
       - created_at
+      - default_place
+      - default_pool
       - id
       - level
       - managers

@@ -55,6 +55,18 @@ class Event(models.Model):
         verbose_name=_("equipment"),
         help_text=_("Material/gear athletes should bring. Always visible to athletes."),
     )
+    place = models.ForeignKey(
+        "place.Place",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="events",
+        help_text=_(
+            "Optional managed venue (Lieu). When set, the canonical free-text "
+            "'location' is synced to the place's name. Deleting the place clears "
+            "this FK but leaves 'location' intact."
+        ),
+    )
     color = models.CharField(max_length=10, blank=True, verbose_name=_("color"))
     date = models.DateField(
         blank=True,

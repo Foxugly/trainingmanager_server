@@ -9,6 +9,8 @@ from rest_framework import serializers
 from customuser.serializers import CustomUserPublicSerializer
 from level.models import Level
 from level.serializers import LevelSerializer
+from place.models import Place
+from place.serializers import PlaceMinimalSerializer
 from sport.models import Sport
 from sport.serializers import SportSerializer
 
@@ -52,6 +54,14 @@ class TeamSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    default_place = PlaceMinimalSerializer(read_only=True)
+    default_place_id = serializers.PrimaryKeyRelatedField(
+        source="default_place",
+        queryset=Place.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Team
@@ -65,6 +75,9 @@ class TeamSerializer(serializers.ModelSerializer):
             "owner",
             "managers",
             "managers_ids",
+            "default_pool",
+            "default_place",
+            "default_place_id",
             "language",
             "is_active",
             "is_public",
@@ -90,7 +103,50 @@ class TeamSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "owner", "managers", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "owner",
+            "managers",
+            # default_pool stays the canonical free-text venue but is written
+            # via the training-template endpoint or synced from default_place;
+            # it is read-only on this serializer to avoid two conflicting write
+            # paths.
+            "default_pool",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, data):
+        """Validate that a chosen default Place belongs to this team."""
+        if "default_place" not in data:
+            return data
+        place = data["default_place"]
+        if place is None:
+            return data
+        # On update the team is the instance; on create there is no team yet
+        # (default_place would have nothing to belong to), so require an
+        # instance.
+        team = self.instance
+        if team is None or place.team_id != team.id:
+            raise serializers.ValidationError(
+                {"default_place_id": _("The selected place does not belong to this team.")},
+                code="default_place_team_mismatch",
+            )
+        return data
+
+    def update(self, instance, validated_data):
+        """Sync default_pool to the chosen default_place name.
+
+        - default_place non-null -> default_pool = place.name (keeps the AI
+          plan path, which reads default_pool, working unchanged).
+        - default_place null      -> clear default_place; default_pool is left
+          as-is (canonical free text remains).
+        """
+        if "default_place" in validated_data:
+            place = validated_data["default_place"]
+            if place is not None:
+                validated_data["default_pool"] = place.name
+        return super().update(instance, validated_data)
 
     def validate_timezone(self, value):
         # Reject anything that is not a valid IANA zone name. We check

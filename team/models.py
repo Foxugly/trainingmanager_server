@@ -207,6 +207,18 @@ class Team(models.Model):
         default="",
         help_text=_("Default venue/pool for this team's sessions (used by the season-plan generator)."),
     )
+    default_place = models.ForeignKey(
+        "place.Place",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=_(
+            "Optional managed default venue (Lieu). When set, the canonical "
+            "free-text 'default_pool' is synced to the place's name so the AI "
+            "plan generator keeps reading default_pool unchanged."
+        ),
+    )
     season_start = models.DateField(
         null=True,
         blank=True,

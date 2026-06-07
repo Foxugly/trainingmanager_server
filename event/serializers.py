@@ -1,6 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from place.models import Place
+from place.serializers import PlaceMinimalSerializer
 from program.models import Program
 from program.serializers import ProgramMinimalSerializer
 from round.models import Round
@@ -96,6 +98,14 @@ class EventSerializer(serializers.ModelSerializer):
         many=True, queryset=Round.objects.all(), required=False
     )
     members = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    place = PlaceMinimalSerializer(read_only=True)
+    place_id = serializers.PrimaryKeyRelatedField(
+        source="place",
+        queryset=Place.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Event
@@ -104,6 +114,8 @@ class EventSerializer(serializers.ModelSerializer):
             "name",
             "goal",
             "location",
+            "place",
+            "place_id",
             "equipment",
             "color",
             "date",
@@ -158,6 +170,52 @@ class EventSerializer(serializers.ModelSerializer):
         if not value:
             return value
         return sanitize_html(value)
+
+    def validate(self, data):
+        """Validate that a chosen Place belongs to the event's team.
+
+        `place` is resolved from `place_id` (sourced to `place`). The team is
+        taken from the create/update `refer_program` if present, else the
+        existing instance's program. A Place from another team is a 400.
+        """
+        # `place` is present in `data` only when `place_id` was sent (possibly
+        # explicitly null). Absence means "leave place untouched".
+        if "place" not in data:
+            return data
+        place = data["place"]
+        if place is None:
+            return data
+        program = data.get("refer_program") or getattr(self.instance, "refer_program", None)
+        team = program.team if program is not None else None
+        if team is None or place.team_id != team.id:
+            raise serializers.ValidationError(
+                {"place_id": _("The selected place does not belong to this event's team.")},
+                code="place_team_mismatch",
+            )
+        return data
+
+    def _sync_location(self, validated_data):
+        """Apply the place→location sync rule on the validated payload.
+
+        - place_id non-null  -> set location = place.name (place wins).
+        - place_id null       -> clear place (location follows whatever the
+          `location` field carries, if any).
+        - place_id absent     -> leave both place and location as supplied.
+        """
+        if "place" not in validated_data:
+            return validated_data
+        place = validated_data["place"]
+        if place is not None:
+            validated_data["location"] = place.name
+        return validated_data
+
+    def create(self, validated_data):
+        validated_data = self._sync_location(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data = self._sync_location(validated_data)
+        return super().update(instance, validated_data)
 
     def _requester_is_manager(self, instance):
         """True if the request user owns/manages the event's team.
