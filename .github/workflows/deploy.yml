@@ -11,6 +11,28 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Run the suite on BOTH sqlite (fast) and Postgres (prod parity — catches
+    # Postgres-only migration/constraint bugs SQLite silently tolerates). Both
+    # legs must pass for deploy; fail-fast off so a Postgres-only failure still
+    # lets the sqlite leg report.
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tm_test
+          POSTGRES_USER: tm
+          POSTGRES_PASSWORD: tm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tm"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v5
 
@@ -21,10 +43,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run tests
+      - name: Run tests (${{ matrix.db }})
         # The settings are fail-loud (no defaults for SECRET_KEY / DEBUG /
         # ALLOWED_HOSTS / FRONTEND_BASE_URL / GRAPH_*). pytest uses the dev settings
-        # (pytest.ini); DB_ENGINE unset → sqlite. These are throwaway CI values.
+        # (pytest.ini). DB_ENGINE empty → sqlite; 'postgresql' → the service via the
+        # unified DB_* convention. These are throwaway CI values.
         env:
           DEBUG: "True"
           SECRET_KEY: ci-secret-key-not-used-in-prod
@@ -36,6 +59,12 @@ jobs:
           GRAPH_CLIENT_ID: ci
           GRAPH_CLIENT_SECRET: ci
           GRAPH_SENDER: ci@example.com
+          DB_ENGINE: ${{ matrix.db == 'postgres' && 'postgresql' || '' }}
+          DB_NAME: tm_test
+          DB_USER: tm
+          DB_PASSWORD: tm
+          DB_HOST: localhost
+          DB_PORT: "5432"
         run: pytest -q
 
   deploy:
