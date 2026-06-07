@@ -307,17 +307,12 @@ def generate_training(*, event, user=None, additional_prompt=""):
     program = event.refer_program
     team = program.team if program and program.team else None
 
-    # The team's managed equipment catalog constrains what the AI may report in
-    # 'equipment_used' (enum) — per the "catalogue uniquement" rule, it can only
-    # pick equipment the team actually owns; nothing is auto-created.
-    from equipment.models import Equipment
-
+    # The team's enabled equipment constrains what the AI may report in
+    # 'equipment_used' (enum) — it can only pick from the team's catalog subset;
+    # nothing is auto-created. Names are resolved via the .name accessor so they
+    # are localized to the active (request) language, matching the response.
     equipment_names = (
-        list(
-            Equipment.objects.filter(team=team)
-            .order_by("name")
-            .values_list("name", flat=True)
-        )
+        [e.name for e in team.equipment.filter(is_active=True).order_by("name")]
         if team is not None
         else []
     )

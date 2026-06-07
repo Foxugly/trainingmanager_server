@@ -108,6 +108,15 @@ class Team(models.Model):
             "Default: present, absent, excused."
         ),
     )
+    equipment = models.ManyToManyField(
+        "equipment.Equipment",
+        related_name="teams",
+        blank=True,
+        help_text=_(
+            "Equipment from the global catalog this team is allowed to use. "
+            "Sessions can only reference equipment in this enabled set."
+        ),
+    )
     join_request_policy = models.CharField(
         max_length=10,
         choices=JoinRequestPolicy.choices,

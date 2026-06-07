@@ -7,6 +7,8 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from customuser.serializers import CustomUserPublicSerializer
+from equipment.models import Equipment
+from equipment.serializers import EquipmentMinimalSerializer
 from level.models import Level
 from level.serializers import LevelSerializer
 from place.models import Place
@@ -62,6 +64,14 @@ class TeamSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    equipment = EquipmentMinimalSerializer(many=True, read_only=True)
+    equipment_ids = serializers.PrimaryKeyRelatedField(
+        source="equipment",
+        queryset=Equipment.objects.filter(is_active=True),
+        many=True,
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = Team
@@ -78,6 +88,8 @@ class TeamSerializer(serializers.ModelSerializer):
             "default_pool",
             "default_place",
             "default_place_id",
+            "equipment",
+            "equipment_ids",
             "language",
             "is_active",
             "is_public",

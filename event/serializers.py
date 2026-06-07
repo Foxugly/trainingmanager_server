@@ -207,12 +207,15 @@ class EventSerializer(serializers.ModelSerializer):
                 )
         if data.get("equipment_items"):
             team = self._event_team(data)
-            if team is None or any(it.team_id != team.id for it in data["equipment_items"]):
+            enabled_ids = (
+                set(team.equipment.values_list("id", flat=True)) if team else set()
+            )
+            if any(it.id not in enabled_ids for it in data["equipment_items"]):
                 raise serializers.ValidationError(
                     {"equipment_item_ids": _(
-                        "An equipment item does not belong to this event's team."
+                        "An equipment item is not enabled for this event's team."
                     )},
-                    code="equipment_team_mismatch",
+                    code="equipment_not_enabled",
                 )
         return data
 

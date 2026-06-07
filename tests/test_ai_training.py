@@ -515,15 +515,16 @@ def test_generate_training_prompt_omits_missing_session_context(
 def test_generate_training_feeds_equipment_catalog_and_links_used(
     auth_client_trainer, trainer_event, settings
 ):
-    """The team equipment catalog is listed in the prompt; the AI-reported
-    equipment_used (restricted to the catalog) is attached to the event and the
+    """The team's enabled equipment is listed in the prompt; the AI-reported
+    equipment_used (restricted to that set) is attached to the event and the
     free-text equipment string is synced to the joined names."""
     from equipment.models import Equipment
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     team = trainer_event.refer_program.team
-    pb = Equipment.objects.create(team=team, name="Pull-buoy")
-    Equipment.objects.create(team=team, name="Plaquettes")
+    pb = Equipment.objects.create(name="Pull-buoy")
+    plaq = Equipment.objects.create(name="Plaquettes")
+    team.equipment.add(pb, plaq)
     rounds_payload = _build_rounds_payload(trainer_event)
 
     with patch("tools.ai.Anthropic") as MockAnthropic:
@@ -547,22 +548,23 @@ def test_generate_training_feeds_equipment_catalog_and_links_used(
     assert trainer_event.equipment == "Pull-buoy"
 
 
-def test_generate_training_ignores_equipment_not_in_catalog(
+def test_generate_training_ignores_equipment_not_enabled(
     auth_client_trainer, trainer_event, settings
 ):
-    """An equipment name the AI returns that is not in the catalog is dropped
-    (never auto-created), per the catalogue-only rule."""
+    """An equipment name the AI returns that is not in the team's enabled set is
+    dropped (never attached)."""
     from equipment.models import Equipment
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     team = trainer_event.refer_program.team
-    Equipment.objects.create(team=team, name="Pull-buoy")
+    pb = Equipment.objects.create(name="Pull-buoy")
+    team.equipment.add(pb)
     rounds_payload = _build_rounds_payload(trainer_event)
 
     with patch("tools.ai.Anthropic") as MockAnthropic:
         mock_client = MockAnthropic.return_value
         mock_client.messages.create.return_value = _mock_training_response(
-            rounds_payload, equipment_used=["Élastiques"]  # not in catalog
+            rounds_payload, equipment_used=["Plaquettes"]  # not enabled
         )
         response = auth_client_trainer.post(
             f"/api/v1/events/{trainer_event.pk}/generate-training/",
@@ -571,7 +573,6 @@ def test_generate_training_ignores_equipment_not_in_catalog(
         )
 
     assert response.status_code == 200
-    assert not Equipment.objects.filter(team=team, name="Élastiques").exists()
     trainer_event.refresh_from_db()
     assert trainer_event.equipment_items.count() == 0
 
@@ -579,8 +580,8 @@ def test_generate_training_ignores_equipment_not_in_catalog(
 def test_generate_training_no_catalog_omits_equipment_block(
     auth_client_trainer, trainer_event, settings
 ):
-    """With no team equipment, the catalog block and equipment_used field are
-    absent from the prompt/schema."""
+    """With no enabled team equipment, the catalog block and equipment_used
+    field are absent from the prompt/schema."""
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     rounds_payload = _build_rounds_payload(trainer_event)
 
