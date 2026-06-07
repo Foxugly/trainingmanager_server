@@ -506,3 +506,174 @@ def test_POST_generate_events_additional_prompt_too_long_returns_400(
     body = response.json()
     field_errors = body.get("fields", {}).get("additional_prompt", [])
     assert any(err.get("code") == "additional_prompt_too_long" for err in field_errors), body
+
+
+# ----------------------------- Places (Lieux) ------------------------
+
+
+def _one_event_at(start, location):
+    return [
+        {
+            "name": "Seance 1",
+            "goal": "Endurance",
+            "date": start.isoformat(),
+            "hour_start": "18:00",
+            "hour_end": "19:30",
+            "location": location,
+            "total_distance": 3000,
+            "color": "#3498db",
+        }
+    ]
+
+
+def test_generate_events_prompt_lists_team_places(
+    auth_client_trainer, trainer_user, settings
+):
+    """The team's managed Places (name + address) are listed in the prompt as
+    known venues the AI must map the coach's venue mentions to."""
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    Place.objects.create(
+        team=program.team, name="Piscine olympique", address="12 rue des Bains"
+    )
+    Place.objects.create(team=program.team, name="Bassin nordique")
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(
+            _make_events_payload(start, 2)
+        )
+        auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "Known venues for this team" in sent_prompt
+    assert "Piscine olympique (12 rue des Bains)" in sent_prompt
+    assert "Bassin nordique" in sent_prompt
+
+
+def test_generate_events_links_existing_place(
+    auth_client_trainer, trainer_user, settings
+):
+    """An AI location matching a managed Place links that Place (case-insensitive)
+    and creates no duplicate."""
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    place = Place.objects.create(team=program.team, name="Piscine Nord")
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(
+            _one_event_at(start, "piscine nord")  # different case on purpose
+        )
+        resp = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    assert Place.objects.filter(team=program.team).count() == 1  # no duplicate
+    ev = Event.objects.get(refer_program=program, date=start)
+    assert ev.place_id == place.id
+    assert ev.location == "Piscine Nord"  # synced to the canonical Place name
+
+
+def test_generate_events_creates_unknown_place(
+    auth_client_trainer, trainer_user, settings
+):
+    """An AI location with no matching Place creates a new Place and links it."""
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(
+            _one_event_at(start, "Stade nautique")
+        )
+        resp = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    created = Place.objects.get(team=program.team, name="Stade nautique")
+    ev = Event.objects.get(refer_program=program, date=start)
+    assert ev.place_id == created.id
+    assert ev.location == "Stade nautique"
+
+
+def test_generate_events_reuses_created_place_across_sessions(
+    auth_client_trainer, trainer_user, settings
+):
+    """A new venue named on several sessions of one plan is created only once."""
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+    events_payload = [
+        _one_event_at(start, "Lac municipal")[0],
+        _one_event_at(start + timedelta(days=2), "Lac municipal")[0],
+    ]
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(events_payload)
+        resp = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    assert Place.objects.filter(team=program.team, name="Lac municipal").count() == 1
+    place = Place.objects.get(team=program.team, name="Lac municipal")
+    linked = Event.objects.filter(refer_program=program, place=place).count()
+    assert linked == 2
+
+
+def test_generate_events_empty_location_leaves_place_null(
+    auth_client_trainer, trainer_user, settings
+):
+    """An empty AI location links no Place and creates none."""
+    from place.models import Place
+
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(
+            _one_event_at(start, "")
+        )
+        resp = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert resp.status_code == 200
+    assert Place.objects.filter(team=program.team).count() == 0
+    ev = Event.objects.get(refer_program=program, date=start)
+    assert ev.place_id is None
+    assert ev.location == ""

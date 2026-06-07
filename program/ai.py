@@ -68,8 +68,12 @@ PLAN_TOOL_SCHEMA = {
                             "maxLength": 255,
                             "description": (
                                 "Venue / pool where the session takes place. "
-                                "Reuse one of the team's known locations when "
-                                "provided; otherwise leave it empty."
+                                "When the coach's instructions name a venue for "
+                                "this session, set this to the EXACT name of the "
+                                "matching known venue listed in the prompt. If "
+                                "the coach names a venue that is not in that list, "
+                                "use that new name verbatim. Otherwise reuse the "
+                                "default venue; leave empty only if none is known."
                             ),
                         },
                         "total_distance": {
@@ -128,6 +132,13 @@ _WEEKDAY_NAMES = [
 ]
 
 
+def _format_place(place):
+    """Render one managed venue as 'Name (address)' (address optional)."""
+    name = (place.get("name") or "").strip()
+    address = (place.get("address") or "").strip()
+    return f"{name} ({address})" if address else name
+
+
 def _format_slot(slot):
     """Render one template slot as 'Monday 18:00–19:30' for the prompt."""
 
@@ -151,6 +162,7 @@ def build_user_prompt(
     description,
     team=None,
     pools=None,
+    places=None,
     additional_prompt="",
     slots=None,
     default_pool="",
@@ -169,6 +181,26 @@ def build_user_prompt(
     has_template = bool(slots)
     location_hint = (default_pool or "").strip()
 
+    # Managed team venues (Lieux) take priority as the "known venues" list the
+    # AI must map the coach's venue mentions to; fall back to the distinct
+    # locations already used on the team's events. Listing them (with address)
+    # lets the AI pick the right venue per day and reuse the exact name so the
+    # response parser can link each session to its Place.
+    if places:
+        venue_lines = [v for v in (_format_place(p) for p in places) if v]
+    elif pools:
+        venue_lines = list(pools)
+    else:
+        venue_lines = []
+    venues_block = ""
+    if venue_lines:
+        venues_block = (
+            "- Known venues for this team — when the coach indicates a venue for "
+            "a session, set its 'location' to the EXACT venue name below (you may "
+            "introduce a new venue name if the coach names one not listed):\n"
+            + "".join(f"    - {v}\n" for v in venue_lines)
+        )
+
     if has_template:
         slots_text = ", ".join(_format_slot(s) for s in slots)
         pool_text = location_hint if location_hint else "(no fixed venue)"
@@ -180,31 +212,26 @@ def build_user_prompt(
             f"({duration_days} days, ~{weeks} weeks)\n"
             f"- The team trains on these FIXED weekly slots: {slots_text} "
             f"at {pool_text}.\n"
+            f"{venues_block}"
             f"- Description and constraints provided by the coach: "
             f"{description or '(none)'}\n"
         )
+        default_loc_clause = (
+            f"location={pool_text}" if location_hint else "location left empty"
+        )
         location_instruction = (
             f"- For each week in the period, create exactly one session per "
-            f"slot, ON that weekday and at that hour_start/hour_end, with "
-            f"location={pool_text if location_hint else '(leave empty)'}.\n"
-            if location_hint
-            else (
-                "- For each week in the period, create exactly one session per "
-                "slot, ON that weekday and at that hour_start/hour_end. Leave "
-                "location empty (no fixed venue configured).\n"
-            )
+            f"slot, ON that weekday and at that hour_start/hour_end. Use "
+            f"{default_loc_clause} by default, UNLESS the coach's instructions "
+            f"assign a specific venue to a given day/slot — then set 'location' "
+            f"to that venue's exact name (a known venue above, or a new name the "
+            f"coach provides).\n"
         )
         progression_instruction = (
             "- Keep a coherent intensity progression across the sessions "
             "(endurance, technique, intensity, recovery).\n"
         )
     else:
-        pools_line = ""
-        if pools:
-            pools_line = (
-                f"- Known training locations for this team (reuse one consistently "
-                f"for the 'location' of each session): {', '.join(pools)}\n"
-            )
         constraints = (
             f"Generate a training plan with these constraints:\n"
             f"- Sport: {sport_name}\n"
@@ -213,7 +240,7 @@ def build_user_prompt(
             f"({duration_days} days, ~{weeks} weeks)\n"
             f"- Frequency: {frequency_per_week} sessions per week "
             f"(~{expected_events} sessions total)\n"
-            f"{pools_line}"
+            f"{venues_block}"
             f"- Description and constraints provided by the coach: "
             f"{description or '(none)'}\n"
         )
@@ -224,9 +251,10 @@ def build_user_prompt(
             f"- Set a realistic start time (hour_start) and end time (hour_end, "
             f"after the start) for every session — keep them consistent (typical "
             f"training slots) unless the coach's description implies otherwise.\n"
-            f"- Set a 'location' for every session: reuse one of the team's known "
-            f"locations listed above when provided; if none are listed, leave "
-            f"location empty.\n"
+            f"- Set a 'location' for every session: when the coach names a venue "
+            f"for a given day use that venue's exact name (a known venue above, or "
+            f"a new name the coach provides); otherwise reuse one known venue "
+            f"consistently. Leave location empty only if no venue is known.\n"
         )
         progression_instruction = (
             "- Vary effort types (endurance, technique, intensity, recovery) "
@@ -329,7 +357,19 @@ def generate_plan(
     # locations already used across this team's events so the AI reuses a real
     # venue for each generated session.
     location_hint = (default_pool or "").strip()
-    if location_hint:
+
+    # The team's managed venues (Lieux) are the canonical "known venues" list
+    # given to the AI so it can map the coach's per-day venue mentions to a real
+    # Place. Fall back to the distinct free-text locations already used on this
+    # team's events only when no Place is configured yet.
+    from place.models import Place
+
+    places = list(
+        Place.objects.filter(team_id=program.team_id)
+        .order_by("name")
+        .values("name", "address")
+    )
+    if places:
         pools = []
     else:
         from event.models import Event
@@ -352,6 +392,7 @@ def generate_plan(
         description=description,
         team=program.team,
         pools=pools,
+        places=places,
         additional_prompt=additional_prompt,
         slots=slots,
         default_pool=location_hint,

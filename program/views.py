@@ -266,6 +266,15 @@ class ProgramViewSet(viewsets.ModelViewSet):
             _total, per_model = existing.delete()
             deleted_count = per_model.get("event.Event", 0)
 
+        # Resolve each AI-returned venue name to a managed Place: reuse an
+        # existing one (case-insensitively) or create it on the fly so a venue
+        # the coach named in the prompt but hadn't registered becomes a real,
+        # reusable Lieu. Cache keyed by casefolded name avoids duplicates within
+        # the batch and a query per session.
+        place_cache = {
+            p.name.casefold(): p for p in program.team.places.all()
+        }
+
         created_count = 0
         for ev_data in new_events_data:
             ev_date = _date.fromisoformat(ev_data["date"])
@@ -274,6 +283,9 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 if Event.objects.filter(refer_program=program, date=ev_date).exists():
                     continue
 
+            place = self._resolve_place(
+                program.team, ev_data.get("location"), place_cache
+            )
             Event.objects.create(
                 refer_program=program,
                 name=ev_data["name"][:100],
@@ -281,10 +293,30 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 date=ev_date,
                 hour_start=_parse_hhmm(ev_data.get("hour_start")),
                 hour_end=_parse_hhmm(ev_data.get("hour_end")),
-                location=(ev_data.get("location") or "")[:255],
+                location=(place.name if place else (ev_data.get("location") or ""))[:255],
+                place=place,
                 color=ev_data["color"],
                 total=ev_data["total_distance"],
             )
             created_count += 1
 
         return created_count, deleted_count
+
+    def _resolve_place(self, team, location, cache):
+        """Map an AI-returned venue name to the team's Place, creating it if new.
+
+        Returns ``None`` for an empty location. Matching is case-insensitive and
+        whitespace-trimmed; ``cache`` (casefolded name -> Place) is updated in
+        place so a venue named several times in one plan is created only once.
+        """
+        name = (location or "").strip()
+        if not name:
+            return None
+        key = name.casefold()
+        place = cache.get(key)
+        if place is None:
+            from place.models import Place
+
+            place = Place.objects.create(team=team, name=name[:255])
+            cache[key] = place
+        return place
