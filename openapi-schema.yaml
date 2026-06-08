@@ -961,6 +961,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/dashboard/summary/:
+    get:
+      operationId: dashboard_summary_retrieve
+      description: GET /api/v1/dashboard/summary/ — one-shot aggregate for the dashboard.
+      summary: Aggregate dashboard payload (replaces the per-resource fan-out)
+      parameters:
+      - in: query
+        name: today
+        schema:
+          type: string
+        description: Caller's local date (YYYY-MM-DD) for the date windows; defaults
+          to the server's local date.
+      tags:
+      - dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+          description: ''
   /api/v1/discussions/unread/:
     get:
       operationId: discussions_unread
@@ -7690,6 +7713,182 @@ components:
       - id
       - last_name
       - username
+    DashboardEvent:
+      type: object
+      description: The minimal Event shape the dashboard lists render.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        hour_start:
+          type: string
+          format: time
+          nullable: true
+        hour_end:
+          type: string
+          format: time
+          nullable: true
+        location:
+          type: string
+        place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          nullable: true
+      required:
+      - date
+      - hour_end
+      - hour_start
+      - id
+      - location
+      - name
+      - place
+    DashboardEventItem:
+      type: object
+      description: An event row with its denormalized team/program names (no client
+        join).
+      properties:
+        event:
+          $ref: '#/components/schemas/DashboardEvent'
+        team_id:
+          type: integer
+        team_name:
+          type: string
+        program_id:
+          type: integer
+          nullable: true
+        program_name:
+          type: string
+      required:
+      - event
+      - program_id
+      - program_name
+      - team_id
+      - team_name
+    DashboardHistoryItem:
+      type: object
+      description: One past event the caller has an attendance row for.
+      properties:
+        event:
+          $ref: '#/components/schemas/DashboardEvent'
+        team_id:
+          type: integer
+        team_name:
+          type: string
+        program_id:
+          type: integer
+          nullable: true
+        program_name:
+          type: string
+        attendance_id:
+          type: integer
+        status_code:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AttendanceStatus'
+          nullable: true
+      required:
+      - attendance_id
+      - event
+      - program_id
+      - program_name
+      - status
+      - status_code
+      - team_id
+      - team_name
+    DashboardManagedTeam:
+      type: object
+      description: |-
+        Per-team counts for a team the caller manages. Keyed by team_id so the
+        frontend joins it to the full Team object it already holds.
+      properties:
+        team_id:
+          type: integer
+        programs_active:
+          type: integer
+        events_next_7d:
+          type: integer
+        members_count:
+          type: integer
+      required:
+      - events_next_7d
+      - members_count
+      - programs_active
+      - team_id
+    DashboardMemberTeam:
+      type: object
+      description: Per-team counts for a team the caller is an athlete-member of.
+      properties:
+        team_id:
+          type: integer
+        members_count:
+          type: integer
+        my_member_id:
+          type: integer
+          nullable: true
+          description: The caller's athlete Member id in this team (null if unresolved).
+      required:
+      - members_count
+      - my_member_id
+      - team_id
+    DashboardSummary:
+      type: object
+      description: |-
+        Top-level aggregate payload for GET /dashboard/summary/.
+
+        Replaces the previous per-team/per-program/per-event/per-attendance HTTP
+        fan-out (50-100+ requests) with a single call. The frontend still fetches
+        the full Team list once for names/sport and the stats/perf panels; this
+        payload provides every computed count and list the dashboard renders.
+      properties:
+        coach_teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardManagedTeam'
+        member_teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardMemberTeam'
+        coach_upcoming:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardEventItem'
+        coach_upcoming_total:
+          type: integer
+        coach_attendance_pending:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardEventItem'
+        coach_pending_truncated:
+          type: boolean
+        member_upcoming:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardEventItem'
+        member_upcoming_total:
+          type: integer
+        member_attendance_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardHistoryItem'
+        member_history_truncated:
+          type: boolean
+      required:
+      - coach_attendance_pending
+      - coach_pending_truncated
+      - coach_teams
+      - coach_upcoming
+      - coach_upcoming_total
+      - member_attendance_history
+      - member_history_truncated
+      - member_teams
+      - member_upcoming
+      - member_upcoming_total
     DuplicateEventCreated:
       type: object
       properties:

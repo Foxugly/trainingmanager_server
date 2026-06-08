@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "audit",
     "place",
     "equipment",
+    "dashboard",
 ]
 
 SITE_ID = 1
