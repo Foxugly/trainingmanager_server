@@ -20,6 +20,7 @@ from member.models import Member
 from team.models import TeamMembership
 from tests.factories import (
     EventFactory,
+    ExerciseFactory,
     ProgramFactory,
     RoundFactory,
     TeamFactory,
@@ -317,6 +318,45 @@ def test_manager_sees_everything_despite_never(owner_client, team):
     body = resp.json()
     assert body["total"] == 5000
     assert body["goal"] == "Endurance"
+
+
+def test_event_detail_embeds_rounds_detail_with_nested_exercises(owner_client, team):
+    """retrieve embeds rounds + their exercises so the client loads a session in
+    one request (no per-round / per-exercise fetch)."""
+    event = _make_event(team, vis_rounds="always")
+    r = RoundFactory(sport=team.sport, language=team.language, count=2, order=1)
+    ex = ExerciseFactory(round=r, repetition=4, distance=50, order=1)
+    event.rounds.add(r)
+
+    resp = owner_client.get(f"/api/v1/events/{event.pk}/")
+    assert resp.status_code == 200, resp.content
+    detail = resp.json()["rounds_detail"]
+    assert len(detail) == 1
+    assert detail[0]["id"] == r.id
+    assert detail[0]["count"] == 2
+    assert [e["id"] for e in detail[0]["exercises"]] == [ex.id]
+    assert detail[0]["exercises"][0]["repetition"] == 4
+
+
+def test_event_list_omits_rounds_detail(owner_client, team):
+    """The list payload stays light — rounds_detail is null there."""
+    event = _make_event(team, vis_rounds="always")
+    event.rounds.add(RoundFactory(sport=team.sport, language=team.language))
+    resp = owner_client.get("/api/v1/events/")
+    assert resp.status_code == 200
+    rows = resp.json()
+    rows = rows.get("results", rows) if isinstance(rows, dict) else rows
+    row = next(r for r in rows if r["id"] == event.pk)
+    assert row["rounds_detail"] is None
+
+
+def test_athlete_rounds_detail_redacted_when_hidden(athlete_client, team):
+    """rounds_detail is emptied for a restricted athlete, like rounds."""
+    event = _make_event(team, vis_rounds="never")
+    event.rounds.add(RoundFactory(sport=team.sport, language=team.language))
+    resp = athlete_client.get(f"/api/v1/events/{event.pk}/")
+    assert resp.status_code == 200
+    assert resp.json()["rounds_detail"] == []
 
 
 def test_athlete_rounds_never_emptied_in_event_detail(athlete_client, team):

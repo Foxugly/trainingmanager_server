@@ -105,11 +105,22 @@ class EventViewSet(viewsets.ModelViewSet):
     ordering = ["-date", "hour_start"]
 
     def get_queryset(self):
-        return (
+        qs = (
             Event.objects.filter(refer_program__team__in=user_member_teams(self.request.user))
             .select_related("refer_program", "refer_program__team", "place")
             .prefetch_related("rounds", "members", "equipment_items")
         )
+        # On retrieve the serializer embeds rounds + their exercises
+        # (rounds_detail) so the client loads a session in one request instead
+        # of N round/exercise fetches — deep-prefetch only there to keep lists
+        # light.
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                "rounds__sport",
+                "rounds__exercises__modality__sport",
+                "rounds__exercises__energysegment__energysystem",
+            )
+        return qs
 
     def _check_program_write(self, program):
         if program is None:

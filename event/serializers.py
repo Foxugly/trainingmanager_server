@@ -1,17 +1,41 @@
 from django.utils.translation import gettext_lazy as _
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from equipment.models import Equipment
 from equipment.serializers import EquipmentMinimalSerializer
+from exercise.serializers import ExerciseSerializer
 from place.models import Place
 from place.serializers import PlaceMinimalSerializer
 from program.models import Program
 from program.serializers import ProgramMinimalSerializer
+from round.models import Round
 from sport.models import Sport
 from sport.serializers import SportSerializer
 from tools.html_sanitizer import sanitize_html
 
 from .models import Event
+
+
+class EventRoundDetailSerializer(serializers.ModelSerializer):
+    """A round with its exercises fully nested — embedded under an event's
+    ``rounds_detail`` so the client loads a whole session (rounds + exercises)
+    in a single request instead of one fetch per round and per exercise."""
+
+    sport = SportSerializer(read_only=True)
+    exercises = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Round
+        fields = ["id", "order", "count", "t_start", "t_break", "sport", "exercises"]
+        read_only_fields = fields
+
+    @extend_schema_field(ExerciseSerializer(many=True))
+    def get_exercises(self, round_obj):
+        # Prefetched in EventViewSet.get_queryset on retrieve; sort in Python so
+        # the prefetch cache is reused (no extra query).
+        ordered = sorted(round_obj.exercises.all(), key=lambda e: e.order or 0)
+        return ExerciseSerializer(ordered, many=True, context=self.context).data
 
 ADDITIONAL_PROMPT_MAX_LENGTH = 2000
 
@@ -104,6 +128,10 @@ class EventSerializer(serializers.ModelSerializer):
     rounds = serializers.PrimaryKeyRelatedField(
         many=True, read_only=True, required=False
     )
+    # Rounds + their exercises fully nested, populated on retrieve only (null on
+    # list to keep that payload light). Lets the client load a session in one
+    # request. Redacted alongside `rounds` for a restricted athlete.
+    rounds_detail = serializers.SerializerMethodField()
     members = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     place = PlaceMinimalSerializer(read_only=True)
     place_id = serializers.PrimaryKeyRelatedField(
@@ -155,6 +183,7 @@ class EventSerializer(serializers.ModelSerializer):
             "sport",
             "sport_id",
             "rounds",
+            "rounds_detail",
             "members",
             "vis_distance",
             "vis_goal",
@@ -322,4 +351,17 @@ class EventSerializer(serializers.ModelSerializer):
             data["goal"] = None
         if not instance.aspect_visible_to_athlete("rounds"):
             data["rounds"] = []
+            if "rounds_detail" in data:
+                data["rounds_detail"] = []
         return data
+
+    @extend_schema_field(EventRoundDetailSerializer(many=True))
+    def get_rounds_detail(self, event):
+        """Rounds + nested exercises, but only on retrieve (a single event):
+        list payloads stay light, so we return null there. Ordered by round
+        order using the prefetched cache."""
+        view = self.context.get("view")
+        if getattr(view, "action", None) != "retrieve":
+            return None
+        ordered = sorted(event.rounds.all(), key=lambda r: r.order or 0)
+        return EventRoundDetailSerializer(ordered, many=True, context=self.context).data
