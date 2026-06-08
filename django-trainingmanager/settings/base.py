@@ -51,7 +51,6 @@ INSTALLED_APPS = [
     "customuser",
     "team",
     "note",
-    "chat",
     "attendance",
     "roti",
     "rsvp",

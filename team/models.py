@@ -18,10 +18,6 @@ def default_invitation_expiration():
 
 
 class Team(models.Model):
-    class ChatMode(models.TextChoices):
-        ALL = "all", _("All members can post")
-        COACHES_ONLY = "coaches_only", _("Only coaches can post")
-
     class JoinRequestPolicy(models.TextChoices):
         MANUAL = "manual", _("Manual — managers accept/reject each request")
         AUTO = "auto", _("Auto-accept — every join request is accepted immediately")
@@ -85,12 +81,6 @@ class Team(models.Model):
             "If True, athletes can declare their availability (RSVP: going / "
             "maybe / not going) for the team's events."
         ),
-    )
-    chat_mode = models.CharField(
-        max_length=20,
-        choices=ChatMode.choices,
-        default=ChatMode.ALL,
-        help_text=_("Defines who can post messages in the team chat."),
     )
     weekly_recap_enabled = models.BooleanField(
         default=False,

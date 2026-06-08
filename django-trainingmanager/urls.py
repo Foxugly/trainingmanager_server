@@ -34,7 +34,6 @@ urlpatterns = [
     path("api/v1/", include("exercise.urls")),
     path("api/v1/", include("member.urls")),
     path("api/v1/", include("note.urls")),
-    path("api/v1/", include("chat.urls")),
     path("api/v1/", include("attendance.urls")),
     path("api/v1/", include("roti.urls")),
     path("api/v1/", include("rsvp.urls")),
