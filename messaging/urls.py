@@ -9,12 +9,13 @@ space without re-emitting team routes. Unique basenames avoid collisions
 with the routes served by the team app.
 """
 
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedSimpleRouter
 
 from team.views import TeamViewSet
 
-from .views import TopicMessageViewSet, TopicViewSet
+from .views import DiscussionsUnreadView, TopicMessageViewSet, TopicViewSet
 
 _parent = DefaultRouter()
 _parent.register(r"teams", TeamViewSet, basename="messaging-parent-team")
@@ -25,4 +26,10 @@ topics_router.register(r"topics", TopicViewSet, basename="team-topic")
 messages_router = NestedSimpleRouter(topics_router, r"topics", lookup="topic")
 messages_router.register(r"messages", TopicMessageViewSet, basename="topic-message")
 
-urlpatterns = topics_router.urls + messages_router.urls
+urlpatterns = topics_router.urls + messages_router.urls + [
+    path(
+        "discussions/unread/",
+        DiscussionsUnreadView.as_view(),
+        name="discussions-unread",
+    ),
+]

@@ -97,6 +97,11 @@ class Message(models.Model):
     content = models.TextField(
         help_text=_("Rich HTML content (sanitized via bleach on save)."),
     )
+    edited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=_("Set when the message is edited after creation."),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -111,3 +116,36 @@ class Message(models.Model):
     def __str__(self):
         author_str = self.author.username if self.author else "(deleted)"
         return f"Message #{self.pk} in topic {self.topic_id} by {author_str}"
+
+
+class TopicRead(models.Model):
+    """Per-user read state for a topic (Option A: last-read marker).
+
+    One row per (user, topic). ``last_read_at`` is the moment the user last
+    opened/read the topic; unread = messages created after it (excluding the
+    user's own). Absence of a row means the user has never opened the topic.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="topic_reads",
+    )
+    topic = models.ForeignKey(
+        Topic,
+        on_delete=models.CASCADE,
+        related_name="reads",
+    )
+    last_read_at = models.DateTimeField(
+        help_text=_("Moment the user last read this topic."),
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "topic"], name="uniq_topicread_user_topic"
+            ),
+        ]
+
+    def __str__(self):
+        return f"TopicRead user={self.user_id} topic={self.topic_id} @ {self.last_read_at}"

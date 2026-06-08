@@ -21,9 +21,10 @@ class MessageSerializer(serializers.ModelSerializer):
             "id",
             "content",
             "author",
+            "edited_at",
             "created_at",
         ]
-        read_only_fields = ["id", "author", "created_at"]
+        read_only_fields = ["id", "author", "edited_at", "created_at"]
 
     def validate_content(self, value):
         if not value or not value.strip():
@@ -84,3 +85,21 @@ class TopicSerializer(serializers.ModelSerializer):
                 code="empty_title",
             )
         return value.strip()
+
+
+class UnreadTopicSerializer(serializers.Serializer):
+    """One topic with unread messages, for the unread summary."""
+
+    topic_id = serializers.IntegerField()
+    team_id = serializers.IntegerField()
+    team_name = serializers.CharField()
+    title = serializers.CharField()
+    unread_count = serializers.IntegerField()
+    updated_at = serializers.DateTimeField()
+
+
+class UnreadSummarySerializer(serializers.Serializer):
+    """The current user's unread discussion summary (count + topics)."""
+
+    count = serializers.IntegerField()
+    topics = UnreadTopicSerializer(many=True)

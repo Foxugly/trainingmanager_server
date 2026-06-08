@@ -534,3 +534,92 @@ def test_empty_message_rejected(api_client, coach, team):
 def test_endpoints_require_authentication(api_client, team):
     resp = api_client.get(_topics_url(team.pk))
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Edit message (author only) + edited_at
+# ---------------------------------------------------------------------------
+
+
+def test_author_edits_own_message_sets_edited_at(api_client, coach, team):
+    topic = _make_topic(team, coach)
+    msg = Message.objects.create(topic=topic, author=coach, content="<p>old</p>")
+    api_client.force_authenticate(user=coach)
+    resp = api_client.patch(
+        _message_url(team.pk, topic.pk, msg.pk),
+        {"content": "<p>new</p>"},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.content
+    body = resp.json()
+    assert "new" in body["content"]
+    assert body["edited_at"] is not None
+    msg.refresh_from_db()
+    assert msg.edited_at is not None
+
+
+def test_non_author_cannot_edit_message(api_client, coach, manager, team):
+    topic = _make_topic(team, coach)
+    msg = Message.objects.create(topic=topic, author=coach, content="<p>old</p>")
+    # manager is a coach but NOT the author -> edit forbidden (author-only).
+    api_client.force_authenticate(user=manager)
+    resp = api_client.patch(
+        _message_url(team.pk, topic.pk, msg.pk),
+        {"content": "<p>hijack</p>"},
+        format="json",
+    )
+    assert resp.status_code == 403
+    msg.refresh_from_db()
+    assert "old" in msg.content
+
+
+# ---------------------------------------------------------------------------
+# Read-state: mark-read + unread summary
+# ---------------------------------------------------------------------------
+
+
+def _unread_url():
+    return "/api/v1/discussions/unread/"
+
+
+def test_unread_counts_then_clears_after_read(api_client, coach, athlete, team, member):
+    from messaging.models import TopicRead
+
+    topic = _make_topic(team, coach)
+    # two messages by the coach -> unread for the athlete
+    Message.objects.create(topic=topic, author=coach, content="<p>1</p>")
+    Message.objects.create(topic=topic, author=coach, content="<p>2</p>")
+
+    api_client.force_authenticate(user=athlete)
+    body = api_client.get(_unread_url()).json()
+    assert body["count"] == 2
+    assert body["topics"][0]["topic_id"] == topic.pk
+    assert body["topics"][0]["unread_count"] == 2
+
+    # mark read -> unread clears
+    resp = api_client.post(_topic_url(team.pk, topic.pk) + "read/")
+    assert resp.status_code == 204
+    assert TopicRead.objects.filter(user=athlete, topic=topic).exists()
+
+    body = api_client.get(_unread_url()).json()
+    assert body["count"] == 0
+    assert body["topics"] == []
+
+
+def test_unread_excludes_own_messages(api_client, coach, team):
+    topic = _make_topic(team, coach)
+    Message.objects.create(topic=topic, author=coach, content="<p>mine</p>")
+    api_client.force_authenticate(user=coach)
+    body = api_client.get(_unread_url()).json()
+    assert body["count"] == 0
+
+
+def test_unread_after_read_then_new_message(api_client, coach, athlete, team, member):
+    topic = _make_topic(team, coach)
+    Message.objects.create(topic=topic, author=coach, content="<p>1</p>")
+    api_client.force_authenticate(user=athlete)
+    api_client.post(_topic_url(team.pk, topic.pk) + "read/")
+    assert api_client.get(_unread_url()).json()["count"] == 0
+    # a new message after the read marker -> unread again
+    Message.objects.create(topic=topic, author=coach, content="<p>2</p>")
+    assert api_client.get(_unread_url()).json()["count"] == 1

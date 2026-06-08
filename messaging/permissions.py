@@ -146,6 +146,11 @@ class IsTopicMessagePermission(BasePermission):
         if request.method in SAFE_METHODS:
             return can_see_topic(topic, request.user)
 
+        # PATCH/PUT (edit): author ONLY — a coach may remove but not rewrite
+        # someone else's words.
+        if request.method in ("PATCH", "PUT"):
+            return obj.author_id == request.user.pk
+
         # DELETE: author or team owner/manager.
         if topic.team.is_managed_by(request.user):
             return True

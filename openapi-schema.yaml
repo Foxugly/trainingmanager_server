@@ -961,6 +961,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/discussions/unread/:
+    get:
+      operationId: discussions_unread
+      description: |-
+        GET /api/v1/discussions/unread/ — the caller's unread count + the topics
+        that have unread messages, across all teams they are a member of.
+
+        Unread for a topic = messages created after the user's last-read marker
+        (TopicRead), excluding the user's own messages. No marker = all such
+        messages are unread. Coaches-only topics are included only for managers.
+      summary: Unread discussion summary for the current user
+      tags:
+      - discussions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadSummary'
+          description: ''
   /api/v1/energy-segments/:
     get:
       operationId: energy_segments_list
@@ -6563,6 +6585,33 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{team_pk}/topics/{id}/read/:
+    post:
+      operationId: teams_topics_read
+      description: |-
+        POST /teams/{team}/topics/{id}/read/ — set the caller's last-read
+        marker for this topic to now (so its messages count as read).
+      summary: Mark a topic as read up to now (per-user read state)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this topic.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/:
     get:
       operationId: teams_topics_messages_list
@@ -6691,6 +6740,103 @@ paths:
         required: true
       tags:
       - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicMessage'
+          description: ''
+    put:
+      operationId: teams_topics_messages_update
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: Edit a message (author only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this message.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TopicMessage'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicMessage'
+          description: ''
+    patch:
+      operationId: teams_topics_messages_partial_update
+      description: |-
+        Messages nested under a topic.
+
+        URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
+      summary: Edit a message (author only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this message.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        description: ID of the parent team.
+        required: true
+      - in: path
+        name: topic_pk
+        schema:
+          type: integer
+        description: ID of the parent topic.
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTopicMessage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTopicMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTopicMessage'
       security:
       - jwtAuth: []
       responses:
@@ -10705,6 +10851,32 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedTopicMessage:
+      type: object
+      description: |-
+        A single message. ``author`` is the nested public user; ``content``
+        is sanitized via bleach on every write.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+          description: Rich HTML content (sanitized via bleach on save).
+        author:
+          allOf:
+          - $ref: '#/components/schemas/CustomUserPublic'
+          readOnly: true
+        edited_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Set when the message is edited after creation.
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedTrainingSlot:
       type: object
       description: |-
@@ -12107,6 +12279,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/CustomUserPublic'
           readOnly: true
+        edited_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Set when the message is edited after creation.
         created_at:
           type: string
           format: date-time
@@ -12115,6 +12293,7 @@ components:
       - author
       - content
       - created_at
+      - edited_at
       - id
     TrainingSlot:
       type: object
@@ -12232,6 +12411,43 @@ components:
           description: Number of unread notifications for the caller.
       required:
       - count
+    UnreadSummary:
+      type: object
+      description: The current user's unread discussion summary (count + topics).
+      properties:
+        count:
+          type: integer
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnreadTopic'
+      required:
+      - count
+      - topics
+    UnreadTopic:
+      type: object
+      description: One topic with unread messages, for the unread summary.
+      properties:
+        topic_id:
+          type: integer
+        team_id:
+          type: integer
+        team_name:
+          type: string
+        title:
+          type: string
+        unread_count:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - team_id
+      - team_name
+      - title
+      - topic_id
+      - unread_count
+      - updated_at
     ValidateInvitation:
       type: object
       properties:
