@@ -50,6 +50,11 @@ class RoundViewSet(viewsets.ModelViewSet):
                 _("You must manage a team owning an event linked to this round.")
             )
 
+    def perform_create(self, serializer):
+        # Stamp authorship so a library round (no team) can later be restricted
+        # to its author (see _user_may_mutate_round).
+        serializer.save(author=self.request.user)
+
     def perform_update(self, serializer):
         self._require_may_mutate(serializer.instance)
         serializer.save()
@@ -236,20 +241,19 @@ def _gate_rounds_by_event_visibility(qs, user):
 
 
 def _user_may_mutate_round(round_obj, user):
-    """A user may reorder a round's exercises if they manage at least one
-    team owning an event that contains this round. Library rounds (no
-    events) fall back to the IsTrainer class permission check (already
-    enforced by RoundViewSet.permission_classes).
+    """A user may mutate a round (PATCH/DELETE/reorder exercises) if they manage
+    at least one team owning an event that contains this round.
 
-    NOTE (audit): a library round (no events) is shared catalog with no team
-    owner, so any same-(sport,language) trainer can edit another trainer's
-    entry. Tightening this cleanly needs either an authorship field on Round or
-    a staff bypass in IsTrainer (a pure-staff admin manages no team, so it is
-    currently blocked at the class level) — both broader than warranted; left
-    as-is for now. In practice the editor only ever creates event-linked rounds."""
+    A *library* round (no linked events) belongs to no team. When it carries an
+    author (stamped on create) it is restricted to that author or staff —
+    otherwise any same-(sport, language) trainer could edit another trainer's
+    catalog entry. Unattributed library rounds (author NULL — legacy rows, or
+    seeded data) stay open to any trainer for back-compat."""
     linked_events = list(round_obj.event_set.select_related("refer_program__team").all())
     if not linked_events:
-        return True  # library round; class-level IsTrainer already passed
+        if round_obj.author_id is None:
+            return True
+        return round_obj.author_id == user.pk or bool(user.is_staff)
     return any(
         e.refer_program is not None and e.refer_program.team.is_managed_by(user)
         for e in linked_events

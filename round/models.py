@@ -36,6 +36,16 @@ class Round(models.Model):
         max_length=2,
         choices=django_settings.LANGUAGES,
     )
+    # Who created the round (set on POST). Lets a *library* round (one tied to no
+    # event, hence to no team) be edited/deleted only by its author or staff —
+    # otherwise any same-(sport, language) trainer could mutate it.
+    author = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -87,6 +87,37 @@ def test_POST_round_with_event_id_non_manager_returns_403(auth_client_trainer, t
     assert other_event.rounds.count() == 0
 
 
+def test_library_round_mutation_restricted_to_author(api_client, trainer_sport):
+    """A library round (no events) carries its author; another same-(sport,
+    language) trainer cannot edit/delete it, only the author (or staff)."""
+    from round.models import Round
+
+    author = UserFactory()
+    TeamFactory(owner=author, sport=trainer_sport, is_active=True)  # makes them a trainer
+    api_client.force_authenticate(user=author)
+    created = api_client.post(
+        "/api/v1/rounds/",
+        {"sport_id": trainer_sport.pk, "language": "fr", "order": 1, "count": 1},
+        format="json",
+    )
+    assert created.status_code == 201, created.json()
+    rid = created.json()["id"]
+    assert Round.objects.get(pk=rid).author_id == author.pk
+
+    # Another trainer with a same-(sport, language) team can see it but not mutate.
+    other = UserFactory()
+    TeamFactory(owner=other, sport=trainer_sport, is_active=True)
+    api_client.force_authenticate(user=other)
+    assert api_client.patch(f"/api/v1/rounds/{rid}/", {"count": 5}, format="json").status_code == 403
+    assert api_client.delete(f"/api/v1/rounds/{rid}/").status_code == 403
+
+    # The author may edit it.
+    api_client.force_authenticate(user=author)
+    ok = api_client.patch(f"/api/v1/rounds/{rid}/", {"count": 5}, format="json")
+    assert ok.status_code == 200, ok.content
+    assert Round.objects.get(pk=rid).count == 5
+
+
 def test_POST_round_with_event_id_as_team_manager_succeeds(api_client, trainer_sport):
     """Manager (not owner) of the event's active team can attach. Confirms the
     permission check uses managed_teams (owner OR manager), not owner-only."""
