@@ -211,7 +211,7 @@ def test_event_ai_prompt_includes_level(db):
         energysegments_catalog=[{"id": 1, "abv": "A1"}],
         team=team,
     )
-    assert "Team skill level: Perfectionnement — Maîtrise" in prompt
+    assert "Team skill level: Perfectionnement — Maîtrise" in "".join(prompt)
 
 
 def test_event_ai_prompt_includes_energysegment_description(db):
@@ -229,7 +229,7 @@ def test_event_ai_prompt_includes_energysegment_description(db):
         ],
         team=team,
     )
-    assert "12: Z2 — Endurance fondamentale aérobie" in prompt
+    assert "12: Z2 — Endurance fondamentale aérobie" in "".join(prompt)
 
 
 def test_event_ai_prompt_omits_dash_when_segment_description_empty(db):
@@ -245,8 +245,9 @@ def test_event_ai_prompt_omits_dash_when_segment_description_empty(db):
         energysegments_catalog=[{"id": 12, "abv": "Z2", "description": ""}],
         team=team,
     )
-    assert "12: Z2" in prompt
-    assert "12: Z2 —" not in prompt
+    joined = "".join(prompt)
+    assert "12: Z2" in joined
+    assert "12: Z2 —" not in joined
 
 
 def test_event_ai_prompt_includes_program_objective(db):
@@ -262,7 +263,7 @@ def test_event_ai_prompt_includes_program_objective(db):
         energysegments_catalog=[{"id": 1, "abv": "A1"}],
         team=team,
     )
-    assert "Program objective: Préparer le 400m 4 nages en 8 semaines" in prompt
+    assert "Program objective: Préparer le 400m 4 nages en 8 semaines" in "".join(prompt)
 
 
 def test_event_ai_prompt_omits_program_objective_when_empty(db):
@@ -278,7 +279,7 @@ def test_event_ai_prompt_omits_program_objective_when_empty(db):
         energysegments_catalog=[{"id": 1, "abv": "A1"}],
         team=team,
     )
-    assert "Program objective" not in prompt
+    assert "Program objective" not in "".join(prompt)
 
 
 def test_program_ai_prompt_includes_level(db):
