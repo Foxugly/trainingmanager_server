@@ -231,9 +231,8 @@ def test_team_place_ids_attaches_places(manager_client, team):
 
 def test_team_place_ids_rejects_foreign_sport_place(manager_client, team):
     """A venue serving only an unrelated sport cannot be linked to the team."""
-    from sport.models import Sport
-
     from place.models import Place
+    from sport.models import Sport
 
     other_sport = Sport.objects.create(name="Course", slug="course-foreign")
     foreign = Place.objects.create(name="Piste")
