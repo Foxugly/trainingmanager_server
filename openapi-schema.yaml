@@ -5537,7 +5537,8 @@ paths:
       description: 'Returns the team''s reusable weekly training template: the list
         of weekly slots (weekday Monday=0…Sunday=6 + hour_start/hour_end), the default
         pool/venue, and the default season dates. Any member of the team (owner, manager,
-        or active athlete) may read it; non-members get 404.'
+        or active athlete) may read it; non-members get 404. Read-only: slots are
+        written via the per-slot CRUD under `teams/{id}/training-slots/`.'
       summary: Read the team's weekly training template
       parameters:
       - in: path
@@ -5548,43 +5549,6 @@ paths:
         required: true
       tags:
       - teams
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TrainingTemplate'
-          description: ''
-    put:
-      operationId: teams_training_template_update
-      description: 'Atomically REPLACES the team''s training template: deletes the
-        existing weekly slots and recreates them from the payload, and sets default_pool
-        / season_start / season_end on the team. Manager/owner only (else 403). Each
-        slot''s weekday must be 0..6 and hour_end must be after hour_start (else 400).'
-      summary: Replace the team's weekly training template (manager only)
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this team.
-        required: true
-      tags:
-      - teams
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TrainingTemplate'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TrainingTemplate'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TrainingTemplate'
-        required: true
       security:
       - jwtAuth: []
       responses:
