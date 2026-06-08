@@ -588,7 +588,8 @@ class TrainingSlotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TrainingSlot
-        fields = ["weekday", "hour_start", "hour_end", "place", "place_id"]
+        fields = ["id", "weekday", "hour_start", "hour_end", "place", "place_id"]
+        read_only_fields = ["id"]
 
     def validate_weekday(self, value):
         if value < 0 or value > 6:

@@ -10712,6 +10712,9 @@ components:
 
         weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
       properties:
+        id:
+          type: integer
+          readOnly: true
         weekday:
           allOf:
           - $ref: '#/components/schemas/WeekdayEnum'
@@ -12120,6 +12123,9 @@ components:
 
         weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
       properties:
+        id:
+          type: integer
+          readOnly: true
         weekday:
           allOf:
           - $ref: '#/components/schemas/WeekdayEnum'
@@ -12154,6 +12160,7 @@ components:
       required:
       - hour_end
       - hour_start
+      - id
       - place
       - weekday
     TrainingTemplate:
