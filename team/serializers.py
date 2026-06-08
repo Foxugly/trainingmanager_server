@@ -284,7 +284,55 @@ class TeamSerializer(serializers.ModelSerializer):
                     {"default_sport_id": _("The default sport must be one of the team's sports.")},
                     code="default_not_in_sports",
                 )
+        self._validate_managers_owner_only(data)
+        self._validate_places_in_sport(data)
         return data
+
+    def _validate_managers_owner_only(self, data):
+        """The management roster is the owner's prerogative: a manager who is not
+        the owner must not be able to add/remove co-managers (self-escalation).
+        `managers_ids` is sourced to `managers`."""
+        if self.instance is None or "managers" not in data:
+            return
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or self.instance.owner_id != getattr(user, "pk", None):
+            raise serializers.ValidationError(
+                {"managers_ids": _("Only the team owner can change the team's managers.")},
+                code="managers_owner_only",
+            )
+
+    def _validate_places_in_sport(self, data):
+        """Linked venues must serve at least one of the team's sports — a manager
+        cannot attach a venue from an unrelated sport pool. `place_ids` is sourced
+        to `places`, `default_place_id` to `default_place`."""
+        places = list(data.get("places") or [])
+        if "default_place" in data and data["default_place"] is not None:
+            places.append(data["default_place"])
+        if not places:
+            return
+        team_sport_ids = self._team_sport_ids(data)
+        if not team_sport_ids:
+            return
+        for place in places:
+            place_sport_ids = set(place.sports.values_list("id", flat=True))
+            # A venue with no declared sports is unscoped (shared) — allow it.
+            if place_sport_ids and place_sport_ids.isdisjoint(team_sport_ids):
+                raise serializers.ValidationError(
+                    {"place_ids": _("A venue must serve one of the team's sports.")},
+                    code="place_not_in_sport",
+                )
+
+    def _team_sport_ids(self, data):
+        """The set of sport ids in play for this write (new selection or, failing
+        that, the team's current sports)."""
+        if data.get("sport_ids"):
+            return {s.id for s in data["sport_ids"]}
+        if data.get("sport_id"):
+            return {data["sport_id"].id}
+        if self.instance is not None:
+            return set(self.instance.sports.values_list("id", flat=True))
+        return set()
 
     def _persist_sports(self, team, sports, default, legacy):
         """Apply whichever sport write path was supplied (set/default/legacy).

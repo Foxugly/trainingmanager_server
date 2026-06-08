@@ -229,6 +229,24 @@ def test_team_place_ids_attaches_places(manager_client, team):
     assert set(team.places.values_list("id", flat=True)) == {p1.pk, p2.pk}
 
 
+def test_team_place_ids_rejects_foreign_sport_place(manager_client, team):
+    """A venue serving only an unrelated sport cannot be linked to the team."""
+    from sport.models import Sport
+
+    from place.models import Place
+
+    other_sport = Sport.objects.create(name="Course", slug="course-foreign")
+    foreign = Place.objects.create(name="Piste")
+    foreign.sports.set([other_sport])  # not one of the team's sports
+
+    url = reverse("team-detail", kwargs={"pk": team.pk})
+    resp = manager_client.patch(url, {"place_ids": [foreign.pk]}, format="json")
+    assert resp.status_code == 400
+    assert "place_not_in_sport" in str(resp.content)
+    team.refresh_from_db()
+    assert not team.places.filter(pk=foreign.pk).exists()
+
+
 def test_team_default_place_syncs_pool_and_autolinks(manager_client, team):
     place = _make_place("Piscine A", team)
     url = reverse("team-detail", kwargs={"pk": team.pk})

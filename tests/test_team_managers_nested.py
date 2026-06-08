@@ -76,6 +76,39 @@ def test_PATCH_team_managers_via_managers_ids(owner_client, team_with_manager):
     assert new_mgr in team_with_manager.managers.all()
 
 
+def test_PATCH_managers_ids_by_non_owner_manager_is_403(
+    api_client, team_with_manager, manager_user
+):
+    """A manager who is not the owner must not change the management roster
+    (self-escalation). managers_owner_only is raised."""
+    api_client.force_authenticate(user=manager_user)
+    intruder = User.objects.create_user(
+        username="tm_intruder", email="tm_intruder@local.test", password="pass"
+    )
+    response = api_client.patch(
+        f"/api/v1/teams/{team_with_manager.pk}/",
+        {"managers_ids": [manager_user.pk, intruder.pk]},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "managers_owner_only" in str(response.content)
+    team_with_manager.refresh_from_db()
+    assert intruder not in team_with_manager.managers.all()
+
+
+def test_PATCH_other_fields_by_manager_still_allowed(api_client, team_with_manager, manager_user):
+    """The roster lock must not block a manager from editing normal team fields."""
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.patch(
+        f"/api/v1/teams/{team_with_manager.pk}/",
+        {"name": "Renamed by manager"},
+        format="json",
+    )
+    assert response.status_code == 200, response.content
+    team_with_manager.refresh_from_db()
+    assert team_with_manager.name == "Renamed by manager"
+
+
 def test_PATCH_with_old_managers_field_is_ignored(owner_client, team_with_manager):
     """`managers` is now read-only; PATCH on it should not mutate state."""
     new_mgr = User.objects.create_user(
