@@ -75,8 +75,9 @@ class PlaceViewSet(viewsets.ModelViewSet):
         sport_id = self.request.query_params.get("sport")
         team_id = self.request.query_params.get("team")
         if sport_id:
-            # Whole sport pool (to attach/share an existing venue).
-            return Place.objects.filter(sport_id=sport_id).distinct()
+            # Whole sport pool (to attach/share an existing venue). Multi-sport:
+            # a venue is in a sport's pool if that sport is among its `sports`.
+            return Place.objects.filter(sports__id=sport_id).distinct()
         qs = Place.objects.filter(teams__in=user_member_teams(self.request.user))
         if team_id:
             qs = qs.filter(teams__id=team_id)
@@ -108,7 +109,10 @@ class PlaceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         team = serializer.validated_data.pop("team", None)
         self._require_manages(team)
-        place = serializer.save(sport=team.sport)
+        place = serializer.save()
+        # The venue serves the creating team's sports (multi-sport); a
+        # single-sport team yields one sport, preserving the old behaviour.
+        place.sports.set(team.sports.all())
         team.places.add(place)
 
     def perform_update(self, serializer):

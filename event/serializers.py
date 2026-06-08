@@ -7,7 +7,6 @@ from place.models import Place
 from place.serializers import PlaceMinimalSerializer
 from program.models import Program
 from program.serializers import ProgramMinimalSerializer
-from round.models import Round
 from sport.models import Sport
 from sport.serializers import SportSerializer
 from tools.html_sanitizer import sanitize_html

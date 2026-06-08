@@ -326,7 +326,8 @@ class ProgramViewSet(viewsets.ModelViewSet):
         if place is None:
             from place.models import Place
 
-            place = Place.objects.create(sport=team.sport, name=name[:255])
+            place = Place.objects.create(name=name[:255])
+            place.sports.set(team.sports.all())  # multi-sport venue pool
             team.places.add(place)
             cache[key] = place
         return place

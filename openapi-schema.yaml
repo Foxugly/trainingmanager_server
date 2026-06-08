@@ -10277,11 +10277,12 @@ components:
         id:
           type: integer
           readOnly: true
-        sport:
-          type: integer
+        sports:
+          type: array
+          items:
+            type: integer
           readOnly: true
-          nullable: true
-          description: Sport this venue belongs to (e.g. Natation).
+          description: Sports this venue serves.
         name:
           type: string
           description: Display name of the venue (e.g. 'Piscine olympique').
@@ -10884,11 +10885,12 @@ components:
         id:
           type: integer
           readOnly: true
-        sport:
-          type: integer
+        sports:
+          type: array
+          items:
+            type: integer
           readOnly: true
-          nullable: true
-          description: Sport this venue belongs to (e.g. Natation).
+          description: Sports this venue serves.
         name:
           type: string
           description: Display name of the venue (e.g. 'Piscine olympique').
@@ -10912,7 +10914,7 @@ components:
       - created_at
       - id
       - name
-      - sport
+      - sports
       - updated_at
     PlaceMinimal:
       type: object

@@ -22,6 +22,15 @@ from tests.factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 
+def _make_place(name, team):
+    """Create a venue tied to the team's sports (Place is multi-sport now)."""
+    from place.models import Place
+
+    p = Place.objects.create(name=name)
+    p.sports.set(team.sports.all())
+    return p
+
+
 def _url(team):
     return reverse("team-training-template", kwargs={"pk": team.pk})
 
@@ -29,10 +38,9 @@ def _url(team):
 def test_get_returns_ordered_slots_place_and_team_fields(auth_client_trainer, trainer_user):
     """GET aggregates ORM-created slots ordered by weekday, the nested place, and
     the team's default_pool / season dates."""
-    from place.models import Place
 
     team = trainer_user.owned_teams.first()
-    place = Place.objects.create(sport=team.sport, name="Bassin nordique")
+    place = _make_place("Bassin nordique", team)
     team.places.add(place)
     team.default_pool = "Piscine communale"
     team.season_start = datetime.date(2026, 9, 1)
@@ -95,10 +103,9 @@ def _slot_detail_url(team, slot):
 
 
 def test_slot_crud_create_patch_delete(auth_client_trainer, trainer_user):
-    from place.models import Place
 
     team = trainer_user.owned_teams.first()
-    place = Place.objects.create(sport=team.sport, name="Bassin nordique")
+    place = _make_place("Bassin nordique", team)
     team.places.add(place)
 
     # create one slot with a place
@@ -127,10 +134,9 @@ def test_slot_crud_create_patch_delete(auth_client_trainer, trainer_user):
 
 
 def test_slot_create_rejects_place_not_in_team(auth_client_trainer, trainer_user):
-    from place.models import Place
 
     team = trainer_user.owned_teams.first()
-    foreign = Place.objects.create(sport=team.sport, name="Foreign")  # not linked
+    foreign = _make_place("Foreign", team)  # not linked
     resp = auth_client_trainer.post(
         _slots_url(team),
         {"weekday": 1, "hour_start": "18:00", "hour_end": "19:30", "place_id": foreign.pk},

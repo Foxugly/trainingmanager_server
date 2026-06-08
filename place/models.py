@@ -13,13 +13,13 @@ class Place(models.Model):
     which read those strings — keep working unchanged.
     """
 
-    sport = models.ForeignKey(
+    # Multi-sport: a venue can serve several sports (replaced the single `sport`
+    # FK). A team's place pool = places sharing ≥1 of the team's sports.
+    sports = models.ManyToManyField(
         "sport.Sport",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
         related_name="places",
-        help_text=_("Sport this venue belongs to (e.g. Natation)."),
+        blank=True,
+        help_text=_("Sports this venue serves."),
     )
     name = models.CharField(
         max_length=255,

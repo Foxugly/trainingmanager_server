@@ -466,12 +466,10 @@ def test_generate_training_prompt_includes_equipment_duration_and_venue(
     from place.models import Place
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
-    place = Place.objects.create(
-        sport=trainer_event.refer_program.team.sport,
-        name="Piscine 50m",
-        address="Av. des Sports 1",
-    )
-    trainer_event.refer_program.team.places.add(place)
+    team = trainer_event.refer_program.team
+    place = Place.objects.create(name="Piscine 50m", address="Av. des Sports 1")
+    place.sports.set(team.sports.all())
+    team.places.add(place)
     trainer_event.equipment = "<p>Pull-buoy, plaquettes</p>"
     trainer_event.hour_start = time(18, 0)
     trainer_event.hour_end = time(19, 30)

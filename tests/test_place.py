@@ -17,7 +17,6 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from event.models import Event
 from member.models import Member
 from place.models import Place
 from program.models import Program
@@ -25,6 +24,15 @@ from team.models import TeamMembership
 from tests.factories import EventFactory, TeamFactory, UserFactory
 
 pytestmark = pytest.mark.django_db
+
+
+def _make_place(name, team):
+    """Create a venue tied to the team's sports (Place is multi-sport now)."""
+    from place.models import Place
+
+    p = Place.objects.create(name=name)
+    p.sports.set(team.sports.all())
+    return p
 
 
 def _places_url():
@@ -85,7 +93,8 @@ def test_create_place_links_team_and_sets_sport(manager_client, team):
     )
     assert resp.status_code == 201, resp.content
     place = Place.objects.get(name="Piscine A")
-    assert place.sport_id == team.sport_id
+    # Multi-sport: the venue serves the creating team's sports.
+    assert place.sports.filter(pk=team.default_sport.id).exists()
     assert team.places.filter(pk=place.pk).exists()
 
 
@@ -103,9 +112,9 @@ def test_create_place_as_athlete_403(athlete_client, team):
 
 
 def test_list_team_filter_returns_linked(manager_client, team):
-    linked = Place.objects.create(name="P1", sport=team.sport)
+    linked = _make_place("P1", team)
     team.places.add(linked)
-    Place.objects.create(name="P2", sport=team.sport)  # not linked
+    _make_place("P2", team)  # not linked
 
     resp = manager_client.get(_places_url(), {"team": team.pk})
     assert resp.status_code == 200
@@ -113,9 +122,9 @@ def test_list_team_filter_returns_linked(manager_client, team):
 
 
 def test_list_sport_filter_returns_pool(manager_client, team):
-    p1 = Place.objects.create(name="P1", sport=team.sport)
-    p2 = Place.objects.create(name="P2", sport=team.sport)
-    team.places.add(p1)  # p2 not linked to my team but same sport
+    p1 = _make_place("P1", team)
+    _make_place("P2", team)  # not linked to my team but shares the sport (pool)
+    team.places.add(p1)
 
     resp = manager_client.get(_places_url(), {"sport": team.sport_id})
     assert resp.status_code == 200
@@ -124,7 +133,7 @@ def test_list_sport_filter_returns_pool(manager_client, team):
 
 
 def test_non_member_cannot_retrieve_404(api_client, team):
-    place = Place.objects.create(name="P1", sport=team.sport)
+    place = _make_place("P1", team)
     team.places.add(place)
     outsider = UserFactory()
     api_client.force_authenticate(user=outsider)
@@ -139,7 +148,7 @@ def test_non_member_cannot_retrieve_404(api_client, team):
 
 def test_place_shared_across_teams(manager_client, manager, team):
     other = TeamFactory(owner=manager, is_active=True, sport=team.sport)
-    place = Place.objects.create(name="Shared pool", sport=team.sport)
+    place = _make_place("Shared pool", team)
     team.places.add(place)
     other.places.add(place)
 
@@ -159,7 +168,7 @@ def test_place_shared_across_teams(manager_client, manager, team):
 
 
 def test_delete_by_linked_manager_nulls_event_place(manager_client, athlete_client, team):
-    place = Place.objects.create(name="Piscine A", sport=team.sport)
+    place = _make_place("Piscine A", team)
     team.places.add(place)
     program = Program.objects.create(name="P", team=team, is_active=True)
     event = EventFactory(refer_program=program, location="Piscine A", place=place)
@@ -181,7 +190,7 @@ def test_delete_by_linked_manager_nulls_event_place(manager_client, athlete_clie
 
 
 def test_event_place_id_syncs_location(manager_client, team):
-    place = Place.objects.create(name="Piscine A", sport=team.sport)
+    place = _make_place("Piscine A", team)
     team.places.add(place)
     program = Program.objects.create(name="P", team=team, is_active=True)
     event = EventFactory(refer_program=program, location="old")
@@ -195,7 +204,7 @@ def test_event_place_id_syncs_location(manager_client, team):
 
 
 def test_event_place_not_in_team_400(manager_client, team):
-    foreign = Place.objects.create(name="Foreign", sport=team.sport)  # not linked
+    foreign = _make_place("Foreign", team)  # not linked
     program = Program.objects.create(name="P", team=team, is_active=True)
     event = EventFactory(refer_program=program, location="x")
 
@@ -211,8 +220,8 @@ def test_event_place_not_in_team_400(manager_client, team):
 
 
 def test_team_place_ids_attaches_places(manager_client, team):
-    p1 = Place.objects.create(name="P1", sport=team.sport)
-    p2 = Place.objects.create(name="P2", sport=team.sport)
+    p1 = _make_place("P1", team)
+    p2 = _make_place("P2", team)
     url = reverse("team-detail", kwargs={"pk": team.pk})
     resp = manager_client.patch(url, {"place_ids": [p1.pk, p2.pk]}, format="json")
     assert resp.status_code == 200, resp.content
@@ -221,7 +230,7 @@ def test_team_place_ids_attaches_places(manager_client, team):
 
 
 def test_team_default_place_syncs_pool_and_autolinks(manager_client, team):
-    place = Place.objects.create(name="Piscine A", sport=team.sport)
+    place = _make_place("Piscine A", team)
     url = reverse("team-detail", kwargs={"pk": team.pk})
     resp = manager_client.patch(url, {"default_place_id": place.pk}, format="json")
     assert resp.status_code == 200, resp.content

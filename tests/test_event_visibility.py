@@ -14,11 +14,9 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
-from django.utils import timezone
 
 from event.models import Event, VisibilityMode
 from member.models import Member
-from program.models import Program
 from team.models import TeamMembership
 from tests.factories import (
     EventFactory,

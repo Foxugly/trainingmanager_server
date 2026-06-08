@@ -21,14 +21,14 @@ class PlaceSerializer(serializers.ModelSerializer):
         model = Place
         fields = [
             "id",
-            "sport",
+            "sports",
             "name",
             "address",
             "team",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "sport", "created_at", "updated_at"]
+        read_only_fields = ["id", "sports", "created_at", "updated_at"]
 
     def validate_name(self, value):
         value = (value or "").strip()

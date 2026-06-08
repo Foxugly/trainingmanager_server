@@ -14,7 +14,6 @@ from datetime import date, time, timedelta
 
 import pytest
 
-from event.models import Event
 from member.models import Member
 from team.models import TeamMembership
 from tests.factories import (

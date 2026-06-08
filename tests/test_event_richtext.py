@@ -8,7 +8,6 @@ Coverage:
 
 import pytest
 
-from event.models import Event
 from tests.factories import EventFactory, ProgramFactory
 from tools.html_sanitizer import strip_html
 

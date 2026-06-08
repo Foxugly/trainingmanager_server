@@ -9,6 +9,15 @@ from tests.factories import ProgramFactory, TeamFactory
 pytestmark = pytest.mark.django_db
 
 
+def _make_place(name, team):
+    """Create a venue tied to the team's sports (Place is multi-sport now)."""
+    from place.models import Place
+
+    p = Place.objects.create(name=name)
+    p.sports.set(team.sports.all())
+    return p
+
+
 def _mock_tool_use_response(events, rationale="Test rationale"):
     response = MagicMock()
     tool_block = MagicMock()
@@ -539,10 +548,9 @@ def test_generate_events_prompt_lists_team_places(
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
-    p1 = Place.objects.create(
-        sport=program.team.sport, name="Piscine olympique", address="12 rue des Bains"
-    )
-    p2 = Place.objects.create(sport=program.team.sport, name="Bassin nordique")
+    p1 = Place.objects.create(name="Piscine olympique", address="12 rue des Bains")
+    p1.sports.set(program.team.sports.all())
+    p2 = _make_place("Bassin nordique", program.team)
     program.team.places.add(p1, p2)
     start = date(2026, 5, 1)
     end = date(2026, 5, 14)
@@ -569,11 +577,10 @@ def test_generate_events_links_existing_place(
 ):
     """An AI location matching a managed Place links that Place (case-insensitive)
     and creates no duplicate."""
-    from place.models import Place
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
-    place = Place.objects.create(sport=program.team.sport, name="Piscine Nord")
+    place = _make_place("Piscine Nord", program.team)
     program.team.places.add(place)
     start = date(2026, 5, 1)
     end = date(2026, 5, 14)
@@ -600,7 +607,6 @@ def test_generate_events_creates_unknown_place(
     auth_client_trainer, trainer_user, settings
 ):
     """An AI location with no matching Place creates a new Place and links it."""
-    from place.models import Place
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
@@ -620,7 +626,7 @@ def test_generate_events_creates_unknown_place(
 
     assert resp.status_code == 200
     created = program.team.places.get(name="Stade nautique")
-    assert created.sport_id == program.team.sport_id
+    assert created.sports.filter(pk=program.team.default_sport.id).exists()
     ev = Event.objects.get(refer_program=program, date=start)
     assert ev.place_id == created.id
     assert ev.location == "Stade nautique"
@@ -630,7 +636,6 @@ def test_generate_events_reuses_created_place_across_sessions(
     auth_client_trainer, trainer_user, settings
 ):
     """A new venue named on several sessions of one plan is created only once."""
-    from place.models import Place
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)
@@ -661,7 +666,6 @@ def test_generate_events_empty_location_leaves_place_null(
     auth_client_trainer, trainer_user, settings
 ):
     """An empty AI location links no Place and creates none."""
-    from place.models import Place
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     program = _trainer_program(trainer_user)

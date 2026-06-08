@@ -19,12 +19,11 @@ from .ai import generate_training as ai_generate_training
 from .models import Event
 from .serializers import (
     DuplicateEventRequestSerializer,
-    EventShareRequestSerializer,
     EventSerializer,
+    EventShareRequestSerializer,
     GenerateTrainingRequestSerializer,
     ReorderRoundsRequestSerializer,
 )
-
 
 # Fields copied verbatim from the source Event onto each duplicate. Excludes
 # id / created_at / updated_at (auto), members (per-session attendance — left
