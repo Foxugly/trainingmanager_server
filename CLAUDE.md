@@ -4,9 +4,21 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project
 
-Django **6.0.4 + DRF 3.17 API-only** training manager (originally for swim training, sport-agnostic now). The branch `refactor/api-only` is the working trunk; `master` is the legacy template-based version.
+Django **6.0.4 + DRF 3.17 API-only** training manager (originally for swim training, sport-agnostic now). The working trunk is **`main`** (default branch; it auto-deploys via GitHub Actions → AWS SSM). The old `refactor/api-only` / `master` lineage is historical and not deployed.
 
 Domain hierarchy: `Team` (the top-level scope) owns `Program`s, each schedules `Event`s, each made of ordered `Round`s, each containing `Exercise`s with a `Modality` (a sport-specific stroke / discipline) and `EnergySegment`/`EnergySystem`. `Member`s are attached to teams via `TeamMembership`; their attendance to events is tracked via `Attendance` rows pointing at an `AttendanceStatus` (referential).
+
+Beyond that core, the project has grown a number of apps — keep this list in mind when scoping changes:
+- **messaging** — team discussions: `Topic` / `Message` / `TopicRead` (per-topic last-read for the unread badge). This is the live messaging system (the old flat `chat` app was retired).
+- **attachment** — generic file attachments (contenttypes-based, S3-backed) usable on messages and other targets.
+- **place** — shared, sport-scoped venue pool (`Place` / Lieu); teams link a subset via `Team.places` + a `Team.default_place`.
+- **equipment** — global equipment catalog; teams enable a subset via `Team.equipment`.
+- **note** — coach notes on members (team-manager soft-delete policy).
+- **roti** / **rsvp** — per-event return-on-training-investment ratings and RSVP.
+- **notifications** — in-app notifications + the unread bell.
+- **performance** — athlete performance records (self-service + coach).
+- **audit** — audit log. **level** — team skill levels referential.
+- Team config also carries weekly **training slots** (`TrainingSlot`, per-slot CRUD under `teams/{id}/training-slots/`) and a read-only **`dashboard/summary/`** aggregate endpoint.
 
 Auth uses a custom user model `customuser.CustomUser` with `language` + `is_staff` and a few `is_*_admin` fields. JWT (simplejwt) for the API; allauth (headless) for signup/email confirmation/password reset.
 
@@ -53,7 +65,7 @@ The codebase has a strict dichotomy. Mixing them up is the most common source of
 - Soft-delete via `tools/mixins.SoftDeleteIncludeInactiveModelViewSet` (sets `is_active=False` on DELETE; `?include_inactive=true` lifts the filter for staff).
 - Two serializer flavours: a public one with localised label, and an `Admin` one exposing per-language variants (`name_fr`/`name_nl`/…). Switched in `get_serializer_class` based on `request.user.is_staff` + action.
 
-**Team-scoped resources** — Program, Event, Member, Note, Chat, Attendance, …
+**Team-scoped resources** — Program, Event, Member, Note, Attendance, messaging (Topic/Message), Place, Equipment, TrainingSlot, Roti, Rsvp, Performance, …
 - Read scoped to `team.queries.user_visible_teams(user)`; write gated by `team.queries.managed_teams(user)` (or `team.is_managed_by(user)` for object-level checks).
 - `Program` and `Note` also use the soft-delete + `?include_inactive=true` pattern but with a **team-manager** policy (not staff-only). Note uses the mixin with an overridden `_include_inactive_allowed`. Program has a custom destroy (calls `_check_team_write` first) and is **not** a candidate for the mixin.
 
@@ -64,7 +76,7 @@ The codebase has a strict dichotomy. Mixing them up is the most common source of
 - `team.permissions.IsTeamManagerOrReadOnly` — owner/manager writes; DELETE owner-only with a dedicated `OwnerOnlyDeleteDenied` (code `owner_only_delete`).
 - `team.permissions.IsTrainer` — write requires being owner or manager of at least one active team. Used for catalog mutations (Exercise).
 - `team.permissions.IsJoinRequestParticipant` — for `TeamJoinRequest`.
-- `attendance.views.IsTeamCoachOrReadOwnAttendance`, `note.permissions.IsTeamCoachOrReadOwnNotes`, `chat.permissions.IsTeamMemberAndChatPolicy` — nested-resource specific.
+- `attendance.views.IsTeamCoachOrReadOwnAttendance`, `note.permissions.IsTeamCoachOrReadOwnNotes`, and the `messaging` topic/message permissions — nested-resource specific.
 
 ### Helpers — single source of truth
 

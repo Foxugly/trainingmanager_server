@@ -10,7 +10,7 @@ Backend API REST pour TrainingManager — application de planification d'entraî
 - JWT auth (djangorestframework-simplejwt)
 - django-allauth (signup + email verification + headless mode)
 - Anthropic API (Claude Haiku 4.5 par défaut)
-- SQLite en dev, PostgreSQL recommandé en prod
+- PostgreSQL (dev et prod ; convention `DB_*` 6 variables — voir `.env.example`)
 - Email backend : Microsoft Graph API
 - pytest, factory-boy, ruff, black, pre-commit
 
@@ -26,8 +26,8 @@ Backend API REST pour TrainingManager — application de planification d'entraî
 ### Installation
 
 ```bash
-git clone https://github.com/Foxugly/django-trainingmanager
-cd django-trainingmanager
+git clone https://github.com/Foxugly/trainingmanager_server
+cd trainingmanager_server
 python -m venv .venv
 source .venv/bin/activate    # Linux/Mac
 .venv\Scripts\activate       # Windows
@@ -70,8 +70,9 @@ Voir `.env.example`. Critiques :
 |---|---|
 | `SECRET_KEY` | Clé Django, à régénérer |
 | `DEBUG` | `True` en dev, `False` en prod |
-| `DATABASE_URL` | Connexion DB (par défaut SQLite) |
+| `DB_ENGINE` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` / `DB_HOST` / `DB_PORT` | Connexion PostgreSQL (convention `DB_*` unifiée de la flotte) |
 | `FRONTEND_URL` | URL du frontend (utilisée dans les emails) |
+| `TRUSTED_PROXY_COUNT` | Nb de reverse-proxies de confiance pour résoudre l'IP client (X-Forwarded-For) ; défaut `1` |
 | `ANTHROPIC_API_KEY` | Clé Anthropic pour les endpoints IA |
 | `ANTHROPIC_MODEL_DEFAULT` | Default : `claude-haiku-4-5-20251001` |
 | `GRAPH_TENANT_ID` | Tenant Azure AD |
@@ -88,9 +89,21 @@ round/        # Séries d'exercices au sein d'un Event
 exercise/     # Exercices individuels (Modality, EnergySegment)
 member/       # Athlètes
 customuser/   # Extension du User Django (language, is_*_admin)
-team/         # Teams (sport, language, owner, managers, athlètes)
+team/         # Teams (sport, language, owner, managers, athlètes, créneaux, lieux, équipement)
 sport/        # Sports + Modalities
-ai/           # Endpoint /api/v1/ai/ping/
+attendance/   # Présences aux séances (Attendance + AttendanceStatus référentiel)
+messaging/    # Discussions d'équipe (Topic / Message / TopicRead — badge non-lu)
+attachment/   # Pièces jointes génériques (contenttypes, S3)
+place/        # Pool de lieux (Lieu) partagé par sport
+equipment/    # Catalogue d'équipement
+level/        # Niveaux d'équipe (référentiel)
+note/         # Notes coach sur les membres
+roti/ rsvp/   # ROTI (ressenti séance) + RSVP
+notifications/# Notifications in-app + cloche
+performance/  # Records de performance des athlètes
+audit/        # Journal d'audit
+dashboard/    # Endpoint agrégat /api/v1/dashboard/summary/
+ai/ aiusage/  # Endpoints IA + suivi de consommation
 tools/        # i18n, throttling, exceptions, ai client, middleware, email
 tests/        # pytest + factory_boy
 locale/       # Translations (fr complet, nl/it/es à compléter)
@@ -192,13 +205,13 @@ django-admin compilemessages
 - Pre-commit hooks (ruff + black)
 - i18n niveau 1 (Team.language, User.language) et niveau 2 (codes d'erreur structurés, FR traduit)
 - ENUM_NAME_OVERRIDES sur drf-spectacular pour codegen TypeScript propre
+- Sentry monitoring (backend + frontend)
+- CI/CD GitHub Actions (OIDC → AWS SSM, auto-deploy sur push `main` ; matrix de tests sqlite + postgres)
+- Secrets via AWS SSM Parameter Store → `/run/<app>/.env` (tmpfs), jamais sur disque
+- Cloudflare Turnstile (register / forgot-password)
 
 ### À venir
 
-- Sentry monitoring
-- CI/CD GitHub Actions
 - Tests permissions affinés
 - Translations nl, it, es à compléter
-- Restriction Microsoft Graph App Access Policy (avant prod)
 - Multi-langue templates email
-- Rotation `SECRET_KEY` + secrets Graph/Anthropic en prod

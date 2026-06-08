@@ -1,5 +1,12 @@
 # AUDIT — django-trainingmanager
 
+> ⚠️ **DOCUMENT HISTORIQUE — NE PAS S'Y FIER POUR L'ÉTAT ACTUEL.**
+> Instantané pré-migration daté du **2026-04-27**, conservé pour mémoire. Le
+> dépôt a depuis été reconstruit sur `main`, scindé en
+> `Foxugly/trainingmanager_server` (V2 API-only), migré sur PostgreSQL et
+> déployé via GitHub Actions → AWS SSM. Pour l'état courant, voir `README.md`
+> et `CLAUDE.md`.
+
 Audit complet du dépôt avant migration. Snapshot pris le 2026-04-27.
 
 ---
