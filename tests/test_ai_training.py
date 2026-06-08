@@ -28,8 +28,22 @@ def _mock_training_response(rounds, rationale="Plan rationale", equipment_used=N
     response.model = "claude-haiku-4-5-20251001"
     response.usage.input_tokens = 500
     response.usage.output_tokens = 800
+    response.usage.cache_creation_input_tokens = 0
+    response.usage.cache_read_input_tokens = 0
     response.stop_reason = "tool_use"
     return response
+
+
+def _sent_prompt_text(mock_client):
+    """The user message content sent to Claude, flattened to one string.
+
+    With prompt caching the content is a list of blocks (cached prefix + variable
+    part); without it, a plain string. Join so assertions read either shape.
+    """
+    content = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    if isinstance(content, str):
+        return content
+    return "".join(block["text"] for block in content)
 
 
 @pytest.fixture
@@ -393,7 +407,7 @@ def test_POST_generate_training_additional_prompt_empty_returns_200(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert "---" not in sent_prompt or "Additional instructions" not in sent_prompt
 
 
@@ -414,7 +428,7 @@ def test_POST_generate_training_additional_prompt_appended_to_llm_prompt(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert coach_text in sent_prompt
     assert "Additional instructions provided by the coach" in sent_prompt
     # Coach text appears AFTER the structured context, never before — guards
@@ -478,7 +492,7 @@ def test_generate_training_prompt_includes_equipment_duration_and_venue(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert "Available equipment: Pull-buoy, plaquettes" in sent_prompt
     assert "<p>" not in sent_prompt  # HTML stripped
     assert "Session duration: about 90 minutes" in sent_prompt
@@ -504,7 +518,7 @@ def test_generate_training_prompt_omits_missing_session_context(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert "Session duration" not in sent_prompt
     assert "Available equipment" not in sent_prompt
     assert "Venue:" not in sent_prompt
@@ -540,7 +554,7 @@ def test_generate_training_feeds_equipment_catalog_and_links_used(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert "Team equipment catalog" in sent_prompt
     assert "Pull-buoy" in sent_prompt and "Plaquettes" in sent_prompt
 
@@ -596,7 +610,7 @@ def test_generate_training_no_catalog_omits_equipment_block(
         )
 
     assert response.status_code == 200
-    sent_prompt = mock_client.messages.create.call_args.kwargs["messages"][0]["content"]
+    sent_prompt = _sent_prompt_text(mock_client)
     assert "Team equipment catalog" not in sent_prompt
     tool_arg = mock_client.messages.create.call_args.kwargs["tools"][0]
     assert "equipment_used" not in tool_arg["input_schema"]["properties"]

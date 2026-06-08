@@ -158,6 +158,14 @@ def build_user_prompt(
     equipment_names=None,
     additional_prompt="",
 ):
+    """Return ``(cached_prefix, variable_prompt)``.
+
+    ``cached_prefix`` is the stable, reusable context (catalogs + generic rules +
+    team skill level + language) — identical across every session of the same
+    team, so it caches and is reused on repeat generations. ``variable_prompt``
+    holds this session's specifics (name, goal, date, venue, target…) plus the
+    coach's free-text instructions, and changes every call.
+    """
     language = (
         event.refer_program.team.language
         if event.refer_program and event.refer_program.team
@@ -205,29 +213,48 @@ def build_user_prompt(
             + "\n"
         )
 
+    # --- Cacheable prefix: stable per (sport, team, language) ----------------
+    cached_prefix = (
+        "You generate ONE training session via the 'create_training_session' "
+        "tool, using ONLY the catalogs and rules below (stable references).\n\n"
+        f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
+        f"Authorized energysegments catalog (id: abv — description):\n{cat_segments}\n\n"
+        f"{equipment_catalog_block}"
+        f"{level_line}"
+        "General instructions:\n"
+        "- The 'Session name' and 'Goal' below are provided by the coach in "
+        f"{language_label}. They may contain indications about intensity, target "
+        "athlete population, or equipment to use. Take this into account when "
+        "designing the session.\n"
+        "- Build a structured session with:\n"
+        "  * a warm-up round\n"
+        "  * one or more main rounds\n"
+        "  * a cool-down round\n"
+        "- Use ONLY the ids provided in the catalogs above.\n"
+        f"- Respond ENTIRELY in {language_label}: all notes and the rationale "
+        f"must be in {language_label}.\n"
+        "- Use the 'create_training_session' tool only.\n"
+        + (
+            "- In 'equipment_used', list the team equipment this session requires, "
+            "using ONLY items from the catalog above (exact names). Omit it if no "
+            "equipment is needed.\n"
+            if equipment_catalog
+            else ""
+        )
+    )
+
+    # --- Variable part: this session's specifics + coach instructions --------
     base = (
         f"Generate the detail of a training session with these constraints:\n"
         f"- Session name: {event.name}\n"
         f"- Goal: {strip_html(event.goal) or '(not specified)'}\n"
-        f"{level_line}"
         f"{program_line}"
         f"- Planned date: {event.date.isoformat() if event.date else '(not specified)'}\n"
         f"{duration_line}"
         f"{venue_line}"
         f"{equipment_line}"
         f"- Target total distance: {event.total or 0} meters\n\n"
-        f"Authorized modalities catalog (id: name):\n{cat_modalities}\n\n"
-        f"Authorized energysegments catalog (id: abv — description):\n{cat_segments}\n\n"
-        f"{equipment_catalog_block}"
-        f"IMPORTANT instructions:\n"
-        f"- The 'Session name' and 'Goal' above are provided by the coach in "
-        f"{language_label}. They may contain indications about intensity, "
-        f"target athlete population, or equipment to use. Take this into "
-        f"account when designing the session.\n"
-        f"- Build a structured session with:\n"
-        f"  * a warm-up round\n"
-        f"  * one or more main rounds\n"
-        f"  * a cool-down round\n"
+        f"Rules for THIS session:\n"
         f"- The sum of (exercise.distance * exercise.repetition * round.count) "
         f"across the whole session must approach {event.total or 0} meters.\n"
         + (
@@ -249,22 +276,9 @@ def build_user_prompt(
             if venue
             else ""
         )
-        + (
-            "- In 'equipment_used', list the team equipment this session requires, "
-            "using ONLY items from the catalog above (exact names). Omit it if no "
-            "equipment is needed.\n"
-            if equipment_catalog
-            else ""
-        )
-        + (
-            f"- Use ONLY the ids provided in the catalogs.\n"
-            f"- Respond ENTIRELY in {language_label}: all notes and the rationale "
-            f"must be in {language_label}.\n"
-            f"- Use the 'create_training_session' tool only.\n"
-        )
     )
 
-    return append_coach_instructions(
+    variable_prompt = append_coach_instructions(
         base,
         additional_prompt,
         note=(
@@ -273,6 +287,7 @@ def build_user_prompt(
             "metadata."
         ),
     )
+    return cached_prefix, variable_prompt
 
 
 def generate_training(*, event, user=None, additional_prompt=""):
@@ -334,7 +349,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
         equipment_names=equipment_names,
     )
     system = build_system_prompt(sport_name)
-    user_prompt = build_user_prompt(
+    cached_prefix, user_prompt = build_user_prompt(
         event=event,
         modalities_catalog=modalities,
         energysegments_catalog=energysegments,
@@ -343,15 +358,17 @@ def generate_training(*, event, user=None, additional_prompt=""):
         additional_prompt=additional_prompt,
     )
     logger.info(
-        "generate_training request: tool=%r system=%s user_prompt=%s",
+        "generate_training request: tool=%r system=%s cached_prefix=%s user_prompt=%s",
         tool["name"],
         truncate_for_log(system),
+        truncate_for_log(cached_prefix),
         truncate_for_log(user_prompt),
     )
 
     result = call_claude_with_tool(
         prompt=user_prompt,
         system=system,
+        cached_prefix=cached_prefix,
         tool=tool,
         track_kwargs={
             "team": team,
@@ -424,7 +441,9 @@ def generate_training(*, event, user=None, additional_prompt=""):
         "rounds": rounds_data,
         "rationale": rationale,
         "equipment_used": equipment_used,
-        "prompt_sent": user_prompt,
+        # Persist the full prompt actually sent (stable prefix + variable part)
+        # for the audit trail on Event.ai_prompt.
+        "prompt_sent": f"{cached_prefix}\n{user_prompt}",
         "model": result["model"],
         "input_tokens": result["input_tokens"],
         "output_tokens": result["output_tokens"],

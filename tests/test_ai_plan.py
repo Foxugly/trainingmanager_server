@@ -19,6 +19,8 @@ def _mock_tool_use_response(events, rationale="Test rationale"):
     response.model = "claude-haiku-4-5-20251001"
     response.usage.input_tokens = 100
     response.usage.output_tokens = 200
+    response.usage.cache_creation_input_tokens = 0
+    response.usage.cache_read_input_tokens = 0
     response.stop_reason = "tool_use"
     return response
 
@@ -274,6 +276,8 @@ def test_POST_generate_events_ai_does_not_call_tool_returns_502(
     response_no_tool.model = "claude-haiku-4-5-20251001"
     response_no_tool.usage.input_tokens = 50
     response_no_tool.usage.output_tokens = 20
+    response_no_tool.usage.cache_creation_input_tokens = 0
+    response_no_tool.usage.cache_read_input_tokens = 0
     response_no_tool.stop_reason = "end_turn"
 
     with patch("tools.ai.Anthropic") as MockAnthropic:

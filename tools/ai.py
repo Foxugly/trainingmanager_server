@@ -114,11 +114,19 @@ def call_claude_with_tool(
     *,
     tool: dict,
     system: str | None = None,
+    cached_prefix: str | None = None,
     model: str | None = None,
     max_tokens: int | None = None,
     track_kwargs: dict | None = None,
 ) -> dict:
     """Call Claude with a forced tool, guaranteeing a structured JSON payload.
+
+    ``cached_prefix`` is stable, reusable context (e.g. the modality/energysegment
+    catalogs and generic rules, identical across sessions of the same team). It is
+    sent as the FIRST user content block with a cache breakpoint so the cached
+    prefix becomes tools + system + prefix — large enough to clear the model's
+    minimum cacheable size, which tools+system alone usually miss. The variable
+    ``prompt`` (this session's specifics) follows, uncached.
 
     If `track_kwargs` is provided, the call is recorded into AIUsage
     even when the tool block is missing (the API call still consumed
@@ -126,14 +134,21 @@ def call_claude_with_tool(
     """
     client = _get_client()
 
-    # Prompt caching: the tool schema and system prompt are identical across
-    # calls of the same generator (only the user prompt varies), so mark them as
-    # cacheable. Below the model's minimum cacheable size the markers are
-    # silently ignored — harmless. Cuts input-token cost on repeat generations.
+    # Prompt caching: tool schema, system prompt and the stable catalog prefix
+    # are identical across calls of the same generator (only the trailing user
+    # prompt varies), so mark them cacheable. Below the model's minimum cacheable
+    # size the markers are silently ignored — harmless.
+    if cached_prefix:
+        user_content = [
+            {"type": "text", "text": cached_prefix, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": prompt},
+        ]
+    else:
+        user_content = prompt
     kwargs = {
         "model": model or settings.ANTHROPIC_MODEL_DEFAULT,
         "max_tokens": max_tokens or settings.ANTHROPIC_MAX_TOKENS_DEFAULT,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": user_content}],
         "tools": [{**tool, "cache_control": {"type": "ephemeral"}}],
         "tool_choice": {"type": "tool", "name": tool["name"]},
     }
@@ -143,10 +158,12 @@ def call_claude_with_tool(
         ]
 
     logger.info(
-        "Anthropic call_with_tool: model=%s max_tokens=%s tool=%r prompt_chars=%s",
+        "Anthropic call_with_tool: model=%s max_tokens=%s tool=%r "
+        "prefix_chars=%s prompt_chars=%s",
         kwargs["model"],
         kwargs["max_tokens"],
         tool["name"],
+        len(cached_prefix or ""),
         len(prompt),
     )
 
@@ -165,13 +182,17 @@ def call_claude_with_tool(
         logger.exception("Unexpected error calling Anthropic")
         raise AIServiceError(_("Unexpected AI error."))
 
+    cache_creation = getattr(response.usage, "cache_creation_input_tokens", None)
+    cache_read = getattr(response.usage, "cache_read_input_tokens", None)
     logger.info(
         "Anthropic call_with_tool returned: model=%s stop_reason=%s "
-        "tokens(in/out)=%s/%s block_types=%s",
+        "tokens(in/out)=%s/%s cache(create/read)=%s/%s block_types=%s",
         response.model,
         response.stop_reason,
         response.usage.input_tokens,
         response.usage.output_tokens,
+        cache_creation,
+        cache_read,
         [getattr(b, "type", "?") for b in response.content],
     )
 
@@ -201,5 +222,7 @@ def call_claude_with_tool(
         "model": response.model,
         "input_tokens": response.usage.input_tokens,
         "output_tokens": response.usage.output_tokens,
+        "cache_creation_tokens": cache_creation or 0,
+        "cache_read_tokens": cache_read or 0,
         "stop_reason": response.stop_reason,
     }
