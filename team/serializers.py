@@ -17,7 +17,14 @@ from place.serializers import PlaceMinimalSerializer
 from sport.models import Sport
 from sport.serializers import SportSerializer
 
-from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership, TrainingSlot
+from .models import (
+    Team,
+    TeamInvitation,
+    TeamJoinRequest,
+    TeamMembership,
+    TeamSport,
+    TrainingSlot,
+)
 
 # Accepted data-URL prefixes for the team logo and the max total length.
 LOGO_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|svg\+xml);base64,")
@@ -33,15 +40,49 @@ class TeamMinimalSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class TeamSportReadSerializer(serializers.ModelSerializer):
+    """A sport practised by a team, flattened with its default flag and order.
+
+    The id/name/slug are the SPORT's (not the through row's), so the frontend
+    can treat the list as sports while still knowing which one is the default.
+    """
+
+    id = serializers.IntegerField(source="sport.id", read_only=True)
+    name = serializers.CharField(source="sport.name", read_only=True)
+    slug = serializers.SlugField(source="sport.slug", read_only=True)
+
+    class Meta:
+        model = TeamSport
+        fields = ["id", "name", "slug", "is_default", "order"]
+        read_only_fields = fields
+
+
 class TeamSerializer(serializers.ModelSerializer):
-    # `sport` (read) is the team's default sport (Team.sport property →
-    # default_sport). `sport_id` (write) sets/replaces the team's DEFAULT
-    # TeamSport — a single-sport transition shim until the full multi-sport UI
-    # (sports M2M) lands. Handled in create()/update(), not bound to a field.
+    # Multi-sport. `sports` (read) is the full set the team practises, each
+    # flattened with its `is_default` flag/order. `sport` (read) stays the
+    # single default sport for callers that only want one (e.g. the event form).
+    #
+    # Writes: `sport_ids` replaces the whole set; `default_sport_id` picks which
+    # one is the default (must be in the set). `sport_id` is the legacy
+    # single-sport shim (sets/replaces the default) kept for back-compat — all
+    # three are handled in create()/update(), not bound to model fields.
+    sports = TeamSportReadSerializer(source="team_sports", many=True, read_only=True)
     sport = SportSerializer(read_only=True)
     sport_id = serializers.PrimaryKeyRelatedField(
         queryset=Sport.objects.all(),
         write_only=True,
+        required=False,
+    )
+    sport_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Sport.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+    default_sport_id = serializers.PrimaryKeyRelatedField(
+        queryset=Sport.objects.all(),
+        write_only=True,
+        required=False,
     )
     level = LevelSerializer(read_only=True)
     level_id = serializers.PrimaryKeyRelatedField(
@@ -91,8 +132,11 @@ class TeamSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "sports",
             "sport",
             "sport_id",
+            "sport_ids",
+            "default_sport_id",
             "level",
             "level_id",
             "owner",
@@ -170,8 +214,6 @@ class TeamSerializer(serializers.ModelSerializer):
     def _apply_default_sport(self, team, sport):
         """Make `sport` the team's default sport (single-sport transition shim):
         flip any other default off, then ensure a single is_default TeamSport."""
-        from team.models import TeamSport
-
         team.team_sports.filter(is_default=True).exclude(sport=sport).update(is_default=False)
         ts, created = TeamSport.objects.get_or_create(
             team=team, sport=sport, defaults={"is_default": True}
@@ -180,31 +222,114 @@ class TeamSerializer(serializers.ModelSerializer):
             ts.is_default = True
             ts.save(update_fields=["is_default"])
 
+    def _sync_sports(self, team, sports, default):
+        """Replace the team's sports set with `sports` (Sport instances, in the
+        given order), flagging `default` (or the first) as the single default.
+
+        Sports no longer selected are detached. Existing rows are kept (so their
+        created_at survives) with refreshed order/default. The default flag is
+        cleared first across the board to avoid clashing with the partial-unique
+        ``uniq_default_sport_per_team`` constraint mid-update.
+        """
+        keep_ids = list(dict.fromkeys(s.id for s in sports))  # dedupe, keep order
+        default_id = default.id if default is not None else None
+        if default_id not in keep_ids:
+            default_id = keep_ids[0] if keep_ids else None
+        team.team_sports.exclude(sport_id__in=keep_ids).delete()
+        team.team_sports.update(is_default=False)
+        existing = {ts.sport_id: ts for ts in team.team_sports.all()}
+        for order, sid in enumerate(keep_ids):
+            is_def = sid == default_id
+            ts = existing.get(sid)
+            if ts is None:
+                TeamSport.objects.create(
+                    team=team, sport_id=sid, is_default=is_def, order=order
+                )
+            else:
+                ts.is_default = is_def
+                ts.order = order
+                ts.save(update_fields=["is_default", "order"])
+
+    def validate(self, data):
+        """Cross-field rules for the team's sports.
+
+        A new team needs at least one sport (via `sport_ids` or the legacy
+        `sport_id`). When `sport_ids` is given it must be non-empty and any
+        `default_sport_id` must be one of them; when only `default_sport_id` is
+        given (update), it must already be one of the team's sports.
+        """
+        sport_ids = data.get("sport_ids")
+        default = data.get("default_sport_id")
+        if self.instance is None and sport_ids is None and data.get("sport_id") is None:
+            raise serializers.ValidationError(
+                {"sport_id": _("A team must have at least one sport.")},
+                code="sport_required",
+            )
+        if sport_ids is not None:
+            if len(sport_ids) == 0:
+                raise serializers.ValidationError(
+                    {"sport_ids": _("A team must have at least one sport.")},
+                    code="no_sports",
+                )
+            if default is not None and default not in sport_ids:
+                raise serializers.ValidationError(
+                    {"default_sport_id": _("The default sport must be one of the team's sports.")},
+                    code="default_not_in_sports",
+                )
+        elif default is not None:
+            if self.instance is None or not self.instance.team_sports.filter(
+                sport=default
+            ).exists():
+                raise serializers.ValidationError(
+                    {"default_sport_id": _("The default sport must be one of the team's sports.")},
+                    code="default_not_in_sports",
+                )
+        return data
+
+    def _persist_sports(self, team, sports, default, legacy):
+        """Apply whichever sport write path was supplied (set/default/legacy).
+
+        `sport_id`/`sport_ids`/`default_sport_id` are declared fields not bound
+        to a model attribute, so the caller MUST pop them out of validated_data
+        before super().create()/update() (Team.sport_id is a read-only property)
+        and pass them here.
+        """
+        if sports is not None:
+            self._sync_sports(team, sports, default)
+        elif default is not None:
+            self._apply_default_sport(team, default)
+        elif legacy is not None:
+            self._apply_default_sport(team, legacy)
+
     def create(self, validated_data):
-        sport = validated_data.pop("sport_id", None)
+        sports = validated_data.pop("sport_ids", None)
+        default = validated_data.pop("default_sport_id", None)
+        legacy = validated_data.pop("sport_id", None)
         team = super().create(validated_data)
-        if sport is not None:
-            self._apply_default_sport(team, sport)
+        self._persist_sports(team, sports, default, legacy)
         return team
 
     def update(self, instance, validated_data):
-        """Persist places/default_place + default sport, and sync default_pool.
+        """Persist places/default_place + the team's sports, and sync default_pool.
 
-        - sport_id -> set/replace the team's default TeamSport.
+        - sport_ids -> replace the whole sports set (default_sport_id picks the
+          default); default_sport_id alone -> just flip the default; sport_id ->
+          legacy single-sport default shim.
         - default_place non-null -> default_pool = place.name (keeps the AI plan
           path, which reads default_pool, working unchanged) and the place is
           ensured to be one of the team's linked places.
         - default_place null      -> clear default_place; default_pool left as-is.
         """
-        sport = validated_data.pop("sport_id", None)
+        sports = validated_data.pop("sport_ids", None)
+        default = validated_data.pop("default_sport_id", None)
+        legacy = validated_data.pop("sport_id", None)
         if "default_place" in validated_data and validated_data["default_place"] is not None:
             validated_data["default_pool"] = validated_data["default_place"].name
         team = super().update(instance, validated_data)
         # A team's default must be one of its venues — auto-link it.
         if team.default_place_id and not team.places.filter(pk=team.default_place_id).exists():
             team.places.add(team.default_place_id)
-        if sport is not None:
-            self._apply_default_sport(team, sport)
+        self._persist_sports(team, sports, default, legacy)
         return team
 
     def validate_timezone(self, value):

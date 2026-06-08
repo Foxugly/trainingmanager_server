@@ -10473,11 +10473,25 @@ components:
         name:
           type: string
           maxLength: 200
+        sports:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamSportRead'
+          readOnly: true
         sport:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
         sport_id:
+          type: integer
+          writeOnly: true
+        sport_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        default_sport_id:
           type: integer
           writeOnly: true
         level:
@@ -11612,11 +11626,25 @@ components:
         name:
           type: string
           maxLength: 200
+        sports:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamSportRead'
+          readOnly: true
         sport:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
         sport_id:
+          type: integer
+          writeOnly: true
+        sport_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        default_sport_id:
           type: integer
           writeOnly: true
         level:
@@ -11806,7 +11834,7 @@ components:
       - owner
       - places
       - sport
-      - sport_id
+      - sports
       - updated_at
     TeamInvitation:
       type: object
@@ -12044,6 +12072,36 @@ components:
       - can_create
       - max
       - used
+    TeamSportRead:
+      type: object
+      description: |-
+        A sport practised by a team, flattened with its default flag and order.
+
+        The id/name/slug are the SPORT's (not the through row's), so the frontend
+        can treat the list as sports while still knowing which one is the default.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        is_default:
+          type: boolean
+          readOnly: true
+        order:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - is_default
+      - name
+      - order
+      - slug
     TeamStats:
       type: object
       description: |-
