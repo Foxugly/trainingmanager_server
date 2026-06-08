@@ -242,7 +242,14 @@ from corsheaders.defaults import default_headers  # noqa: E402
 
 CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage")
 
+# Number of trusted reverse proxies in front of the app (nginx = 1). DRF's
+# throttles and our get_remote_ip take the client IP at this depth from the END
+# of X-Forwarded-For, so a client-spoofed leading XFF entry can't defeat per-IP
+# throttles / Turnstile remoteip. Set higher if a CDN is added in front.
+TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=1)
+
 REST_FRAMEWORK = {
+    "NUM_PROXIES": TRUSTED_PROXY_COUNT,
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),

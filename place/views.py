@@ -89,11 +89,20 @@ class PlaceViewSet(viewsets.ModelViewSet):
                 code="not_a_manager",
             )
 
-    def _require_manages_a_linked_team(self, place):
-        if not managed_teams(self.request.user).filter(places=place).exists():
+    def _require_owns_all_linked_teams(self, place):
+        """Editing/deleting a SHARED venue would affect teams the caller doesn't
+        manage. So mutation/deletion is allowed only when the caller manages
+        EVERY team the place is linked to. To stop using a shared venue, a team
+        simply removes it from its own ``places`` (Team.place_ids) instead."""
+        linked_team_ids = set(place.teams.values_list("id", flat=True))
+        managed_ids = set(managed_teams(self.request.user).values_list("id", flat=True))
+        if not linked_team_ids or not linked_team_ids.issubset(managed_ids):
             raise PermissionDenied(
-                _("You must manage a team this place belongs to."),
-                code="not_a_manager",
+                _(
+                    "This venue is shared with teams you don't manage. Remove it "
+                    "from your team's venues instead of editing or deleting it."
+                ),
+                code="place_shared",
             )
 
     def perform_create(self, serializer):
@@ -104,9 +113,9 @@ class PlaceViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.validated_data.pop("team", None)
-        self._require_manages_a_linked_team(serializer.instance)
+        self._require_owns_all_linked_teams(serializer.instance)
         serializer.save()
 
     def perform_destroy(self, instance):
-        self._require_manages_a_linked_team(instance)
+        self._require_owns_all_linked_teams(instance)
         instance.delete()

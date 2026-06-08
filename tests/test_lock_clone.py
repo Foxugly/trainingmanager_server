@@ -1,6 +1,13 @@
 import pytest
 
-from tests.factories import EventFactory, ExerciseFactory, ModalityFactory, RoundFactory
+from tests.factories import (
+    EventFactory,
+    ExerciseFactory,
+    ModalityFactory,
+    ProgramFactory,
+    RoundFactory,
+    TeamFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -75,9 +82,11 @@ def test_PATCH_shared_exercise_without_round_id_still_409(auth_client_trainer, t
     assert response.status_code == 409
 
 
-def test_PATCH_round_unlocked_returns_200(auth_client_trainer, trainer_sport):
+def test_PATCH_round_unlocked_returns_200(auth_client_trainer, trainer_user, trainer_sport):
+    # Strict ownership: the round's event must belong to a team the caller manages.
+    team = trainer_user.owned_teams.first()
     r = RoundFactory(sport=trainer_sport)
-    EventFactory(rounds=[r])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=team))
     response = auth_client_trainer.patch(
         f"/api/v1/rounds/{r.pk}/",
         {"count": 5},
@@ -87,10 +96,13 @@ def test_PATCH_round_unlocked_returns_200(auth_client_trainer, trainer_sport):
     assert response.json()["count"] == 5
 
 
-def test_PATCH_round_locked_returns_409(auth_client_trainer, trainer_sport):
+def test_PATCH_round_locked_returns_409(auth_client_trainer, trainer_user, trainer_sport):
+    # Caller manages the events (passes the ownership gate); the round is shared
+    # across two events, so usage_count > 1 yields the 409 lock.
+    program = ProgramFactory(team=trainer_user.owned_teams.first())
     r = RoundFactory(sport=trainer_sport)
-    EventFactory(rounds=[r])
-    EventFactory(rounds=[r])
+    EventFactory(rounds=[r], refer_program=program)
+    EventFactory(rounds=[r], refer_program=program)
     response = auth_client_trainer.patch(
         f"/api/v1/rounds/{r.pk}/",
         {"count": 9},
@@ -202,6 +214,22 @@ def test_clone_round_as_non_trainer_returns_403(auth_client_non_trainer):
     response = auth_client_non_trainer.post(
         f"/api/v1/rounds/{r.pk}/clone/",
         {},
+        format="json",
+    )
+    assert response.status_code == 403
+
+
+def test_PATCH_round_of_unmanaged_team_event_returns_403(
+    auth_client_trainer, trainer_sport
+):
+    """IDOR guard: a trainer in the sport scope cannot mutate a round whose only
+    linked event belongs to a team they do not manage."""
+    foreign_program = ProgramFactory(team=TeamFactory(sport=trainer_sport))
+    r = RoundFactory(sport=trainer_sport)
+    EventFactory(rounds=[r], refer_program=foreign_program)
+    response = auth_client_trainer.patch(
+        f"/api/v1/rounds/{r.pk}/",
+        {"count": 7},
         format="json",
     )
     assert response.status_code == 403

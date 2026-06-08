@@ -7986,6 +7986,7 @@ components:
           type: array
           items:
             type: integer
+          readOnly: true
         members:
           type: array
           items:
@@ -8061,6 +8062,7 @@ components:
       - public_token
       - refer_program
       - refer_program_id
+      - rounds
       - updated_at
     EventPublic:
       type: object
@@ -9906,6 +9908,7 @@ components:
           type: array
           items:
             type: integer
+          readOnly: true
         members:
           type: array
           items:

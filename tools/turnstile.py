@@ -60,9 +60,18 @@ def verify_turnstile_token(token: str, remote_ip: str | None = None) -> bool:
 
 
 def get_remote_ip(request) -> str | None:
-    """Best-effort client IP extraction. Honours X-Forwarded-For when
-    DRF/SecureProxy chain is in place; otherwise falls back to REMOTE_ADDR."""
+    """Client IP, honouring exactly ``settings.TRUSTED_PROXY_COUNT`` trusted
+    reverse proxies. We take the entry that many positions from the END of
+    X-Forwarded-For (the address the trusted proxy actually saw), NOT the first
+    (client-controllable) entry — so a spoofed leading XFF can't forge the IP
+    used for Turnstile remoteip / throttling."""
+    from django.conf import settings
+
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
     if xff:
-        return xff.split(",")[0].strip()
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            depth = max(1, getattr(settings, "TRUSTED_PROXY_COUNT", 1))
+            idx = min(depth, len(parts))
+            return parts[-idx]
     return request.META.get("REMOTE_ADDR")

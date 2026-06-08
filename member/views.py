@@ -36,13 +36,30 @@ class MemberViewSet(viewsets.ModelViewSet):
         if not managed_teams(self.request.user).exists():
             raise PermissionDenied(_("You must manage at least one team to create members."))
 
+    def _require_manages_member_team(self, member):
+        """The caller must manage (own/manage) a team this member belongs to.
+
+        ``get_queryset`` only scopes to teams the caller is a MEMBER of (which
+        includes teams where they are a mere athlete), so without this check a
+        user could edit/delete members of a team they don't manage. Mirrors the
+        anonymize permission.
+        """
+        coach_team_ids = set(managed_teams(self.request.user).values_list("pk", flat=True))
+        member_team_ids = set(member.memberships.values_list("team_id", flat=True))
+        if not (coach_team_ids & member_team_ids):
+            raise PermissionDenied(_("You must manage a team this member belongs to."))
+
     def perform_create(self, serializer):
         self._check_user_manages_a_team()
         serializer.save()
 
     def perform_update(self, serializer):
-        self._check_user_manages_a_team()
+        self._require_manages_member_team(serializer.instance)
         serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_manages_member_team(instance)
+        instance.delete()
 
     @extend_schema(
         operation_id="members_anonymize",

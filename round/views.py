@@ -36,6 +36,22 @@ class RoundViewSet(viewsets.ModelViewSet):
         qs = scope_by_sport_language(qs, self.request.user, sport_field="sport_id")
         return _gate_rounds_by_event_visibility(qs, self.request.user)
 
+    def _require_may_mutate(self, round_obj):
+        # A round linked to an event must belong to a team the caller manages;
+        # library rounds (no events) fall back to the class IsTrainer check.
+        if not _user_may_mutate_round(round_obj, self.request.user):
+            raise NotAuthorizedRoundDenied(
+                _("You must manage a team owning an event linked to this round.")
+            )
+
+    def perform_update(self, serializer):
+        self._require_may_mutate(serializer.instance)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_may_mutate(instance)
+        instance.delete()
+
     @extend_schema(
         request=None,
         responses={201: RoundSerializer},

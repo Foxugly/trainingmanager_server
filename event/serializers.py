@@ -96,8 +96,12 @@ class EventSerializer(serializers.ModelSerializer):
         required=True,
         allow_null=False,
     )
+    # Read-only: rounds are attached server-side (generate-training, the
+    # round reorder/clone endpoints), never bulk-assigned through the event
+    # write path — a writable queryset=Round.objects.all() would let a manager
+    # link another team's rounds to their event.
     rounds = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Round.objects.all(), required=False
+        many=True, read_only=True, required=False
     )
     members = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     place = PlaceMinimalSerializer(read_only=True)

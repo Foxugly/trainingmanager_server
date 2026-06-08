@@ -239,7 +239,27 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 code="attendance_exists",
             )
 
+        self._require_team_status(team, serializer.validated_data.get("status"))
         serializer.save(event=event)
+
+    def perform_update(self, serializer):
+        event = self.get_event()
+        program = getattr(event, "refer_program", None)
+        team = program.team if program else None
+        self._require_team_status(team, serializer.validated_data.get("status"))
+        serializer.save()
+
+    @staticmethod
+    def _require_team_status(team, status):
+        """A chosen status must be one the team has ENABLED and active — not any
+        global status code."""
+        if status is None or team is None:
+            return
+        if not team.attendance_statuses.filter(pk=status.pk, is_active=True).exists():
+            raise ValidationError(
+                detail={"status": _("This status is not enabled for this team.")},
+                code="status_not_enabled",
+            )
 
     @extend_schema(
         summary="Bulk set attendances for an event",
@@ -286,15 +306,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 code="members_not_in_team",
             )
 
+        # Only statuses the TEAM has enabled (and active) — not any global code.
         status_map = {
             s.code: s
-            for s in AttendanceStatus.objects.filter(code__in=status_codes, is_active=True)
+            for s in team.attendance_statuses.filter(code__in=status_codes, is_active=True)
         }
         missing_statuses = [code for code in status_codes if code not in status_map]
         if missing_statuses:
             raise ValidationError(
                 detail={
-                    "attendances": _("Status codes not found or inactive: {codes}").format(
+                    "attendances": _("Status codes not enabled for this team: {codes}").format(
                         codes=missing_statuses
                     )
                 },
