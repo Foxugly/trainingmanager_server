@@ -35,6 +35,16 @@ class Team(models.Model):
         null=True,
         blank=True,
     )
+    # Multi-sport: a team can practise several sports (one flagged default via
+    # TeamSport.is_default). Coexists with the legacy `sport` FK during the
+    # migration (phase 1); `related_name="+"` avoids clashing with the FK's
+    # `Sport.teams` reverse until the FK is dropped.
+    sports = models.ManyToManyField(
+        "sport.Sport",
+        through="TeamSport",
+        related_name="+",
+        blank=True,
+    )
     level = models.ForeignKey(
         "level.Level",
         on_delete=models.PROTECT,
@@ -246,6 +256,17 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def default_sport(self):
+        """The team's default sport (the TeamSport flagged is_default), or None.
+
+        During the multi-sport migration this falls back to the legacy `sport`
+        FK so callers can switch to `default_sport` before the FK is dropped."""
+        ts = self.team_sports.filter(is_default=True).select_related("sport").first()
+        if ts is not None:
+            return ts.sport
+        return self.sport
+
     def is_managed_by(self, user):
         if not user.is_authenticated:
             return False
@@ -448,3 +469,40 @@ class TrainingSlot(models.Model):
 
     def __str__(self):
         return f"{self.team} — {self.get_weekday_display()} {self.hour_start}-{self.hour_end}"
+
+
+class TeamSport(models.Model):
+    """Through model for Team.sports: links a team to a sport it practises.
+
+    Exactly one row per team is flagged ``is_default=True`` (the team's default
+    sport), enforced by a partial unique constraint. ``order`` drives display.
+    """
+
+    team = models.ForeignKey(
+        "team.Team",
+        on_delete=models.CASCADE,
+        related_name="team_sports",
+    )
+    sport = models.ForeignKey(
+        "sport.Sport",
+        on_delete=models.PROTECT,
+        related_name="team_sports",
+    )
+    is_default = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["team", "sport"], name="uniq_team_sport"),
+            models.UniqueConstraint(
+                fields=["team"],
+                condition=models.Q(is_default=True),
+                name="uniq_default_sport_per_team",
+            ),
+        ]
+
+    def __str__(self):
+        flag = " (default)" if self.is_default else ""
+        return f"{self.team} · {self.sport}{flag}"
