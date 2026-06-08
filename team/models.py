@@ -28,21 +28,14 @@ class Team(models.Model):
         MEMBERS = "members", _("Everyone (incl. athletes)")
 
     name = models.CharField(max_length=200, unique=True)
-    sport = models.ForeignKey(
-        "sport.Sport",
-        on_delete=models.PROTECT,
-        related_name="teams",
-        null=True,
-        blank=True,
-    )
     # Multi-sport: a team can practise several sports (one flagged default via
-    # TeamSport.is_default). Coexists with the legacy `sport` FK during the
-    # migration (phase 1); `related_name="+"` avoids clashing with the FK's
-    # `Sport.teams` reverse until the FK is dropped.
+    # TeamSport.is_default). The legacy single `sport` FK was replaced by this
+    # M2M; `default_sport`/`sport` properties below expose the default for
+    # callers that still want a single sport.
     sports = models.ManyToManyField(
         "sport.Sport",
         through="TeamSport",
-        related_name="+",
+        related_name="teams",
         blank=True,
     )
     level = models.ForeignKey(
@@ -258,14 +251,22 @@ class Team(models.Model):
 
     @property
     def default_sport(self):
-        """The team's default sport (the TeamSport flagged is_default), or None.
-
-        During the multi-sport migration this falls back to the legacy `sport`
-        FK so callers can switch to `default_sport` before the FK is dropped."""
+        """The team's default sport (the TeamSport flagged is_default), or None."""
         ts = self.team_sports.filter(is_default=True).select_related("sport").first()
-        if ts is not None:
-            return ts.sport
-        return self.sport
+        return ts.sport if ts is not None else None
+
+    @property
+    def sport(self):
+        """Back-compat alias for the team's single/default sport (read-only).
+
+        The legacy `sport` FK is gone; callers that still read `team.sport` get
+        the default sport. Write paths set it via TeamSport (see serializer)."""
+        return self.default_sport
+
+    @property
+    def sport_id(self):
+        sport = self.default_sport
+        return sport.id if sport is not None else None
 
     def is_managed_by(self, user):
         if not user.is_authenticated:

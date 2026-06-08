@@ -5,7 +5,6 @@ import pytest
 
 from program.models import Program
 from team.models import Team
-from tests.factories import SportFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -14,14 +13,12 @@ pytestmark = pytest.mark.django_db
 
 
 def test_team_default_language_is_fr(authenticated_user):
-    sport = SportFactory()
-    team = Team.objects.create(name="Test team default", owner=authenticated_user, sport=sport)
+    team = Team.objects.create(name="Test team default", owner=authenticated_user)
     assert team.language == "fr"
 
 
 def test_team_can_change_language(authenticated_user):
-    sport = SportFactory()
-    team = Team.objects.create(name="Mutable team", owner=authenticated_user, sport=sport)
+    team = Team.objects.create(name="Mutable team", owner=authenticated_user)
     team.language = "en"
     team.save()
     team.refresh_from_db()

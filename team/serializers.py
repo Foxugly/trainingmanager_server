@@ -34,9 +34,12 @@ class TeamMinimalSerializer(serializers.ModelSerializer):
 
 
 class TeamSerializer(serializers.ModelSerializer):
+    # `sport` (read) is the team's default sport (Team.sport property →
+    # default_sport). `sport_id` (write) sets/replaces the team's DEFAULT
+    # TeamSport — a single-sport transition shim until the full multi-sport UI
+    # (sports M2M) lands. Handled in create()/update(), not bound to a field.
     sport = SportSerializer(read_only=True)
     sport_id = serializers.PrimaryKeyRelatedField(
-        source="sport",
         queryset=Sport.objects.all(),
         write_only=True,
     )
@@ -164,20 +167,44 @@ class TeamSerializer(serializers.ModelSerializer):
                 data.pop(field, None)
         return data
 
-    def update(self, instance, validated_data):
-        """Persist places/default_place and sync default_pool.
+    def _apply_default_sport(self, team, sport):
+        """Make `sport` the team's default sport (single-sport transition shim):
+        flip any other default off, then ensure a single is_default TeamSport."""
+        from team.models import TeamSport
 
+        team.team_sports.filter(is_default=True).exclude(sport=sport).update(is_default=False)
+        ts, created = TeamSport.objects.get_or_create(
+            team=team, sport=sport, defaults={"is_default": True}
+        )
+        if not created and not ts.is_default:
+            ts.is_default = True
+            ts.save(update_fields=["is_default"])
+
+    def create(self, validated_data):
+        sport = validated_data.pop("sport_id", None)
+        team = super().create(validated_data)
+        if sport is not None:
+            self._apply_default_sport(team, sport)
+        return team
+
+    def update(self, instance, validated_data):
+        """Persist places/default_place + default sport, and sync default_pool.
+
+        - sport_id -> set/replace the team's default TeamSport.
         - default_place non-null -> default_pool = place.name (keeps the AI plan
           path, which reads default_pool, working unchanged) and the place is
           ensured to be one of the team's linked places.
         - default_place null      -> clear default_place; default_pool left as-is.
         """
+        sport = validated_data.pop("sport_id", None)
         if "default_place" in validated_data and validated_data["default_place"] is not None:
             validated_data["default_pool"] = validated_data["default_place"].name
         team = super().update(instance, validated_data)
         # A team's default must be one of its venues — auto-link it.
         if team.default_place_id and not team.places.filter(pk=team.default_place_id).exists():
             team.places.add(team.default_place_id)
+        if sport is not None:
+            self._apply_default_sport(team, sport)
         return team
 
     def validate_timezone(self, value):

@@ -108,9 +108,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return (
             Event.objects.filter(refer_program__team__in=user_member_teams(self.request.user))
-            .select_related(
-                "refer_program", "refer_program__team", "refer_program__team__sport", "place"
-            )
+            .select_related("refer_program", "refer_program__team", "place")
             .prefetch_related("rounds", "members", "equipment_items")
         )
 

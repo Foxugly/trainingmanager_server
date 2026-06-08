@@ -53,7 +53,7 @@ def test_GET_me_exposes_team_quota_block(api_client):
 
 def test_GET_me_team_quota_reflects_bumped_max_and_used(api_client, sport):
     user = _user("quota_bumped", team_quota=2)
-    Team.objects.create(name="Already-owned", sport=sport, owner=user)
+    Team.objects.create(name="Already-owned", owner=user)
     api_client.force_authenticate(user=user)
     response = api_client.get("/api/v1/me/")
     quota = response.json()["team_quota"]
@@ -88,7 +88,7 @@ def test_POST_team_with_remaining_slot_returns_201(api_client, sport):
 
 def test_POST_team_at_quota_max_returns_403(api_client, sport):
     user = _user("quota_at_max", team_quota=1)
-    Team.objects.create(name="First and last", sport=sport, owner=user)
+    Team.objects.create(name="First and last", owner=user)
     api_client.force_authenticate(user=user)
     response = api_client.post("/api/v1/teams/", _create_team_payload(sport), format="json")
     assert response.status_code == 403
@@ -102,7 +102,7 @@ def test_POST_team_after_soft_delete_frees_slot(api_client, sport):
     """B-(a)/H semantic: an is_active=False team no longer counts toward
     the quota, so the user can create a fresh one."""
     user = _user("quota_softdel", team_quota=1)
-    archived = Team.objects.create(name="Archived", sport=sport, owner=user, is_active=False)
+    archived = Team.objects.create(name="Archived", owner=user, is_active=False)
     api_client.force_authenticate(user=user)
     response = api_client.post("/api/v1/teams/", _create_team_payload(sport), format="json")
     assert response.status_code == 201

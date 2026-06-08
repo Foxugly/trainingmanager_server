@@ -70,7 +70,7 @@ class ProgramViewSet(viewsets.ModelViewSet):
         user = self.request.user
         base = (
             Program.objects.filter(team__in=user_member_teams(user))
-            .select_related("team", "team__sport", "team__owner")
+            .select_related("team", "team__owner")
             .prefetch_related("events")
         )
         include_inactive = self.request.query_params.get("include_inactive") == "true"

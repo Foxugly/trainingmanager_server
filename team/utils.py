@@ -6,8 +6,9 @@ from .models import Team
 def user_accessible_sport_language_pairs(user):
     """(sport_id, language) tuples for which the user has team membership.
 
-    Membership = owner, manager, or athlete on an active team.
-    Used to scope catalog reads by both sport AND language.
+    Membership = owner, manager, or athlete on an active team. Multi-sport: a
+    team contributes one pair per sport it practises (the union of its sports ×
+    its language). Used to scope catalog reads by both sport AND language.
     """
     if not user.is_authenticated:
         return []
@@ -17,7 +18,11 @@ def user_accessible_sport_language_pairs(user):
         | Q(memberships__member__user=user, memberships__left_at__isnull=True),
         is_active=True,
     ).distinct()
-    return list(teams.values_list("sport_id", "language").distinct())
+    return list(
+        teams.filter(team_sports__sport__isnull=False)
+        .values_list("team_sports__sport_id", "language")
+        .distinct()
+    )
 
 
 def scope_by_sport_language(queryset, user, sport_field="sport_id"):

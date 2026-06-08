@@ -54,12 +54,25 @@ class LevelFactory(DjangoModelFactory):
 class TeamFactory(DjangoModelFactory):
     class Meta:
         model = Team
+        skip_postgeneration_save = True
 
     name = factory.Sequence(lambda n: f"Team {n}")
     owner = factory.SubFactory(UserFactory)
-    sport = factory.SubFactory(SportFactory)
     is_active = True
     is_public = False
+
+    @factory.post_generation
+    def sport(self, create, extracted, **kwargs):
+        """Multi-sport: attach the team's default sport via a TeamSport row.
+
+        `TeamFactory(sport=<Sport>)` flags that sport default; omitted → a fresh
+        SportFactory (matches the legacy single-sport default)."""
+        if not create:
+            return
+        from team.models import TeamSport
+
+        sport = extracted if extracted is not None else SportFactory()
+        TeamSport.objects.create(team=self, sport=sport, is_default=True)
 
 
 class ModalityFactory(DjangoModelFactory):
