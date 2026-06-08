@@ -46,8 +46,13 @@ class MemberSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.IntegerField()))
     def get_teams(self, obj) -> list[int]:
-        """Return active team IDs for this member (left_at IS NULL)."""
-        return list(obj.memberships.filter(left_at__isnull=True).values_list("team_id", flat=True))
+        """Return active team IDs for this member (left_at IS NULL).
+
+        Filter the prefetched `memberships` in Python (the list view prefetches
+        them) rather than `.filter(...)`, which would issue a fresh query per
+        member and defeat the prefetch.
+        """
+        return [m.team_id for m in obj.memberships.all() if m.left_at is None]
 
     def validate_user_id(self, user):
         """Reject upfront if the chosen user already has a Member.

@@ -239,7 +239,14 @@ def _user_may_mutate_round(round_obj, user):
     """A user may reorder a round's exercises if they manage at least one
     team owning an event that contains this round. Library rounds (no
     events) fall back to the IsTrainer class permission check (already
-    enforced by RoundViewSet.permission_classes)."""
+    enforced by RoundViewSet.permission_classes).
+
+    NOTE (audit): a library round (no events) is shared catalog with no team
+    owner, so any same-(sport,language) trainer can edit another trainer's
+    entry. Tightening this cleanly needs either an authorship field on Round or
+    a staff bypass in IsTrainer (a pure-staff admin manages no team, so it is
+    currently blocked at the class level) — both broader than warranted; left
+    as-is for now. In practice the editor only ever creates event-linked rounds."""
     linked_events = list(round_obj.event_set.select_related("refer_program__team").all())
     if not linked_events:
         return True  # library round; class-level IsTrainer already passed

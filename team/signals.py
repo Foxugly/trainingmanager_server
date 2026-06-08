@@ -32,29 +32,36 @@ def sync_event_members_on_membership_change(sender, instance, created, **kwargs)
     team = instance.team
     member = instance.member
 
-    future_events = Event.objects.filter(
-        refer_program__team=team,
-        date__gte=today,
-    )
+    attach = created and instance.left_at is None
+    detach = not created and instance.left_at is not None
+    if not (attach or detach):
+        return
 
-    if created and instance.left_at is None:
-        for event in future_events:
-            event.members.add(member)
+    # One query for the id list, then a single M2M add/remove from the member
+    # side (member.event_set is Event.members reversed) — not one write per
+    # event.
+    future_event_ids = list(
+        Event.objects.filter(refer_program__team=team, date__gte=today).values_list(
+            "id", flat=True
+        )
+    )
+    if not future_event_ids:
+        return
+
+    if attach:
+        member.event_set.add(*future_event_ids)
         logger.info(
             "Auto-attached member %s to %d future events of team %s (membership created)",
             member.pk,
-            future_events.count(),
+            len(future_event_ids),
             team.pk,
         )
-        return
-
-    if not created and instance.left_at is not None:
-        for event in future_events:
-            event.members.remove(member)
+    else:
+        member.event_set.remove(*future_event_ids)
         logger.info(
             "Auto-detached member %s from %d future events of team %s (membership ended at %s)",
             member.pk,
-            future_events.count(),
+            len(future_event_ids),
             team.pk,
             instance.left_at,
         )

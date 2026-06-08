@@ -329,7 +329,16 @@ class EventSerializer(serializers.ModelSerializer):
         team = instance.team
         if team is None:
             return False
-        return team.is_managed_by(user)
+        # Resolve the user's managed-team-id set once per request (cached on the
+        # serializer context) instead of a managers query per event when
+        # serializing a list.
+        managed = self.context.get("_managed_team_ids")
+        if managed is None:
+            from team.queries import managed_teams
+
+            managed = set(managed_teams(user).values_list("id", flat=True))
+            self.context["_managed_team_ids"] = managed
+        return team.id in managed
 
     def to_representation(self, instance):
         """Serialize, then null out aspects hidden from a non-manager athlete.
