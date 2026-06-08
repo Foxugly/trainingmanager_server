@@ -89,7 +89,7 @@ round/        # Séries d'exercices au sein d'un Event
 exercise/     # Exercices individuels (Modality, EnergySegment)
 member/       # Athlètes
 customuser/   # Extension du User Django (language, is_*_admin)
-team/         # Teams (sport, language, owner, managers, athlètes, créneaux, lieux, équipement)
+team/         # Teams (multi-sport via TeamSport M2M + default, language, owner, managers, athlètes, créneaux, lieux, équipement)
 sport/        # Sports + Modalities
 attendance/   # Présences aux séances (Attendance + AttendanceStatus référentiel)
 messaging/    # Discussions d'équipe (Topic / Message / TopicRead — badge non-lu)

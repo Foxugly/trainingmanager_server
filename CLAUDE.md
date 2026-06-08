@@ -86,6 +86,19 @@ The codebase has a strict dichotomy. Mixing them up is the most common source of
 
 If you find yourself writing `Team.objects.filter(Q(owner=user) | Q(managers=user))`, replace with `managed_teams(user)`.
 
+### Multi-sport teams (sport is the central scoping axis, now plural)
+
+A `Team` practises several sports via the **`TeamSport`** through-model (`Team.sports`
+M2M), exactly one flagged `is_default` (partial-unique `uniq_default_sport_per_team`).
+`Team.default_sport` / back-compat `Team.sport`/`sport_id` properties return the default.
+`Event.sport`, `TrainingSlot.sport` and `Place.sports` (M2M pool) carry sport too. Two
+scoping layers: **access = union** of the team's sports
+(`user_accessible_sport_language_pairs`, the `Place.sports` pool); **context filter =
+`event.sport`** (AI `generate-training` + the catalog pickers scope to the session's one
+sport). `TeamSerializer` write surface: `sport_ids` (replace set) + `default_sport_id`;
+`managers_ids` is owner-only; linked venues must serve a team sport (`place_not_in_sport`).
+Full design + as-built notes: `docs/multi-sport-teams-design.md`.
+
 ## Error responses
 
 `tools/exceptions.custom_exception_handler` is wired in `REST_FRAMEWORK['EXCEPTION_HANDLER']`. It normalises every 4xx to `{code, detail}` (single-error) or `{code, detail, fields}` (validation with per-field errors). To raise a top-level coded error in a viewset:

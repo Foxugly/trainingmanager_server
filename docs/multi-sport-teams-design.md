@@ -1,6 +1,8 @@
 # Multi-sport teams — design spec
 
-**Status:** draft for review (2026-06-08). No code yet.
+**Status:** ✅ Implemented & deployed (2026-06-08) — all 6 phases shipped (backend
+`44a6ef7`…`f08749c`, frontend `a826e79`+`cb25e7c`). This is the as-designed spec;
+see "As-built notes" at the end for where the implementation diverged.
 **Goal:** a Team can practise several sports (M2M) with one default sport, instead
 of a single `Team.sport` FK. Sport stays the central scoping axis, now plural.
 
@@ -127,3 +129,25 @@ read of `team.sport` (teams-list, dashboard, events, programs…). Full `api:gen
   per team + serializer/save logic that flips the flag atomically when the
   default changes (and auto-sets the first sport as default when adding the
   first one).
+
+## As-built notes (what shipped vs this spec)
+
+- **Team API surface:** `TeamSerializer` exposes `sports` (read, flattened
+  `TeamSportRead` with `is_default`/`order`), `sport_ids` (write, replaces the
+  set) and `default_sport_id` (write). The legacy `sport`/`sport_id` shim stays
+  for back-compat; `sport_id` is now optional (a team still needs ≥1 sport via
+  either path). Owner-only: `managers_ids`; venues are scoped to a team sport
+  (`place_not_in_sport`).
+- **Frontend sport tab:** implemented **inline in `teams-form`** (a `sport_ids`
+  `p-multiSelect` + a `default_sport_id` `p-select`), not as a dedicated
+  `app-team-sports` component. The slots editor has a per-row sport column and
+  the event form a session-sport select (both shown only when the team has >1
+  sport). Event detail shows the session sport as a badge.
+- **Scoping in practice:** access = union of the team's sports
+  (`user_accessible_sport_language_pairs`, `Place.sports` union pool); context
+  filter = `event.sport` (AI generate-training + the event-detail round/exercise
+  pickers scope to it). Equipment stayed mono-sport (team-enabled set).
+- **Exactly-one-default** is enforced by the `uniq_default_sport_per_team`
+  partial unique constraint + `_sync_sports`/`_apply_default_sport` in the
+  serializer (clears all default flags before setting the new one to avoid a
+  mid-update clash).
