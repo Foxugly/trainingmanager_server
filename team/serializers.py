@@ -638,10 +638,21 @@ class TrainingSlotSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    # Multi-sport: the slot's sport (one of the team's sports); the plan
+    # generator stamps each generated session's sport from it. Optional on
+    # write — the view defaults it to the team's default sport on create.
+    sport = SportSerializer(read_only=True)
+    sport_id = serializers.PrimaryKeyRelatedField(
+        source="sport",
+        queryset=Sport.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = TrainingSlot
-        fields = ["id", "weekday", "hour_start", "hour_end", "place", "place_id"]
+        fields = ["id", "weekday", "hour_start", "hour_end", "place", "place_id", "sport", "sport_id"]
         read_only_fields = ["id"]
 
     def validate_weekday(self, value):

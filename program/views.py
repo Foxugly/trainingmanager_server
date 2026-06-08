@@ -275,6 +275,14 @@ class ProgramViewSet(viewsets.ModelViewSet):
             p.name.casefold(): p for p in program.team.places.all()
         }
 
+        # Multi-sport: a generated session inherits its weekly slot's sport
+        # (matched by weekday), falling back to the team's default sport.
+        default_sport = program.team.default_sport
+        slot_sport_by_weekday = {
+            s.weekday: s.sport
+            for s in program.team.training_slots.select_related("sport").all()
+        }
+
         created_count = 0
         for ev_data in new_events_data:
             ev_date = _date.fromisoformat(ev_data["date"])
@@ -297,6 +305,7 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 place=place,
                 color=ev_data["color"],
                 total=ev_data["total_distance"],
+                sport=slot_sport_by_weekday.get(ev_date.weekday()) or default_sport,
             )
             created_count += 1
 

@@ -154,3 +154,30 @@ def test_slot_create_as_non_manager_403(api_client, trainer_user):
         format="json",
     )
     assert resp.status_code == 403
+
+
+def test_slot_create_defaults_sport_to_team_default(auth_client_trainer, trainer_user):
+    team = trainer_user.owned_teams.first()
+    resp = auth_client_trainer.post(
+        _slots_url(team),
+        {"weekday": 1, "hour_start": "18:00", "hour_end": "19:30"},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    slot = TrainingSlot.objects.get(team=team)
+    assert slot.sport == team.default_sport
+    assert resp.json()["sport"]["id"] == team.default_sport.id
+
+
+def test_slot_create_rejects_sport_not_in_team(auth_client_trainer, trainer_user):
+    from tests.factories import SportFactory
+
+    team = trainer_user.owned_teams.first()
+    foreign = SportFactory(slug="foreign-slot")
+    resp = auth_client_trainer.post(
+        _slots_url(team),
+        {"weekday": 1, "hour_start": "18:00", "hour_end": "19:30", "sport_id": foreign.pk},
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert "sport_not_in_team" in str(resp.content)

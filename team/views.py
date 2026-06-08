@@ -1464,16 +1464,27 @@ class TrainingSlotViewSet(viewsets.ModelViewSet):
                 code="place_not_in_team",
             )
 
+    def _validate_sport(self, team, sport):
+        # A slot's sport must be one of the team's sports.
+        if sport is not None and not team.sports.filter(pk=sport.pk).exists():
+            raise drf_serializers.ValidationError(
+                {"sport_id": _("The selected sport is not one of this team's sports.")},
+                code="sport_not_in_team",
+            )
+
     def perform_create(self, serializer):
         team = self.get_team()
         self._require_manager(team)
         self._validate_place(team, serializer.validated_data.get("place"))
-        serializer.save(team=team)
+        sport = serializer.validated_data.get("sport")
+        self._validate_sport(team, sport)
+        serializer.save(team=team, sport=sport or team.default_sport)
 
     def perform_update(self, serializer):
         team = serializer.instance.team
         self._require_manager(team)
         self._validate_place(team, serializer.validated_data.get("place"))
+        self._validate_sport(team, serializer.validated_data.get("sport"))
         serializer.save()
 
     def perform_destroy(self, instance):

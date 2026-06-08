@@ -464,6 +464,18 @@ class TrainingSlot(models.Model):
             "team's default_place; feeds the season-plan generator per day."
         ),
     )
+    sport = models.ForeignKey(
+        "sport.Sport",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        help_text=_(
+            "Sport of this weekly slot (one of the team's sports). The season-plan "
+            "generator stamps each generated session's sport from its slot; "
+            "defaults to the team's default sport."
+        ),
+    )
 
     class Meta:
         ordering = ["weekday", "hour_start"]

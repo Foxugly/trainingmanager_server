@@ -10804,6 +10804,14 @@ components:
           type: integer
           writeOnly: true
           nullable: true
+        sport:
+          allOf:
+          - $ref: '#/components/schemas/Sport'
+          readOnly: true
+        sport_id:
+          type: integer
+          writeOnly: true
+          nullable: true
     Performance:
       type: object
       description: |-
@@ -12219,11 +12227,20 @@ components:
           type: integer
           writeOnly: true
           nullable: true
+        sport:
+          allOf:
+          - $ref: '#/components/schemas/Sport'
+          readOnly: true
+        sport_id:
+          type: integer
+          writeOnly: true
+          nullable: true
       required:
       - hour_end
       - hour_start
       - id
       - place
+      - sport
       - weekday
     TrainingTemplate:
       type: object
