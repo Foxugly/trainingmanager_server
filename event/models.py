@@ -145,6 +145,14 @@ class Event(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            # date is filtered (gte/lte) and used for ordering on the calendar,
+            # dashboard and program-scoped event lists.
+            models.Index(fields=["refer_program", "date"], name="event_program_date_idx"),
+            models.Index(fields=["date"], name="event_date_idx"),
+        ]
+
     def __str__(self):
         return "%s %d" % (_("Event"), self.pk)
 

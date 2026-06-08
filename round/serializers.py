@@ -84,7 +84,10 @@ class RoundSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.IntegerField())
     def get_usage_count(self, obj) -> int:
-        return obj.usage_count
+        # Prefer the queryset annotation (one grouped COUNT for the whole list);
+        # fall back to the per-object property for freshly built/cloned rounds.
+        annotated = getattr(obj, "_usage_count", None)
+        return annotated if annotated is not None else obj.usage_count
 
     class Meta:
         model = Round

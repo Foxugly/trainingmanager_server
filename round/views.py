@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Count
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import serializers, status, viewsets
@@ -29,9 +30,14 @@ class RoundViewSet(viewsets.ModelViewSet):
     ordering = ["order"]
 
     def get_queryset(self):
-        qs = Round.objects.select_related("sport").prefetch_related(
-            "exercises__modality__sport",
-            "exercises__energysegment__energysystem",
+        qs = (
+            Round.objects.select_related("sport")
+            .prefetch_related(
+                "exercises__modality__sport",
+                "exercises__energysegment__energysystem",
+            )
+            # Annotate the event-usage so the serializer avoids one COUNT per row.
+            .annotate(_usage_count=Count("event", distinct=True))
         )
         qs = scope_by_sport_language(qs, self.request.user, sport_field="sport_id")
         return _gate_rounds_by_event_visibility(qs, self.request.user)

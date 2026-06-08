@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, F, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -316,19 +316,30 @@ class DiscussionsUnreadView(APIView):
             if t.audience == TopicAudience.TEAM or t.team_id in managed_ids
         ]
 
-        reads = {
-            tr.topic_id: tr.last_read_at
-            for tr in TopicRead.objects.filter(user=user, topic__in=visible)
+        visible_ids = [t.id for t in visible]
+        # One grouped query for every topic's unread count (was one COUNT per
+        # topic in a loop). Each message is compared against the caller's
+        # per-topic last-read marker via a correlated subquery; a missing marker
+        # (NULL) means everything counts.
+        last_read_sq = TopicRead.objects.filter(
+            user=user, topic=OuterRef("topic")
+        ).values("last_read_at")[:1]
+        counts = {
+            row["topic"]: row["n"]
+            for row in (
+                Message.objects.filter(topic_id__in=visible_ids)
+                .exclude(author=user)
+                .annotate(_last_read=Subquery(last_read_sq))
+                .filter(Q(_last_read__isnull=True) | Q(created_at__gt=F("_last_read")))
+                .values("topic")
+                .annotate(n=Count("id"))
+            )
         }
 
         rows = []
         total = 0
         for t in visible:
-            qs = Message.objects.filter(topic=t).exclude(author=user)
-            last_read = reads.get(t.id)
-            if last_read is not None:
-                qs = qs.filter(created_at__gt=last_read)
-            n = qs.count()
+            n = counts.get(t.id, 0)
             if n:
                 total += n
                 rows.append(

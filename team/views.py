@@ -1,11 +1,15 @@
+import base64
+import binascii
 import datetime
 import logging
+import re
 
 from django.conf import settings as dj_settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db import models, transaction
 from django.db.models import Count, F, Q, Sum
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone, translation
 from django.utils.translation import gettext_lazy as _
@@ -106,6 +110,34 @@ class TeamViewSet(viewsets.ModelViewSet):
             }
             raise exc
         serializer.save(owner=user)
+
+    @extend_schema(
+        summary="Team logo image (public)",
+        description=(
+            "Returns the team's logo as a binary image, decoded from the stored "
+            "base64 data-URL. Public (no auth) so it can be used directly as an "
+            "<img> src; returns 404 when the team has no logo. The team list and "
+            "detail expose this URL as `logo_url` instead of inlining the base64."
+        ),
+        responses={200: OpenApiTypes.BINARY, 404: OpenApiResponse(description="No logo")},
+    )
+    @action(detail=True, methods=["get"], permission_classes=[AllowAny], url_path="logo")
+    def logo(self, request, pk=None):
+        # Public on purpose (product decision): logos are branding images and an
+        # <img src> cannot carry the JWT. Fetched directly, bypassing the
+        # member-scoped get_queryset.
+        team = get_object_or_404(Team, pk=pk)
+        match = re.match(r"^data:(image/[\w.+-]+);base64,(.*)$", team.logo or "", re.DOTALL)
+        if not match:
+            raise Http404("This team has no logo.")
+        mime, b64 = match.group(1), match.group(2)
+        try:
+            raw = base64.b64decode(b64, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise Http404("Malformed logo.") from exc
+        response = HttpResponse(raw, content_type=mime)
+        response["Cache-Control"] = "public, max-age=300"
+        return response
 
     @extend_schema(
         operation_id="teams_stats_retrieve",

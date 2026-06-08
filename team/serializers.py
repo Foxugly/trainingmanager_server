@@ -2,6 +2,7 @@ import re
 from zoneinfo import ZoneInfo, available_timezones
 
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -80,6 +81,7 @@ class TeamSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    logo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Team
@@ -100,6 +102,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "default_place_id",
             "equipment",
             "equipment_ids",
+            "logo_url",
             "language",
             "is_active",
             "is_public",
@@ -129,6 +132,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "id",
             "owner",
             "managers",
+            "logo_url",
             # default_pool stays the canonical free-text venue but is written
             # via the training-template endpoint or synced from default_place;
             # it is read-only on this serializer to avoid two conflicting write
@@ -137,6 +141,29 @@ class TeamSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_logo_url(self, obj):
+        """Absolute URL of the public logo endpoint, or null when there is no
+        logo. Lets list/detail consumers render the logo via <img src> instead
+        of shipping the base64 data-URL inline (the list drops it — see
+        to_representation)."""
+        if not obj.logo:
+            return None
+        path = reverse("team-logo", kwargs={"pk": obj.pk})
+        request = self.context.get("request")
+        return request.build_absolute_uri(path) if request is not None else path
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        view = self.context.get("view")
+        if getattr(view, "action", None) == "list":
+            # Keep the list payload light: the base64 logo (served via logo_url)
+            # and the heavy nested M2M are not used by any list consumer.
+            data["logo"] = None
+            for field in ("places", "equipment", "attendance_statuses", "default_place"):
+                data.pop(field, None)
+        return data
 
     def update(self, instance, validated_data):
         """Persist places/default_place and sync default_pool.

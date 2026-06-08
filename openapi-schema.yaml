@@ -5427,6 +5427,36 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{id}/logo/:
+    get:
+      operationId: teams_logo_retrieve
+      description: Returns the team's logo as a binary image, decoded from the stored
+        base64 data-URL. Public (no auth) so it can be used directly as an <img> src;
+        returns 404 when the team has no logo. The team list and detail expose this
+        URL as `logo_url` instead of inlining the base64.
+      summary: Team logo image (public)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '404':
+          description: No logo
   /api/v1/teams/{id}/pools/:
     get:
       operationId: teams_pools_retrieve
@@ -10849,6 +10879,10 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
+        logo_url:
+          type: string
+          nullable: true
+          readOnly: true
         language:
           $ref: '#/components/schemas/LanguageEnum'
         is_active:
@@ -11983,6 +12017,10 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
+        logo_url:
+          type: string
+          nullable: true
+          readOnly: true
         language:
           $ref: '#/components/schemas/LanguageEnum'
         is_active:
@@ -12110,6 +12148,7 @@ components:
       - equipment
       - id
       - level
+      - logo_url
       - managers
       - name
       - owner
