@@ -105,6 +105,18 @@ class Event(models.Model):
         null=True,
         on_delete=models.PROTECT,
     )
+    sport = models.ForeignKey(
+        "sport.Sport",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        help_text=_(
+            "The sport this session is for (one of the team's sports). Scopes the "
+            "modalities/exercises offered and the AI generation; defaults to the "
+            "team's default sport."
+        ),
+    )
     vis_distance = models.CharField(
         max_length=10,
         choices=VisibilityMode.choices,

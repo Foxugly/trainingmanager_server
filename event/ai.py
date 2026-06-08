@@ -293,9 +293,10 @@ def build_user_prompt(
 def generate_training(*, event, user=None, additional_prompt=""):
     from exercise.models import EnergySegment, Modality
 
-    sport = (
-        event.refer_program.team.sport if event.refer_program and event.refer_program.team else None
-    )
+    # The session's own sport drives modality scoping; fall back to the team's
+    # default sport (multi-sport: an event may be for any of the team's sports).
+    team = event.refer_program.team if event.refer_program else None
+    sport = event.sport or (team.default_sport if team else None)
     sport_name = sport.name if sport else "the practiced sport"
 
     modalities_qs = Modality.objects.filter(sport=sport) if sport else Modality.objects.all()

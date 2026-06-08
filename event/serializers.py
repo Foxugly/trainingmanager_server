@@ -8,6 +8,8 @@ from place.serializers import PlaceMinimalSerializer
 from program.models import Program
 from program.serializers import ProgramMinimalSerializer
 from round.models import Round
+from sport.models import Sport
+from sport.serializers import SportSerializer
 from tools.html_sanitizer import sanitize_html
 
 from .models import Event
@@ -120,6 +122,17 @@ class EventSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    # Multi-sport: the session's sport (one of the team's sports). Optional on
+    # write — defaults to the team's default sport on create. Scopes the AI
+    # generator and (frontend) the modality/round pickers.
+    sport = SportSerializer(read_only=True)
+    sport_id = serializers.PrimaryKeyRelatedField(
+        source="sport",
+        queryset=Sport.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Event
@@ -140,6 +153,8 @@ class EventSerializer(serializers.ModelSerializer):
             "total",
             "refer_program",
             "refer_program_id",
+            "sport",
+            "sport_id",
             "rounds",
             "members",
             "vis_distance",
@@ -221,6 +236,13 @@ class EventSerializer(serializers.ModelSerializer):
                     )},
                     code="equipment_not_enabled",
                 )
+        if "sport" in data and data["sport"] is not None:
+            team = self._event_team(data)
+            if team is None or not team.sports.filter(pk=data["sport"].pk).exists():
+                raise serializers.ValidationError(
+                    {"sport_id": _("The selected sport is not one of this team's sports.")},
+                    code="sport_not_in_team",
+                )
         return data
 
     def _sync_location(self, validated_data):
@@ -252,6 +274,12 @@ class EventSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data = self._sync_location(validated_data)
         validated_data = self._sync_equipment(validated_data)
+        # Default the session sport to the team's default when not specified.
+        if validated_data.get("sport") is None:
+            program = validated_data.get("refer_program")
+            team = program.team if program is not None else None
+            if team is not None:
+                validated_data["sport"] = team.default_sport
         return super().create(validated_data)
 
     def update(self, instance, validated_data):

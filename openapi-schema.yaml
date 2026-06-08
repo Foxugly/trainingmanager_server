@@ -7935,6 +7935,14 @@ components:
         refer_program_id:
           type: integer
           writeOnly: true
+        sport:
+          allOf:
+          - $ref: '#/components/schemas/Sport'
+          readOnly: true
+        sport_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         rounds:
           type: array
           items:
@@ -8016,6 +8024,7 @@ components:
       - refer_program
       - refer_program_id
       - rounds
+      - sport
       - updated_at
     EventPublic:
       type: object
@@ -9811,6 +9820,14 @@ components:
         refer_program_id:
           type: integer
           writeOnly: true
+        sport:
+          allOf:
+          - $ref: '#/components/schemas/Sport'
+          readOnly: true
+        sport_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         rounds:
           type: array
           items:
