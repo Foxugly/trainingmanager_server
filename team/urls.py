@@ -10,6 +10,7 @@ from .views import (
     TeamJoinRequestViewSet,
     TeamMembershipViewSet,
     TeamViewSet,
+    TrainingSlotViewSet,
 )
 
 router = DefaultRouter()
@@ -19,6 +20,9 @@ router.register(r"invitations", TeamInvitationViewSet, basename="invitation")
 
 memberships_router = NestedSimpleRouter(router, r"teams", lookup="team")
 memberships_router.register(r"memberships", TeamMembershipViewSet, basename="team-membership")
+memberships_router.register(
+    r"training-slots", TrainingSlotViewSet, basename="team-training-slot"
+)
 
 urlpatterns = (
     router.urls

@@ -441,6 +441,17 @@ class TrainingSlot(models.Model):
     )
     hour_start = models.TimeField(help_text=_("Slot start time (local team time)."))
     hour_end = models.TimeField(help_text=_("Slot end time; must be after hour_start."))
+    place = models.ForeignKey(
+        "place.Place",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=_(
+            "Optional venue for this weekly slot. Defaults (in the UI) to the "
+            "team's default_place; feeds the season-plan generator per day."
+        ),
+    )
 
     class Meta:
         ordering = ["weekday", "hour_start"]

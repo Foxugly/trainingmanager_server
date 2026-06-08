@@ -36,6 +36,36 @@ def _payload(**overrides):
     return base
 
 
+def test_put_sets_per_slot_place_and_get_returns_it(auth_client_trainer, trainer_user):
+    """A slot can carry an optional venue (place_id); GET returns it nested."""
+    from place.models import Place
+
+    team = trainer_user.owned_teams.first()
+    place = Place.objects.create(sport=team.sport, name="Bassin nordique")
+    team.places.add(place)
+
+    resp = auth_client_trainer.put(
+        _url(team),
+        _payload(
+            slots=[
+                {"weekday": 0, "hour_start": "18:00", "hour_end": "19:30", "place_id": place.pk},
+                {"weekday": 2, "hour_start": "18:00", "hour_end": "19:30"},
+            ]
+        ),
+        format="json",
+    )
+    assert resp.status_code == 200, resp.content
+
+    slot = TrainingSlot.objects.get(team=team, weekday=0)
+    assert slot.place_id == place.pk
+    assert TrainingSlot.objects.get(team=team, weekday=2).place_id is None
+
+    body = auth_client_trainer.get(_url(team)).json()
+    by_day = {s["weekday"]: s for s in body["slots"]}
+    assert by_day[0]["place"]["name"] == "Bassin nordique"
+    assert by_day[2]["place"] is None
+
+
 def test_put_as_manager_sets_template_then_get_returns_it_ordered(
     auth_client_trainer, trainer_user
 ):
@@ -142,3 +172,80 @@ def test_second_put_replaces_template(auth_client_trainer, trainer_user):
     assert team.default_pool == "New pool"
     assert team.season_start is None
     assert team.season_end is None
+
+
+# ---------------------------------------------------------------------------
+# Per-slot CRUD (each créneau saved on its own) — /teams/{id}/training-slots/
+# ---------------------------------------------------------------------------
+
+
+def _slots_url(team):
+    return reverse("team-training-slot-list", kwargs={"team_pk": team.pk})
+
+
+def _slot_detail_url(team, slot):
+    return reverse(
+        "team-training-slot-detail", kwargs={"team_pk": team.pk, "pk": slot.pk}
+    )
+
+
+def test_slot_crud_create_patch_delete(auth_client_trainer, trainer_user):
+    from place.models import Place
+
+    team = trainer_user.owned_teams.first()
+    place = Place.objects.create(sport=team.sport, name="Bassin nordique")
+    team.places.add(place)
+
+    # create one slot with a place
+    resp = auth_client_trainer.post(
+        _slots_url(team),
+        {"weekday": 0, "hour_start": "18:00", "hour_end": "19:30", "place_id": place.pk},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    slot = TrainingSlot.objects.get(team=team)
+    assert slot.place_id == place.pk
+    assert resp.json()["place"]["name"] == "Bassin nordique"
+
+    # patch the hours
+    resp = auth_client_trainer.patch(
+        _slot_detail_url(team, slot), {"hour_end": "20:00"}, format="json"
+    )
+    assert resp.status_code == 200, resp.content
+    slot.refresh_from_db()
+    assert slot.hour_end.strftime("%H:%M") == "20:00"
+
+    # delete it
+    resp = auth_client_trainer.delete(_slot_detail_url(team, slot))
+    assert resp.status_code == 204
+    assert TrainingSlot.objects.filter(team=team).count() == 0
+
+
+def test_slot_create_rejects_place_not_in_team(auth_client_trainer, trainer_user):
+    from place.models import Place
+
+    team = trainer_user.owned_teams.first()
+    foreign = Place.objects.create(sport=team.sport, name="Foreign")  # not linked
+    resp = auth_client_trainer.post(
+        _slots_url(team),
+        {"weekday": 1, "hour_start": "18:00", "hour_end": "19:30", "place_id": foreign.pk},
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert "place_not_in_team" in str(resp.content)
+
+
+def test_slot_create_as_non_manager_403(api_client, trainer_user):
+    from member.models import Member
+
+    team = trainer_user.owned_teams.first()
+    user = UserFactory()
+    m = Member.objects.create(firstname="A", lastname="T", email=user.email, user=user)
+    TeamMembership.objects.create(team=team, member=m)
+    api_client.force_authenticate(user=user)
+    resp = api_client.post(
+        _slots_url(team),
+        {"weekday": 1, "hour_start": "18:00", "hour_end": "19:30"},
+        format="json",
+    )
+    assert resp.status_code == 403

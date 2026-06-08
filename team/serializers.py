@@ -577,9 +577,18 @@ class TrainingSlotSerializer(serializers.ModelSerializer):
     weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
     """
 
+    place = PlaceMinimalSerializer(read_only=True)
+    place_id = serializers.PrimaryKeyRelatedField(
+        source="place",
+        queryset=Place.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = TrainingSlot
-        fields = ["weekday", "hour_start", "hour_end"]
+        fields = ["weekday", "hour_start", "hour_end", "place", "place_id"]
 
     def validate_weekday(self, value):
         if value < 0 or value > 6:
@@ -590,7 +599,11 @@ class TrainingSlotSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        if data["hour_end"] <= data["hour_start"]:
+        # Partial-safe: on PATCH only some fields are present, so fall back to
+        # the existing instance values when comparing the time range.
+        start = data.get("hour_start", getattr(self.instance, "hour_start", None))
+        end = data.get("hour_end", getattr(self.instance, "hour_end", None))
+        if start is not None and end is not None and end <= start:
             raise serializers.ValidationError(
                 {"hour_end": _("hour_end must be after hour_start.")},
                 code="invalid_slot_range",

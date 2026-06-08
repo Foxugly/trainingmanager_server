@@ -6733,6 +6733,250 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/teams/{team_pk}/training-slots/:
+    get:
+      operationId: teams_training_slots_list
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      summary: List a team's weekly training slots
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingSlot'
+          description: ''
+    post:
+      operationId: teams_training_slots_create
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      summary: Add a weekly training slot (manager only)
+      parameters:
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSlot'
+          description: ''
+  /api/v1/teams/{team_pk}/training-slots/{id}/:
+    get:
+      operationId: teams_training_slots_retrieve
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this training slot.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSlot'
+          description: ''
+    put:
+      operationId: teams_training_slots_update
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      summary: Replace a weekly training slot (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this training slot.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrainingSlot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSlot'
+          description: ''
+    patch:
+      operationId: teams_training_slots_partial_update
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      summary: Edit a weekly training slot (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this training slot.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingSlot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingSlot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTrainingSlot'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSlot'
+          description: ''
+    delete:
+      operationId: teams_training_slots_destroy
+      description: |-
+        Per-slot CRUD for a team's weekly training template.
+
+        URL: /api/v1/teams/{team_pk}/training-slots/
+
+        Each slot is saved on its own (add / edit / delete one slot persists
+        immediately) — there is no bulk "save the template" step here. A slot
+        carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+        Read: any strict team member. Write: owner/manager only.
+      summary: Delete a weekly training slot (manager only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this training slot.
+        required: true
+      - in: path
+        name: team_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     AIPingRequest:
@@ -10461,6 +10705,44 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PatchedTrainingSlot:
+      type: object
+      description: |-
+        One weekly training slot (weekday + start/end time).
+
+        weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
+      properties:
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          description: |-
+            Day of the week (Python convention: Monday=0 … Sunday=6).
+
+            * `0` - Monday
+            * `1` - Tuesday
+            * `2` - Wednesday
+            * `3` - Thursday
+            * `4` - Friday
+            * `5` - Saturday
+            * `6` - Sunday
+          minimum: 0
+          maximum: 9223372036854775807
+        hour_start:
+          type: string
+          format: time
+          description: Slot start time (local team time).
+        hour_end:
+          type: string
+          format: time
+          description: Slot end time; must be after hour_start.
+        place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
     Performance:
       type: object
       description: |-
@@ -11861,9 +12143,18 @@ components:
           type: string
           format: time
           description: Slot end time; must be after hour_start.
+        place:
+          allOf:
+          - $ref: '#/components/schemas/PlaceMinimal'
+          readOnly: true
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
       required:
       - hour_end
       - hour_start
+      - place
       - weekday
     TrainingTemplate:
       type: object

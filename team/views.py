@@ -14,6 +14,7 @@ from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
     extend_schema,
+    extend_schema_view,
     inline_serializer,
 )
 from rest_framework import serializers as drf_serializers
@@ -47,6 +48,7 @@ from .serializers import (
     TeamMembershipSerializer,
     TeamSerializer,
     TeamStatsSerializer,
+    TrainingSlotSerializer,
     TrainingTemplateSerializer,
     ValidateInvitationSerializer,
 )
@@ -271,8 +273,9 @@ class TeamViewSet(viewsets.ModelViewSet):
                 "weekday": s.weekday,
                 "hour_start": s.hour_start,
                 "hour_end": s.hour_end,
+                "place": s.place,
             }
-            for s in team.training_slots.all()
+            for s in team.training_slots.select_related("place").all()
         ]
         return {
             "slots": slots,
@@ -342,6 +345,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                         weekday=slot["weekday"],
                         hour_start=slot["hour_start"],
                         hour_end=slot["hour_end"],
+                        place=slot.get("place"),
                     )
                     for slot in data["slots"]
                 ]
@@ -1416,3 +1420,68 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
                 target_repr=f"Member #{member.id} ({member.get_fullname()})",
                 request=self.request,
             )
+
+
+@extend_schema_view(
+    list=extend_schema(summary="List a team's weekly training slots"),
+    create=extend_schema(summary="Add a weekly training slot (manager only)"),
+    partial_update=extend_schema(summary="Edit a weekly training slot (manager only)"),
+    update=extend_schema(summary="Replace a weekly training slot (manager only)"),
+    destroy=extend_schema(summary="Delete a weekly training slot (manager only)"),
+)
+class TrainingSlotViewSet(viewsets.ModelViewSet):
+    """Per-slot CRUD for a team's weekly training template.
+
+    URL: /api/v1/teams/{team_pk}/training-slots/
+
+    Each slot is saved on its own (add / edit / delete one slot persists
+    immediately) — there is no bulk "save the template" step here. A slot
+    carries weekday + hour_start/hour_end + an optional ``place`` (venue).
+    Read: any strict team member. Write: owner/manager only.
+    """
+
+    serializer_class = TrainingSlotSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_team(self):
+        return get_object_or_404(Team, pk=self.kwargs.get("team_pk"))
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return TrainingSlot.objects.none()
+        team = self.get_team()
+        if not user_member_teams(self.request.user).filter(pk=team.pk).exists():
+            return TrainingSlot.objects.none()
+        return TrainingSlot.objects.filter(team=team).select_related("place")
+
+    def _require_manager(self, team):
+        if not team.is_managed_by(self.request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can edit the training template.")
+            )
+
+    def _validate_place(self, team, place):
+        # A slot's venue must be one of the team's linked places (consistent with
+        # Event.place). Null place is allowed (falls back to the team default).
+        if place is not None and not team.places.filter(pk=place.pk).exists():
+            raise drf_serializers.ValidationError(
+                {"place_id": _("The selected place is not one of this team's venues.")},
+                code="place_not_in_team",
+            )
+
+    def perform_create(self, serializer):
+        team = self.get_team()
+        self._require_manager(team)
+        self._validate_place(team, serializer.validated_data.get("place"))
+        serializer.save(team=team)
+
+    def perform_update(self, serializer):
+        team = serializer.instance.team
+        self._require_manager(team)
+        self._validate_place(team, serializer.validated_data.get("place"))
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_manager(instance.team)
+        instance.delete()
