@@ -311,6 +311,7 @@ SPECTACULAR_SETTINGS = {
         "VisibilityMode": "event.models.VisibilityMode",
         "RsvpStatusEnum": "rsvp.models.RsvpStatus",
         "UnitEnum": "performance.models.Unit",
+        "TrainingTypeEnum": "tools.choices.TrainingType",
     },
 }
 
