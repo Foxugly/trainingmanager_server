@@ -182,3 +182,22 @@ def test_generate_freeform_training_returns_html(trainer_user, trainer_sport):
     assert out["html"] == "<p>Easy run 30'</p>"
     assert out["rationale"] == "Recovery day."
     assert mocked.called
+
+
+def test_generate_training_freeform_writes_richtext(auth_client_trainer, trainer_user, trainer_sport):
+    from program.models import Program
+    from tests.factories import EventFactory
+    from datetime import date, timedelta
+    team = trainer_user.owned_teams.first()
+    program = Program.objects.create(name="P", team=team)
+    event = EventFactory(refer_program=program, sport=trainer_sport,
+                         training_type=TrainingType.FREEFORM, date=date.today() + timedelta(days=3))
+    fake = {"html": "<p>Recovery</p>", "rationale": "easy", "prompt_sent": "p",
+            "model": "m", "input_tokens": 1, "output_tokens": 1}
+    with patch("event.views.ai_generate_freeform_training", return_value=fake):
+        resp = auth_client_trainer.post(f"/api/v1/events/{event.pk}/generate-training/", {}, format="json")
+    assert resp.status_code == 200, resp.json()
+    event.refresh_from_db()
+    assert "<p>Recovery</p>" in event.training_richtext
+    assert event.rounds.count() == 0
+    assert event.generated_by_ai is True

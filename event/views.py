@@ -15,6 +15,7 @@ from tools.exceptions import NotAManagerDenied, NotAuthorizedEventDenied
 from tools.throttling import AITrainingGenerationThrottle
 from tools.validators import validate_reorder_ids
 
+from .ai import generate_freeform_training as ai_generate_freeform_training
 from .ai import generate_training as ai_generate_training
 from .models import Event
 from .serializers import (
@@ -224,6 +225,37 @@ class EventViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_409_CONFLICT,
                 )
+
+        from tools.choices import TrainingType
+
+        if event.training_type == TrainingType.FREEFORM:
+            if event.training_richtext:
+                return Response(
+                    {"code": "event_has_training",
+                     "detail": _("Event already has free-text content. Clear it before regenerating.")},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            body_serializer = GenerateTrainingRequestSerializer(data=request.data)
+            body_serializer.is_valid(raise_exception=True)
+            additional_prompt = body_serializer.validated_data.get("additional_prompt", "")
+            ai_result = ai_generate_freeform_training(
+                event=event,
+                user=request.user if request.user.is_authenticated else None,
+                additional_prompt=additional_prompt,
+            )
+            from tools.html_sanitizer import sanitize_html
+
+            event.training_richtext = sanitize_html(ai_result["html"])
+            event.generated_by_ai = True
+            event.ai_prompt = ai_result["prompt_sent"]
+            event.ai_response = ai_result["rationale"]
+            event.ai_generated_at = timezone.now()
+            event.save()
+            return Response(
+                {"rationale": ai_result["rationale"], "model": ai_result["model"],
+                 "tokens_used": {"input": ai_result["input_tokens"], "output": ai_result["output_tokens"]}},
+                status=status.HTTP_200_OK,
+            )
 
         if event.rounds.exists():
             return Response(
