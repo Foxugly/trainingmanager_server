@@ -10,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
-from attendance.models import Attendance, AttendanceStatus
+from attendance.models import Attendance
 from event.models import Event
 from tools.exceptions import NotAnAthleteMember, RsvpDisabled
 
@@ -244,9 +244,13 @@ class RsvpViewSet(viewsets.ViewSet):
             RsvpStatus.GOING: "present",
             RsvpStatus.NOT_GOING: "absent",
         }
+        # Resolve only the statuses the TEAM has enabled (mirrors the attendance
+        # write path's _require_team_status). A team that disabled
+        # present/absent must not get those rows materialized via RSVP; such
+        # RSVPs fall through to "skipped" below.
         status_objs = {
             s.code: s
-            for s in AttendanceStatus.objects.filter(
+            for s in team.attendance_statuses.filter(
                 code__in=set(status_code_for_rsvp.values()), is_active=True
             )
         }

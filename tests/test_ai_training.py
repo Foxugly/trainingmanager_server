@@ -106,6 +106,54 @@ def _build_rounds_payload(event=None):
     ]
 
 
+def test_generate_training_stamps_session_sport_on_multisport_team(
+    auth_client_trainer, trainer_event, settings
+):
+    """Regression: on a multi-sport team, generated Rounds are stamped with the
+    EVENT's sport (what the generator scoped to), not the team's default sport."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    from sport.models import Sport
+    from team.models import TeamSport
+
+    team = trainer_event.refer_program.team
+    other_sport = Sport.objects.create(name="MST Cycling", slug="mst-cycling", is_active=True)
+    TeamSport.objects.create(team=team, sport=other_sport, order=2)
+    trainer_event.sport = other_sport
+    trainer_event.save(update_fields=["sport"])
+    mod = Modality.objects.create(name="Spin", sport=other_sport)
+    seg = EnergySegment.objects.first()
+    rounds_payload = [
+        {
+            "count": 1,
+            "t_start": "00:00",
+            "t_break": "01:00",
+            "exercises": [
+                {
+                    "modality_id": mod.id,
+                    "energysegment_id": seg.id,
+                    "distance": 200,
+                    "repetition": 4,
+                    "t_start": "00:00",
+                    "t_break": "00:30",
+                    "notes": "set",
+                }
+            ],
+        }
+    ]
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/", {}, format="json"
+        )
+
+    assert response.status_code == 200, response.json()
+    trainer_event.refresh_from_db()
+    rounds = list(trainer_event.rounds.all())
+    assert rounds, "expected at least one generated round"
+    assert all(r.sport_id == other_sport.id for r in rounds)
+
+
 # ----------------------------- Happy path ----------------------------
 
 

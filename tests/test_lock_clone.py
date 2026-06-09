@@ -148,6 +148,19 @@ def test_POST_round_clone_returns_201_with_m2m_exercises_copied(auth_client_trai
     assert set(body["exercises"]) == {e1.pk, e2.pk, e3.pk}
 
 
+def test_clone_event_linked_round_of_unmanaged_team_is_forbidden(auth_client_trainer, trainer_sport):
+    """IDOR: a trainer cannot clone a round attached to another team's event,
+    even when sport/language put it in their read scope."""
+    r = RoundFactory(sport=trainer_sport)  # in the caller's (sport, fr) read scope
+    other_team = TeamFactory()  # a team the caller does not manage
+    program = ProgramFactory(team=other_team)
+    event = EventFactory(refer_program=program)
+    event.rounds.add(r)
+
+    response = auth_client_trainer.post(f"/api/v1/rounds/{r.pk}/clone/", {}, format="json")
+    assert response.status_code == 403, response.json()
+
+
 def test_POST_round_clone_exercise_attaches_to_round(auth_client_trainer, trainer_sport):
     modality = ModalityFactory(sport=trainer_sport)
     r = RoundFactory(sport=trainer_sport)

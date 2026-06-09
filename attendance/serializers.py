@@ -92,6 +92,11 @@ class AttendanceBulkItemSerializer(serializers.Serializer):
     status_code = serializers.CharField(max_length=30)
 
 
+# A single bulk write is one event's roster; cap it so a malformed/abusive
+# payload can't open a long transaction doing N per-row upserts.
+MAX_BULK_ATTENDANCES = 500
+
+
 class AttendanceBulkSerializer(serializers.Serializer):
     attendances = AttendanceBulkItemSerializer(many=True)
 
@@ -100,6 +105,11 @@ class AttendanceBulkSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "attendances list cannot be empty.",
                 code="empty_attendances",
+            )
+        if len(value) > MAX_BULK_ATTENDANCES:
+            raise serializers.ValidationError(
+                f"Too many attendances in one request (max {MAX_BULK_ATTENDANCES}).",
+                code="too_many_attendances",
             )
         member_ids = [item["member_id"] for item in value]
         if len(member_ids) != len(set(member_ids)):

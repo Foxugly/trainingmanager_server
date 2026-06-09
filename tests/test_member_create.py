@@ -89,8 +89,9 @@ def test_POST_member_with_user_already_in_use_returns_400(manager_client, busy_u
     assert "user_id" in body.get("fields", {})
 
 
-def test_POST_member_with_unused_user_returns_201(manager_client, free_user):
-    """Free user (no existing Member) -> 201."""
+def test_POST_member_linking_a_stranger_user_is_rejected(manager_client, free_user):
+    """IDOR guard: a user who belongs to no team the caller manages cannot be
+    linked at member creation (the normal linkage path is the invitation flow)."""
     response = manager_client.post(
         URL,
         {
@@ -101,5 +102,25 @@ def test_POST_member_with_unused_user_returns_201(manager_client, free_user):
         },
         format="json",
     )
+    assert response.status_code == 403, response.json()
+    assert not Member.objects.filter(user=free_user).exists()
+
+
+def test_POST_member_linking_a_user_in_a_managed_team_returns_201(manager_client, manager_user):
+    """A user already in a team the caller manages may be linked at creation."""
+    teammate = User.objects.create_user(
+        username="mc_mate", email="mc_mate@local.test", password="pass"
+    )
+    manager_user.owned_teams.first().managers.add(teammate)
+    response = manager_client.post(
+        URL,
+        {
+            "firstname": "Renaud",
+            "lastname": "Mate",
+            "email": "renaud_mate@example.com",
+            "user_id": teammate.pk,
+        },
+        format="json",
+    )
     assert response.status_code == 201, response.json()
-    assert Member.objects.filter(user=free_user).exists()
+    assert Member.objects.filter(user=teammate).exists()

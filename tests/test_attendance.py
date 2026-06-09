@@ -381,6 +381,21 @@ def test_bulk_validates_status_codes(coach_client, future_event, athlete_member)
         format="json",
     )
     assert response.status_code == 400
+
+
+def test_bulk_rejects_oversized_payload(coach_client, future_event):
+    """An over-cap payload is rejected before opening the write transaction."""
+    from attendance.serializers import MAX_BULK_ATTENDANCES
+
+    items = [
+        {"member_id": i, "status_code": "present"}
+        for i in range(1, MAX_BULK_ATTENDANCES + 2)
+    ]
+    response = coach_client.post(
+        _bulk_url(future_event.pk), {"attendances": items}, format="json"
+    )
+    assert response.status_code == 400, response.status_code
+    assert not Attendance.objects.filter(event=future_event).exists()
     assert not Attendance.objects.filter(event=future_event).exists()
 
 

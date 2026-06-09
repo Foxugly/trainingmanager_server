@@ -286,7 +286,11 @@ class EventViewSet(viewsets.ModelViewSet):
         created_exercises = 0
         reused_exercises = 0
 
-        team_sport = event.refer_program.team.sport
+        # Stamp Rounds with the SESSION's sport — the same sport the generator
+        # was scoped to (event/ai.py) — not the team's default. On a multi-sport
+        # team an event whose sport is a non-default sport would otherwise get
+        # rounds mis-attributed to the default sport.
+        team_sport = event.sport or event.refer_program.team.default_sport
         team_language = event.refer_program.team.language
         with transaction.atomic():
             for r_idx, r_data in enumerate(ai_result["rounds"], start=1):

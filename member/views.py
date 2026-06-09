@@ -49,8 +49,30 @@ class MemberViewSet(viewsets.ModelViewSet):
         if not (coach_team_ids & member_team_ids):
             raise PermissionDenied(_("You must manage a team this member belongs to."))
 
+    def _require_user_in_managed_team(self, user):
+        """A new Member may only be linked to a user who already belongs to a
+        team the caller manages (as owner, manager, or member). Linking an
+        arbitrary stranger's account is an IDOR — the normal linkage path is the
+        join/invitation flow (which binds the user at accept time). The
+        serializer's ``validate`` enforces the same on update; create had no
+        equivalent guard.
+        """
+        coach_team_ids = set(managed_teams(self.request.user).values_list("pk", flat=True))
+        user_team_ids = set(user.owned_teams.values_list("pk", flat=True))
+        user_team_ids |= set(user.managed_teams.values_list("pk", flat=True))
+        member_profile = getattr(user, "member_profile", None)
+        if member_profile is not None:
+            user_team_ids |= set(member_profile.memberships.values_list("team_id", flat=True))
+        if coach_team_ids.isdisjoint(user_team_ids):
+            raise PermissionDenied(
+                _("You can only link a user who already belongs to a team you manage.")
+            )
+
     def perform_create(self, serializer):
         self._check_user_manages_a_team()
+        user = serializer.validated_data.get("user")
+        if user is not None:
+            self._require_user_in_managed_team(user)
         serializer.save()
 
     def perform_update(self, serializer):

@@ -234,6 +234,9 @@ def _member(team, label, event_pk):
 def test_apply_to_attendance_maps_statuses(
     coach_client, future_event, coach_team, seeded_statuses, athlete_member
 ):
+    # The team must have the target statuses enabled (mirrors the attendance
+    # write path); the seed fixture creates them globally, enable them here.
+    coach_team.attendance_statuses.set(seeded_statuses.values())
     going = athlete_member
     not_going = _member(coach_team, "ng", future_event.pk)
     maybe = _member(coach_team, "mb", future_event.pk)
@@ -267,6 +270,27 @@ def test_apply_to_attendance_skips_when_status_code_missing(
     assert response.json()["applied"] == 0
     assert response.json()["skipped"] == 1
     assert not Attendance.objects.filter(event=future_event).exists()
+
+
+def test_apply_to_attendance_skips_statuses_not_enabled_for_team(
+    coach_client, future_event, coach_team, seeded_statuses, athlete_member
+):
+    """Regression: a status that exists globally but is NOT enabled on the team
+    must not be materialized via RSVP-apply (team-status invariant)."""
+    # Enable only 'present' on the team; 'absent' exists globally but is disabled.
+    coach_team.attendance_statuses.set([seeded_statuses["present"]])
+    going = athlete_member
+    not_going = _member(coach_team, "ng2", future_event.pk)
+    Rsvp.objects.create(event=future_event, member=going, status="going")
+    Rsvp.objects.create(event=future_event, member=not_going, status="not_going")
+
+    response = coach_client.post(_apply_url(future_event.pk))
+    assert response.status_code == 200, response.json()
+    body = response.json()
+    assert body["applied"] == 1  # only GOING -> present
+    assert body["skipped"] == 1  # NOT_GOING -> absent (disabled) skipped
+    assert Attendance.objects.get(event=future_event, member=going).status.code == "present"
+    assert not Attendance.objects.filter(event=future_event, member=not_going).exists()
 
 
 def test_apply_to_attendance_athlete_forbidden(

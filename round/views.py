@@ -73,6 +73,11 @@ class RoundViewSet(viewsets.ModelViewSet):
         """Standalone clone : new Round with the same scalar fields and the
         same exercise list (M2M copied)."""
         original = self.get_object()
+        # Cloning reads the source round's content. Library rounds are a shared
+        # catalog (author-gated); an event-linked round belongs to a team, so
+        # only a manager of one of those teams may clone it — otherwise a trainer
+        # who merely shares the sport/language could read another team's session.
+        self._require_may_mutate(original)
         clone = Round.objects.create(
             sport=original.sport,
             language=original.language,
@@ -80,6 +85,7 @@ class RoundViewSet(viewsets.ModelViewSet):
             t_start=original.t_start,
             t_break=original.t_break,
             order=original.order,
+            author=self.request.user,
         )
         clone.exercises.set(original.exercises.all())
         serializer = self.get_serializer(clone)
@@ -102,6 +108,7 @@ class RoundViewSet(viewsets.ModelViewSet):
         """Clone an Exercise and attach it to this Round.
         Body: {"exercise_id": <id>}."""
         round_obj = self.get_object()
+        self._require_may_mutate(round_obj)
         exercise_id = request.data.get("exercise_id")
         if not exercise_id:
             return Response(
