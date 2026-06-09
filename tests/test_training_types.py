@@ -27,3 +27,12 @@ def test_teamsport_training_type_nullable_default_none():
     ts = TeamSport.objects.filter(team=team).first()
     assert ts is not None
     assert ts.training_type is None
+
+
+from tests.factories import EventFactory
+
+
+def test_event_training_fields_defaults():
+    event = EventFactory()
+    assert event.training_type == TrainingType.STRUCTURED
+    assert event.training_richtext == ""

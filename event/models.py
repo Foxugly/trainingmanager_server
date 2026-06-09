@@ -8,6 +8,7 @@ from django.utils.translation import gettext as _
 
 from member.models import Member
 from round.models import Round
+from tools.choices import TrainingType
 
 
 def generate_share_token():
@@ -39,6 +40,20 @@ VISIBILITY_ASPECTS = ("distance", "goal", "rounds")
 class Event(models.Model):
     name = models.CharField(max_length=100, verbose_name=_("name"))
     goal = models.TextField(blank=True, null=True, verbose_name=_("goal"))
+    training_type = models.CharField(
+        max_length=20,
+        choices=TrainingType.choices,
+        default=TrainingType.STRUCTURED,
+        help_text=_(
+            "This event's active training-content type. Seeded at creation "
+            "from the team-sport / sport cascade; editable by the coach."
+        ),
+    )
+    training_richtext = models.TextField(
+        blank=True,
+        default="",
+        help_text=_("Free-text training content (sanitized HTML) when training_type=freeform."),
+    )
     location = models.CharField(
         max_length=255,
         blank=True,
