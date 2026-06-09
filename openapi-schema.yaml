@@ -2218,9 +2218,10 @@ paths:
           description: Not a manager of this event team
         '409':
           description: 'Conflict. `body.code` is one of: `event_has_rounds` (event
-            already has rounds — remove them before regenerating) or `event_in_past`
-            (the session date is in the past — training can only be generated for
-            a future or unscheduled session).'
+            already has rounds — remove them before regenerating), `event_has_training`
+            (freeform event already has free-text content — clear it before regenerating)
+            or `event_in_past` (the session date is in the past — training can only
+            be generated for a future or unscheduled session).'
         '500':
           description: AI configuration error
         '502':
@@ -7768,6 +7769,17 @@ components:
         goal:
           type: string
           nullable: true
+        training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            This event's active training-content type. Seeded at creation from the team-sport / sport cascade; editable by the coach.
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
+        training_richtext:
+          type: string
+          description: Free-text training content (sanitized HTML) when training_type=freeform.
         location:
           type: string
           description: Where the session takes place (venue, pool, track, address).
@@ -8228,11 +8240,8 @@ components:
         tokens_used:
           $ref: '#/components/schemas/GenerateTrainingTokensUsed'
       required:
-      - exercises_created
-      - exercises_reused
       - model
       - rationale
-      - rounds_created
       - tokens_used
     GenerateTrainingTokensUsed:
       type: object
@@ -9703,6 +9712,17 @@ components:
         goal:
           type: string
           nullable: true
+        training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            This event's active training-content type. Seeded at creation from the team-sport / sport cascade; editable by the coach.
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
+        training_richtext:
+          type: string
+          description: Free-text training content (sanitized HTML) when training_type=freeform.
         location:
           type: string
           description: Where the session takes place (venue, pool, track, address).
@@ -10403,6 +10423,14 @@ components:
           type: array
           items:
             type: integer
+        default_training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            Default training-content type for events of this sport (overridable per team and per event).
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
         created_at:
           type: string
           format: date-time
@@ -10436,6 +10464,11 @@ components:
           writeOnly: true
         default_sport_id:
           type: integer
+          writeOnly: true
+        sport_training_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/_SportTrainingTypeWrite'
           writeOnly: true
         level:
           allOf:
@@ -11286,12 +11319,22 @@ components:
           items:
             type: integer
           readOnly: true
+        default_training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          readOnly: true
+          description: |-
+            Default training-content type for events of this sport (overridable per team and per event).
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
         created_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - created_at
+      - default_training_type
       - energy_systems
       - id
       - is_active
@@ -11341,6 +11384,14 @@ components:
           type: array
           items:
             type: integer
+        default_training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            Default training-content type for events of this sport (overridable per team and per event).
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
         created_at:
           type: string
           format: date-time
@@ -11552,6 +11603,11 @@ components:
           writeOnly: true
         default_sport_id:
           type: integer
+          writeOnly: true
+        sport_training_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/_SportTrainingTypeWrite'
           writeOnly: true
         level:
           allOf:
@@ -12004,12 +12060,24 @@ components:
         order:
           type: integer
           readOnly: true
+        training_type:
+          readOnly: true
+          nullable: true
+          description: |-
+            Team override of the sport's default training type. Null = inherit Sport.default_training_type.
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
+          oneOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - id
       - is_default
       - name
       - order
       - slug
+      - training_type
     TeamStats:
       type: object
       description: |-
@@ -12239,6 +12307,14 @@ components:
           nullable: true
       required:
       - slots
+    TrainingTypeEnum:
+      enum:
+      - structured
+      - freeform
+      type: string
+      description: |-
+        * `structured` - Structured (rounds & exercises)
+        * `freeform` - Free text
     TypeEnum:
       enum:
       - note_for_coach
@@ -12452,6 +12528,18 @@ components:
         * `accepted` - accepted
         * `rejected` - rejected
         * `cancelled` - cancelled
+    _SportTrainingTypeWrite:
+      type: object
+      properties:
+        sport_id:
+          type: integer
+        training_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - sport_id
   securitySchemes:
     jwtAuth:
       type: http
