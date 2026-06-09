@@ -154,20 +154,19 @@ class TopicViewSet(viewsets.ModelViewSet):
     def _notify_new_topic(self, topic):
         """Notify the topic's audience (except the author) of a new topic."""
         from notifications.models import NotificationType
-        from notifications.services import notify
+        from notifications.services import notify_many
 
         actor = self.request.user
         url = f"/teams/{topic.team_id}"
         recipients = _topic_recipients(topic, exclude_user=actor)
-        for recipient in recipients:
-            notify(
-                recipient,
-                NotificationType.MESSAGE_NEW_TOPIC,
-                title=_("New topic: %(title)s") % {"title": topic.title},
-                body=_("A new topic was created in your team."),
-                url=url,
-                actor=actor,
-            )
+        notify_many(
+            recipients,
+            NotificationType.MESSAGE_NEW_TOPIC,
+            title=_("New topic: %(title)s") % {"title": topic.title},
+            body=_("A new topic was created in your team."),
+            url=url,
+            actor=actor,
+        )
 
     @extend_schema(
         summary="Mark a topic as read up to now (per-user read state)",
@@ -268,20 +267,19 @@ class TopicMessageViewSet(viewsets.ModelViewSet):
     def _notify_new_message(self, topic, message):
         """Notify everyone who can see the topic (except the sender)."""
         from notifications.models import NotificationType
-        from notifications.services import notify
+        from notifications.services import notify_many
 
         actor = self.request.user
         url = f"/teams/{topic.team_id}"
         recipients = _topic_recipients(topic, exclude_user=actor)
-        for recipient in recipients:
-            notify(
-                recipient,
-                NotificationType.MESSAGE_NEW_REPLY,
-                title=_("New message in: %(title)s") % {"title": topic.title},
-                body=_("A new message was posted in a topic you follow."),
-                url=url,
-                actor=actor,
-            )
+        notify_many(
+            recipients,
+            NotificationType.MESSAGE_NEW_REPLY,
+            title=_("New message in: %(title)s") % {"title": topic.title},
+            body=_("A new message was posted in a topic you follow."),
+            url=url,
+            actor=actor,
+        )
 
 
 @extend_schema(

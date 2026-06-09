@@ -1957,9 +1957,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/RsvpSummary'
+                $ref: '#/components/schemas/RsvpSummary'
           description: ''
     put:
       operationId: events_rsvp_update
@@ -7890,6 +7888,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         place_id:
           type: integer
           writeOnly: true
@@ -9824,6 +9823,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         place_id:
           type: integer
           writeOnly: true
@@ -10552,6 +10552,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/Level'
           readOnly: true
+          nullable: true
         level_id:
           type: integer
           writeOnly: true
@@ -10591,6 +10592,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         default_place_id:
           type: integer
           writeOnly: true
@@ -10869,6 +10871,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         place_id:
           type: integer
           writeOnly: true
@@ -11705,6 +11708,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/Level'
           readOnly: true
+          nullable: true
         level_id:
           type: integer
           writeOnly: true
@@ -11744,6 +11748,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         default_place_id:
           type: integer
           writeOnly: true
@@ -12337,6 +12342,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
+          nullable: true
         place_id:
           type: integer
           writeOnly: true

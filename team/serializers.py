@@ -84,7 +84,7 @@ class TeamSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
-    level = LevelSerializer(read_only=True)
+    level = LevelSerializer(read_only=True, allow_null=True)
     level_id = serializers.PrimaryKeyRelatedField(
         source="level",
         queryset=Level.objects.all(),
@@ -109,7 +109,7 @@ class TeamSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
-    default_place = PlaceMinimalSerializer(read_only=True)
+    default_place = PlaceMinimalSerializer(read_only=True, allow_null=True)
     default_place_id = serializers.PrimaryKeyRelatedField(
         source="default_place",
         queryset=Place.objects.all(),
@@ -803,7 +803,7 @@ class TrainingSlotSerializer(serializers.ModelSerializer):
     weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
     """
 
-    place = PlaceMinimalSerializer(read_only=True)
+    place = PlaceMinimalSerializer(read_only=True, allow_null=True)
     place_id = serializers.PrimaryKeyRelatedField(
         source="place",
         queryset=Place.objects.all(),

@@ -50,7 +50,11 @@ class PublicEventView(APIView):
         event = (
             Event.objects.filter(public_token=token, is_public=True)
             .select_related("refer_program", "refer_program__team")
-            .prefetch_related("rounds__exercises__modality", "rounds__exercises__energysegment")
+            .prefetch_related(
+                "rounds",
+                "rounds__exercises__modality",
+                "rounds__exercises__energysegment",
+            )
             .first()
         )
         if event is None:

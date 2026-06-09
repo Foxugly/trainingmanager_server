@@ -110,6 +110,48 @@ def test_already_active_member_returns_400(coach_client, coach_team, athlete_mem
     assert "already" in str(response.json()).lower()
 
 
+def test_manager_can_add_member_from_team_they_manage(coach_client, coach_user, coach_team):
+    """A member active in another team the SAME coach manages can be attached."""
+    other_team = TeamFactory(owner=coach_user, is_active=True)
+    member = Member.objects.create(firstname="Own", lastname="Ed", email="owned@local.test")
+    TeamMembership.objects.create(team=other_team, member=member)
+
+    response = coach_client.post(_url(coach_team.pk), {"member": member.pk}, format="json")
+    assert response.status_code == 201, response.json()
+    assert TeamMembership.objects.filter(
+        team=coach_team, member=member, left_at__isnull=True
+    ).exists()
+
+
+def test_manager_cannot_add_stranger_attached_member(coach_client, coach_team):
+    """A member active in a team the caller does NOT manage -> 403 (PII grab)."""
+    stranger_owner = User.objects.create_user(
+        username="ms_stranger", email="ms_stranger@local.test", password="pass"
+    )
+    stranger_team = TeamFactory(owner=stranger_owner, is_active=True)
+    stranger_member = Member.objects.create(
+        firstname="Str", lastname="Anger", email="stranger@local.test"
+    )
+    TeamMembership.objects.create(team=stranger_team, member=stranger_member)
+
+    response = coach_client.post(
+        _url(coach_team.pk), {"member": stranger_member.pk}, format="json"
+    )
+    assert response.status_code == 403
+    assert response.json().get("code") == "not_authorized_member"
+    assert not TeamMembership.objects.filter(team=coach_team, member=stranger_member).exists()
+
+
+def test_manager_can_add_brand_new_unattached_member(coach_client, coach_team):
+    """A member with no active membership anywhere (invitation/join case) -> ok."""
+    new_member = Member.objects.create(firstname="Br", lastname="And", email="brand@local.test")
+    response = coach_client.post(_url(coach_team.pk), {"member": new_member.pk}, format="json")
+    assert response.status_code == 201, response.json()
+    assert TeamMembership.objects.filter(
+        team=coach_team, member=new_member, left_at__isnull=True
+    ).exists()
+
+
 # =====================================================================
 # LIST
 # =====================================================================

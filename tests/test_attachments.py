@@ -206,6 +206,23 @@ def test_complete_sets_ready_and_size(api_client, manager_user, event, mock_s3):
     mock_s3["head"].assert_called_once()
 
 
+def test_complete_oversized_real_object_rejected(
+    api_client, manager_user, event, mock_s3, settings
+):
+    """Size-cap bypass: the real S3 object is larger than the cap declared at
+    presign. complete must reject, delete the object, and NOT flip to ready."""
+    settings.ATTACHMENTS_MAX_BYTES = 1000
+    mock_s3["head"].return_value = {"ContentLength": 5000}
+    att = _make_attachment(event, manager_user)
+    api_client.force_authenticate(user=manager_user)
+    resp = api_client.post(_detail(att.pk, "complete/"))
+    assert resp.status_code == 400, resp.content
+    assert resp.json()["code"] == "file_too_large"
+    att.refresh_from_db()
+    assert att.status == "pending"  # not flipped to ready
+    mock_s3["delete"].assert_called_once()  # best-effort object cleanup attempted
+
+
 def test_complete_upload_not_found(api_client, manager_user, event, mock_s3):
     mock_s3["head"].return_value = None
     att = _make_attachment(event, manager_user)

@@ -149,7 +149,7 @@ class RsvpViewSet(viewsets.ViewSet):
         ),
         responses={200: RsvpSummarySerializer},
     )
-    def list(self, request, event_pk=None):
+    def summary(self, request, event_pk=None):
         event = self.get_event()
         team = _team_for_event(event)
         if team is None:

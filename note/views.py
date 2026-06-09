@@ -94,7 +94,7 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
         recipient under ``translation.override(recipient.language)``.
         """
         from notifications.models import NotificationType
-        from notifications.services import notify
+        from notifications.services import notify, notify_many
 
         actor = self.request.user
         member_name = member.get_fullname()
@@ -115,12 +115,11 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
         if team.notify_coaches_on_note:
             coaches = {team.owner}
             coaches.update(team.managers.all())
-            for coach in coaches:
-                notify(
-                    coach,
-                    NotificationType.NOTE_FOR_COACH,
-                    title=_("Note added on %(name)s") % {"name": member_name},
-                    body=_("A new note was added on %(name)s.") % {"name": member_name},
-                    url=url,
-                    actor=actor,
-                )
+            notify_many(
+                coaches,
+                NotificationType.NOTE_FOR_COACH,
+                title=_("Note added on %(name)s") % {"name": member_name},
+                body=_("A new note was added on %(name)s.") % {"name": member_name},
+                url=url,
+                actor=actor,
+            )

@@ -133,7 +133,7 @@ class EventSerializer(serializers.ModelSerializer):
     # request. Redacted alongside `rounds` for a restricted athlete.
     rounds_detail = serializers.SerializerMethodField()
     members = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-    place = PlaceMinimalSerializer(read_only=True)
+    place = PlaceMinimalSerializer(read_only=True, allow_null=True)
     place_id = serializers.PrimaryKeyRelatedField(
         source="place",
         queryset=Place.objects.all(),

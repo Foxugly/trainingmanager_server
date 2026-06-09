@@ -185,7 +185,27 @@ class AttachmentViewSet(viewsets.GenericViewSet):
                 {"code": "upload_not_found", "detail": _("Uploaded file not found in storage.")}
             )
 
-        attachment.size_bytes = int(head.get("ContentLength", attachment.size_bytes))
+        from django.conf import settings
+
+        real_size = int(head.get("ContentLength", attachment.size_bytes))
+        # Re-check the size cap against the REAL object: the presigned PUT does
+        # not constrain the uploaded length, so a client can ignore the size it
+        # declared at presign. Reject (best-effort delete the object first,
+        # mirroring destroy) instead of flipping to READY.
+        if real_size > settings.ATTACHMENTS_MAX_BYTES:
+            try:
+                s3.delete_object(attachment.s3_key)
+            except Exception:  # noqa: BLE001 - best-effort cleanup
+                logger.exception(
+                    "S3 delete failed for oversized attachment %s (key=%s)",
+                    attachment.pk,
+                    attachment.s3_key,
+                )
+            raise ValidationError(
+                {"code": "file_too_large", "detail": _("File exceeds the maximum allowed size.")}
+            )
+
+        attachment.size_bytes = real_size
         attachment.status = Attachment.READY
         attachment.save(update_fields=["size_bytes", "status"])
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_200_OK)

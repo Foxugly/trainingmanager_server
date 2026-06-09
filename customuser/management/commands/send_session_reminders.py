@@ -43,7 +43,7 @@ class Command(BaseCommand):
         from event.models import Event
         from member.models import Member
         from notifications.models import NotificationType
-        from notifications.services import notify
+        from notifications.services import notify_many
 
         dry_run = options["dry_run"]
         target_date = timezone.localdate() + datetime.timedelta(days=1)
@@ -76,41 +76,44 @@ class Command(BaseCommand):
             # De-dupe (user, event): distinct() above guards membership dupes,
             # but keep an explicit per-event seen set for safety.
             seen_user_ids: set[int] = set()
-            hour = event.hour_start.strftime("%H:%M") if event.hour_start else _("TBD")
-            location = event.location or _("TBD")
+            recipients = []
             for member in members:
                 user = member.user
                 if user.pk in seen_user_ids:
                     continue
                 seen_user_ids.add(user.pk)
+                recipients.append(user)
 
-                if dry_run:
+            hour = event.hour_start.strftime("%H:%M") if event.hour_start else _("TBD")
+            location = event.location or _("TBD")
+
+            if dry_run:
+                for user in recipients:
                     logger.info(
                         "[dry-run] would remind %s of event %s", user.pk, event.pk
                     )
-                    continue
+                continue
 
-                try:
-                    notify(
-                        user,
-                        NotificationType.SESSION_REMINDER,
-                        title=_("Session tomorrow"),
-                        body=_("%(name)s at %(hour)s — %(location)s")
-                        % {
-                            "name": event.name,
-                            "hour": hour,
-                            "location": location,
-                        },
-                        url=f"/events/{event.pk}",
-                        actor=None,
-                    )
-                    notified += 1
-                except Exception:  # pragma: no cover - defensive per recipient
-                    logger.exception(
-                        "Failed to send session reminder to user %s for event %s",
-                        user.pk,
-                        event.pk,
-                    )
+            try:
+                notify_many(
+                    recipients,
+                    NotificationType.SESSION_REMINDER,
+                    title=_("Session tomorrow"),
+                    body=_("%(name)s at %(hour)s — %(location)s")
+                    % {
+                        "name": event.name,
+                        "hour": hour,
+                        "location": location,
+                    },
+                    url=f"/events/{event.pk}",
+                    actor=None,
+                )
+                notified += len(recipients)
+            except Exception:  # pragma: no cover - defensive per event
+                logger.exception(
+                    "Failed to send session reminders for event %s",
+                    event.pk,
+                )
 
         if dry_run:
             logger.info("Session reminders dry-run complete for %s.", target_date)

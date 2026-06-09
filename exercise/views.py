@@ -1,3 +1,4 @@
+from django.db.models import Count
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -198,7 +199,8 @@ class ExerciseViewSet(viewsets.ModelViewSet):
         qs = Exercise.objects.select_related(
             "modality__sport",
             "energysegment__energysystem",
-        )
+            # Annotate the round-usage so the serializer avoids one COUNT per row.
+        ).annotate(_usage_count=Count("round", distinct=True))
         return scope_by_sport_language(qs, self.request.user, sport_field="modality__sport_id")
 
     @extend_schema(

@@ -5,16 +5,17 @@ One namespace, nested under events (mirrors roti/urls.py's nesting):
 - /api/v1/events/{event_pk}/rsvp/apply_to_attendance/  POST (managers pre-fill attendance)
 
 RSVP is a thin ViewSet (not a ModelViewSet): the collection URL itself
-carries GET (list -> summary) and PUT (update -> upsert own status), so the
-methods are mapped explicitly via as_view() rather than via a router's
-default list route (which only binds GET/POST).
+carries GET (summary incl. my_status) and PUT (update -> upsert own status),
+so the methods are mapped explicitly via as_view(). The GET handler is named
+``summary`` (not ``list``) so drf-spectacular emits a single-object response
+schema instead of array-wrapping it as a collection.
 """
 
 from django.urls import path
 
 from .views import RsvpViewSet
 
-rsvp_collection = RsvpViewSet.as_view({"get": "list", "put": "update"})
+rsvp_collection = RsvpViewSet.as_view({"get": "summary", "put": "update"})
 rsvp_apply_to_attendance = RsvpViewSet.as_view({"post": "apply_to_attendance"})
 
 urlpatterns = [

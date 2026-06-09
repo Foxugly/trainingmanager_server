@@ -42,7 +42,9 @@ class PublicRoundSerializer(serializers.Serializer):
     exercises = serializers.SerializerMethodField()
 
     def get_exercises(self, obj) -> list:
-        exercises = obj.exercises.all().order_by("order", "id")
+        # Sort the prefetched cache in Python so the prefetch is reused (an
+        # .order_by() here would issue a fresh query per round).
+        exercises = sorted(obj.exercises.all(), key=lambda e: (e.order or 0, e.id))
         return PublicExerciseSerializer(exercises, many=True, context=self.context).data
 
 
@@ -97,5 +99,6 @@ class EventPublicSerializer(serializers.Serializer):
         team = obj.team
         if team is None or not team.public_show_rounds:
             return []
-        rounds = obj.rounds.all().order_by("order", "id")
+        # Sort the prefetched cache in Python so the prefetch is reused.
+        rounds = sorted(obj.rounds.all(), key=lambda r: (r.order or 0, r.id))
         return PublicRoundSerializer(rounds, many=True, context=self.context).data

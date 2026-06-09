@@ -54,6 +54,54 @@ class MemberSerializer(serializers.ModelSerializer):
         """
         return [m.team_id for m in obj.memberships.all() if m.left_at is None]
 
+    def _requester_may_see_pii(self, instance) -> bool:
+        """True if the request user may read this member's email/phonenumber.
+
+        Allowed for a coach (owner/manager) of any team the member belongs to,
+        or when the member record IS the requester's own linked member.
+        Everyone else (mere athlete teammates) is treated as not entitled to
+        the PII even though ``get_queryset`` lets them see the row's non-PII
+        identity fields.
+
+        The user's managed-team-id set is resolved once per request (cached on
+        the serializer context) instead of a managers query per member when
+        serializing a list — mirrors EventSerializer._requester_is_manager.
+        """
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return False
+        # The member's own linked user always sees their own PII.
+        if instance.user_id is not None and instance.user_id == user.pk:
+            return True
+        managed = self.context.get("_managed_team_ids")
+        if managed is None:
+            from team.queries import managed_teams
+
+            managed = set(managed_teams(user).values_list("id", flat=True))
+            self.context["_managed_team_ids"] = managed
+        if not managed:
+            return False
+        member_team_ids = {m.team_id for m in instance.memberships.all()}
+        return bool(managed & member_team_ids)
+
+    def to_representation(self, instance):
+        """Serialize, then redact PII for non-manager, non-self requesters.
+
+        Security: an athlete-member of a member's team must never receive that
+        teammate's email/phonenumber. Non-PII identity fields
+        (id/firstname/lastname/fullname/teams) stay visible so athlete-facing
+        features that read member names keep working. Managers/owners and the
+        member's own linked user are never redacted.
+        """
+        data = super().to_representation(instance)
+        if not self._requester_may_see_pii(instance):
+            if "email" in data:
+                data["email"] = None
+            if "phonenumber" in data:
+                data["phonenumber"] = None
+        return data
+
     def validate_user_id(self, user):
         """Reject upfront if the chosen user already has a Member.
 

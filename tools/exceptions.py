@@ -11,6 +11,16 @@ class NotAManagerDenied(PermissionDenied):
     default_code = "not_a_manager"
 
 
+class NotAuthorizedMemberDenied(PermissionDenied):
+    """403 raised when a manager tries to attach a Member to their team that
+    they have no legitimate relationship to (the member belongs only to teams
+    the caller does not manage and already has an active membership elsewhere).
+    Frontend matches on `code == "not_authorized_member"`."""
+
+    default_detail = _("You may only add members you already manage, or brand-new members.")
+    default_code = "not_authorized_member"
+
+
 class NotAuthorizedEventDenied(PermissionDenied):
     """403 raised on event-scoped mutations (e.g. POST rounds-reorder/) when
     the caller does not manage the event's parent program team."""

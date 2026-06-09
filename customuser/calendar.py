@@ -59,11 +59,21 @@ def _user_team_ids(user):
     return team_ids
 
 
-def _is_coach(user, team):
-    """True if the user is the owner or a manager of the team."""
+def _coach_team_ids(user):
+    """IDs of every team the user coaches (owns or manages), resolved once.
+
+    Used to test coach status per event without a query per event (the feed
+    iterates many events but the user's managed/owned teams are fixed)."""
+    from team.queries import managed_teams
+
+    return set(managed_teams(user).values_list("id", flat=True))
+
+
+def _is_coach(team, coach_team_ids):
+    """True if ``team`` is one the user coaches, using the pre-resolved set."""
     if team is None:
         return False
-    return team.owner_id == user.id or team.managers.filter(pk=user.pk).exists()
+    return team.id in coach_team_ids
 
 
 def _events_for_user(user, now=None):
@@ -92,20 +102,20 @@ def _events_for_user(user, now=None):
     )
 
 
-def _goal_visible(user, event):
-    """Whether this user may see the event's goal.
+def _goal_visible(event, coach_team_ids):
+    """Whether the user may see the event's goal.
 
     Coaches (owner/manager of the event's team) always see it; athletes
     only when the per-aspect visibility resolves to True for them.
     """
     if not event.goal:
         return False
-    if _is_coach(user, event.team):
+    if _is_coach(event.team, coach_team_ids):
         return True
     return event.aspect_visible_to_athlete("goal")
 
 
-def _add_vevent(cal, user, event, dtstamp):
+def _add_vevent(cal, event, dtstamp, coach_team_ids):
     """Append one VEVENT for ``event`` to ``cal``."""
     team = event.team
     tz_name = getattr(team, "timezone", None) or "UTC"
@@ -147,7 +157,7 @@ def _add_vevent(cal, user, event, dtstamp):
     program = event.refer_program
     if program is not None and program.name:
         description_parts.append(program.name)
-    if _goal_visible(user, event):
+    if _goal_visible(event, coach_team_ids):
         description_parts.append(f"Goal: {strip_html(event.goal)}")
     if description_parts:
         vevent.add("description", "\n".join(description_parts))
@@ -170,8 +180,11 @@ def build_calendar_for_user(user, now=None):
     cal.add("x-wr-calname", CALENDAR_NAME)
 
     dtstamp = now or dj_timezone.now()
+    # Resolve the user's coached (owned/managed) team-id set ONCE so coach
+    # status per event is a set membership test, not a query per event.
+    coach_team_ids = _coach_team_ids(user)
     for event in _events_for_user(user, now=now):
-        _add_vevent(cal, user, event, dtstamp)
+        _add_vevent(cal, event, dtstamp, coach_team_ids)
 
     # icalendar emits RFC 5545-correct CRLF line endings + folding.
     return cal.to_ical()

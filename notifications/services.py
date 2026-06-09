@@ -106,6 +106,78 @@ def notify(recipient, type, title, body="", url="", *, actor=None):
     return created
 
 
+def notify_many(recipients, type, title, body="", url="", *, actor=None):
+    """Bulk variant of :func:`notify` for a set/iterable of recipients.
+
+    Behaviour-identical to calling ``notify()`` once per recipient, but it
+    resolves every recipient's channel preference with a SINGLE
+    ``NotificationPreference`` query (instead of one per recipient) and creates
+    the in-app rows with ``bulk_create``. Emails are still sent one-by-one
+    (each in the recipient's language), with the same swallow-on-error guard.
+
+    The actor is never notified of their own action; ``None`` recipients are
+    skipped. Returns the list of created ``Notification`` instances (in-app
+    rows only), matching the subset of recipients whose in-app channel is on.
+    """
+    # De-dupe while preserving order; drop None and the actor.
+    actor_pk = getattr(actor, "pk", None)
+    seen = set()
+    targets = []
+    for recipient in recipients:
+        if recipient is None:
+            continue
+        pk = recipient.pk
+        if pk in seen:
+            continue
+        if actor_pk is not None and pk == actor_pk:
+            continue
+        seen.add(pk)
+        targets.append(recipient)
+
+    if not targets:
+        return []
+
+    # One query for the whole batch: {user_id: (in_app, email)}. Absent rows
+    # fall back to the defaults, exactly like _resolve_channels.
+    prefs = {
+        p.user_id: (p.in_app, p.email)
+        for p in NotificationPreference.objects.filter(
+            user__in=targets, type=type
+        )
+    }
+
+    to_create = []
+    in_app_recipients = []
+    email_recipients = []
+    for recipient in targets:
+        in_app, email = prefs.get(recipient.pk, (DEFAULT_IN_APP, DEFAULT_EMAIL))
+        if in_app:
+            # Resolve the (possibly lazy) strings in the recipient's language,
+            # mirroring notify(): the stored row keeps a concrete string.
+            with translation.override(getattr(recipient, "language", None) or "en"):
+                to_create.append(
+                    Notification(
+                        recipient=recipient,
+                        type=type,
+                        title=str(title),
+                        body=str(body),
+                        url=url,
+                    )
+                )
+            in_app_recipients.append(recipient)
+        if email and getattr(recipient, "email", None):
+            email_recipients.append(recipient)
+
+    created = []
+    if to_create:
+        created = Notification.objects.bulk_create(to_create)
+
+    for recipient in email_recipients:
+        _send_email(recipient, title, body, url)
+
+    return created
+
+
 def _send_email(recipient, title, body, url):
     """Send the localized notification email. Logs and swallows any error so
     a mail failure never breaks the triggering request."""

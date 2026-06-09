@@ -220,7 +220,7 @@ class ProgramViewSet(viewsets.ModelViewSet):
         try:
             from member.models import Member
             from notifications.models import NotificationType
-            from notifications.services import notify
+            from notifications.services import notify_many
 
             actor = self.request.user
             members = (
@@ -233,16 +233,15 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 .distinct()
             )
             url = f"/programs/{program.id}"
-            for member in members:
-                notify(
-                    member.user,
-                    NotificationType.PLAN_GENERATED,
-                    title=_("New training plan scheduled"),
-                    body=_("%(n)s sessions added to %(name)s")
-                    % {"n": created_count, "name": program.name},
-                    url=url,
-                    actor=actor,
-                )
+            notify_many(
+                [member.user for member in members],
+                NotificationType.PLAN_GENERATED,
+                title=_("New training plan scheduled"),
+                body=_("%(n)s sessions added to %(name)s")
+                % {"n": created_count, "name": program.name},
+                url=url,
+                actor=actor,
+            )
         except Exception:  # pragma: no cover - defensive: never break generation
             import logging
 
@@ -283,13 +282,29 @@ class ProgramViewSet(viewsets.ModelViewSet):
             for s in program.team.training_slots.select_related("sport").all()
         }
 
+        # For add_only, pre-fetch the existing session dates in the window once
+        # (was one exists() query per candidate session).
+        existing_dates = set()
+        if strategy == "add_only":
+            existing_dates = set(
+                Event.objects.filter(
+                    refer_program=program,
+                    date__gte=date_start,
+                    date__lte=date_end,
+                ).values_list("date", flat=True)
+            )
+
         created_count = 0
         for ev_data in new_events_data:
             ev_date = _date.fromisoformat(ev_data["date"])
 
             if strategy == "add_only":
-                if Event.objects.filter(refer_program=program, date=ev_date).exists():
+                if ev_date in existing_dates:
                     continue
+                # Track within-batch dates so duplicate dates in one AI response
+                # are still skipped (matches the original per-row exists() which
+                # would have seen rows created earlier in this same loop).
+                existing_dates.add(ev_date)
 
             place = self._resolve_place(
                 program.team, ev_data.get("location"), place_cache

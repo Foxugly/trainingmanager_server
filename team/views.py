@@ -29,7 +29,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from tools.exceptions import TeamQuotaExceeded
+from tools.exceptions import NotAuthorizedMemberDenied, TeamQuotaExceeded
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 
 from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership, TrainingSlot
@@ -1381,6 +1381,23 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
                 {"member": _("This member is already in the team.")},
                 code="already_member",
             )
+
+        # Authorize the SOURCE of the member, not just the target team: the
+        # caller may only pull in a member they already legitimately manage
+        # (the member belongs to >=1 team in managed_teams), OR a brand-new
+        # member with no active membership anywhere (the invitation/join case).
+        # Without this, a manager could attach a stranger's Member (PII) by id.
+        manages_member = TeamMembership.objects.filter(
+            member=member,
+            left_at__isnull=True,
+            team__in=managed_teams(self.request.user),
+        ).exists()
+        has_any_active_membership = TeamMembership.objects.filter(
+            member=member, left_at__isnull=True
+        ).exists()
+        if not (manages_member or not has_any_active_membership):
+            raise NotAuthorizedMemberDenied()
+
         serializer.save(team=team)
 
     def perform_destroy(self, instance):
