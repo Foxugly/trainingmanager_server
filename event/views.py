@@ -160,9 +160,11 @@ class EventViewSet(viewsets.ModelViewSet):
                 response=inline_serializer(
                     name="GenerateTrainingResponse",
                     fields={
-                        "rounds_created": serializers.IntegerField(),
-                        "exercises_created": serializers.IntegerField(),
-                        "exercises_reused": serializers.IntegerField(),
+                        # Structured-only counts: absent on the freeform branch,
+                        # which returns just rationale/model/tokens_used.
+                        "rounds_created": serializers.IntegerField(required=False),
+                        "exercises_created": serializers.IntegerField(required=False),
+                        "exercises_reused": serializers.IntegerField(required=False),
                         "rationale": serializers.CharField(),
                         "model": serializers.CharField(),
                         "tokens_used": inline_serializer(
@@ -182,6 +184,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 description=(
                     "Conflict. `body.code` is one of: `event_has_rounds` "
                     "(event already has rounds — remove them before "
+                    "regenerating), `event_has_training` (freeform event "
+                    "already has free-text content — clear it before "
                     "regenerating) or `event_in_past` (the session date is in "
                     "the past — training can only be generated for a future or "
                     "unscheduled session)."
