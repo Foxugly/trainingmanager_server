@@ -167,6 +167,8 @@ class EventSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "goal",
+            "training_type",
+            "training_richtext",
             "location",
             "place",
             "place_id",
@@ -226,6 +228,12 @@ class EventSerializer(serializers.ModelSerializer):
         Same rationale as ``validate_goal`` — equipment is now rich text.
         Empty/None stays empty.
         """
+        if not value:
+            return value
+        return sanitize_html(value)
+
+    def validate_training_richtext(self, value):
+        """Sanitize the free-text (Quill) HTML training content on write."""
         if not value:
             return value
         return sanitize_html(value)
@@ -308,12 +316,29 @@ class EventSerializer(serializers.ModelSerializer):
             team = program.team if program is not None else None
             if team is not None:
                 validated_data["sport"] = team.default_sport
+        if "training_type" not in validated_data:
+            seed = Event(
+                refer_program=validated_data.get("refer_program"),
+                sport=validated_data.get("sport"),
+            ).resolve_default_training_type()
+            validated_data["training_type"] = seed
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         validated_data = self._sync_location(validated_data)
         validated_data = self._sync_equipment(validated_data)
-        return super().update(instance, validated_data)
+        new_type = validated_data.get("training_type", instance.training_type)
+        type_changed = new_type != instance.training_type
+        instance = super().update(instance, validated_data)
+        if type_changed:
+            from tools.choices import TrainingType
+
+            if new_type != TrainingType.STRUCTURED:
+                instance.rounds.clear()
+            if new_type != TrainingType.FREEFORM and instance.training_richtext:
+                instance.training_richtext = ""
+                instance.save(update_fields=["training_richtext"])
+        return instance
 
     def _requester_is_manager(self, instance):
         """True if the request user owns/manages the event's team.
