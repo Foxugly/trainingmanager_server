@@ -631,12 +631,6 @@ msgid "MM:SS format, e.g. 1:30."
 msgstr "Formato MM:SS, p. ej. 1:30."
 
 #: .\exercise\serializers.py:164
-#, fuzzy
-#| msgid ""
-#| "Optional. If provided on POST, the newly created Exercise is atomically "
-#| "attached to this Round. The request user must manage at least one team of "
-#| "at least one Event linked to this Round (library rounds with no events "
-#| "are accepted as-is). Ignored on PATCH/PUT."
 msgid ""
 "Optional. On POST, the newly created Exercise is atomically attached to this "
 "Round. On PATCH/PUT, if the Exercise is shared by several Rounds "
@@ -644,12 +638,7 @@ msgid ""
 "THIS Round and the shared original is left untouched. The request user must "
 "manage at least one team of an Event linked to this Round (library rounds "
 "with no events are accepted as-is)."
-msgstr ""
-"Opcional. Si se proporciona en un POST, el ejercicio recién creado se "
-"adjunta de forma atómica a este round. El usuario de la solicitud debe "
-"gestionar al menos un equipo de al menos un evento vinculado a este round "
-"(los rounds de biblioteca sin eventos se aceptan tal cual). Se ignora en "
-"PATCH/PUT."
+msgstr "Opcional. En un POST, el ejercicio recién creado se adjunta de forma atómica a este round. En un PATCH/PUT, si el ejercicio está compartido por varios rounds (usage_count > 1), se duplica: un clon con los cambios se coloca en ESTE round y el original compartido permanece intacto. El usuario de la solicitud debe gestionar al menos un equipo de un evento vinculado a este round (los rounds de biblioteca sin eventos se aceptan tal cual)."
 
 #: .\member\models.py:9
 msgid "Firstname"
@@ -933,10 +922,9 @@ msgid "New training plan scheduled"
 msgstr "Nuevo plan de entrenamiento programado"
 
 #: .\program\views.py:241
-#, fuzzy, python-format
-#| msgid "Note added on %(name)s"
+#, python-format
 msgid "%(n)s sessions added to %(name)s"
-msgstr "Nota añadida sobre %(name)s"
+msgstr "%(n)s sesiones añadidas a %(name)s"
 
 #: .\roti\views.py:40
 msgid "You don't have permission to access this event's ROTI."
@@ -1245,10 +1233,8 @@ msgid "Slot start time (local team time)."
 msgstr "Hora de inicio del intervalo (hora local del equipo)."
 
 #: .\team\models.py:413
-#, fuzzy
-#| msgid "date_end must be after date_start."
 msgid "Slot end time; must be after hour_start."
-msgstr "date_end debe ser posterior a date_start."
+msgstr "Hora de fin del intervalo; debe ser posterior a hour_start."
 
 #: .\team\permissions.py:15
 msgid "Only the team owner can delete the team."
@@ -1303,18 +1289,12 @@ msgid "weekday must be between 0 (Monday) and 6 (Sunday)."
 msgstr "weekday debe estar entre 0 (lunes) y 6 (domingo)."
 
 #: .\team\serializers.py:533
-#, fuzzy
-#| msgid "date_end must be after date_start."
 msgid "hour_end must be after hour_start."
-msgstr "date_end debe ser posterior a date_start."
+msgstr "hour_end debe ser posterior a hour_start."
 
 #: .\team\views.py:329
-#, fuzzy
-#| msgid "Only the team owner or managers can view team statistics."
 msgid "Only the team owner or managers can edit the training template."
-msgstr ""
-"Solo el propietario o los managers del equipo pueden ver las estadísticas "
-"del equipo."
+msgstr "Solo el propietario del equipo o los managers pueden editar la plantilla de entrenamiento."
 
 #: .\team\views.py:375
 msgid "Only the team owner or managers can view team statistics."

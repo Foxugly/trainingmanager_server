@@ -205,15 +205,19 @@ django-admin compilemessages
 - Génération IA plan + entraînement (Anthropic Claude)
 - Throttling endpoints IA (UserRateThrottle scopés)
 - Pre-commit hooks (ruff + black)
-- i18n niveau 1 (Team.language, User.language) et niveau 2 (codes d'erreur structurés, FR traduit)
+- i18n niveau 1 (Team.language, User.language) et niveau 2 (codes d'erreur structurés) — catalogues fr / nl / it / es complets (0 fuzzy, 0 untranslated)
+- Emails localisés sur la langue du destinataire (gettext ; cf. `test_email_i18n`)
 - ENUM_NAME_OVERRIDES sur drf-spectacular pour codegen TypeScript propre
 - Sentry monitoring (backend + frontend)
 - CI/CD GitHub Actions (OIDC → AWS SSM, auto-deploy sur push `main` ; matrix de tests sqlite + postgres)
+- E2E Playwright (frontend `trainingmanager_frontend`) sur le chemin critique login → team → event → RSVP, CI cross-repo
 - Secrets via AWS SSM Parameter Store → `/run/<app>/.env` (tmpfs), jamais sur disque
 - Cloudflare Turnstile (register / forgot-password)
+- Pièces jointes (attachments) S3 — endpoints + upload pré-signé ; infra provisionnée (bucket `foxugly-tm-attachments`), live en prod
+- Types d'entraînement par séance (`event.training_type` : structured / freeform) — Approach 1 (champ + richtext) ; cf. `docs/event-training-types-design.md`
 
 ### À venir
 
-- Tests permissions affinés
-- Translations nl, it, es à compléter
-- Multi-langue templates email
+- Templates email HTML multi-langue (la localisation gettext est déjà en place ; il reste le templating/mise en forme)
+- Tests permissions — affinements incrémentaux (la couverture scoping/permissions est déjà large)
+- `event-training-types` Approach 2 — modèle `Training` dédié (déféré par design, branche séparée)
