@@ -67,6 +67,31 @@ jobs:
           DB_PORT: "5432"
         run: pytest -q
 
+      - name: OpenAPI schema drift guard
+        # The committed openapi-schema.yaml is the frontend's client contract.
+        # Fail if the code's generated schema drifts from it (must be regenerated
+        # in the same commit). Runs once (sqlite leg) — no DB needed.
+        if: matrix.db == 'sqlite'
+        env:
+          DEBUG: "True"
+          SECRET_KEY: ci-secret-key-not-used-in-prod
+          ALLOWED_HOSTS: "*"
+          STATE: TEST
+          WEBSITE: localhost
+          FRONTEND_BASE_URL: http://localhost:4200
+          GRAPH_TENANT_ID: ci
+          GRAPH_CLIENT_ID: ci
+          GRAPH_CLIENT_SECRET: ci
+          GRAPH_SENDER: ci@example.com
+        run: |
+          python manage.py spectacular --file /tmp/schema.yaml
+          if ! diff <(tr -d '\r' < openapi-schema.yaml) <(tr -d '\r' < /tmp/schema.yaml) > /tmp/schema.diff; then
+            echo "::error::openapi-schema.yaml is out of sync. Run 'python manage.py spectacular --file openapi-schema.yaml' and commit it."
+            head -60 /tmp/schema.diff
+            exit 1
+          fi
+          echo "OpenAPI schema in sync."
+
   deploy:
     needs: test
     runs-on: ubuntu-latest

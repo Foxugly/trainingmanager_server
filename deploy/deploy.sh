@@ -67,4 +67,30 @@ chmod -R g-w,o-rwx "$APP_DIR"
 echo ">>> Restarting service..."
 sudo /bin/systemctl restart tm-gunicorn
 
+echo ">>> Health check..."
+# Verify the freshly-restarted app actually serves before declaring success, so
+# a broken deploy goes RED (operator alerted) instead of green-but-broken.
+# We do NOT auto-roll-back: this deploy may have applied forward migrations, and
+# reverting code under new migrations is unsafe — rollback is a manual decision
+# (git reset to the prior SHA, review migrations, restart).
+BIND=$(grep -oE '127\.0\.0\.1:[0-9]+' deploy/gunicorn.conf.py | head -1)
+BIND=${BIND:-127.0.0.1:8005}
+# The app enforces ALLOWED_HOSTS and redirects http->https; send a permitted
+# Host and the proxy's forwarded-proto so the loopback probe reaches /health.
+HEALTH_HOST=$(printf '%s' "${ALLOWED_HOSTS:-localhost}" | cut -d, -f1)
+health_code=000
+for _ in $(seq 1 15); do
+    health_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
+        -H "Host: ${HEALTH_HOST}" -H "X-Forwarded-Proto: https" \
+        "http://${BIND}/api/v1/health/" 2>/dev/null || echo 000)
+    [ "$health_code" = "200" ] && break
+    sleep 2
+done
+if [ "$health_code" != "200" ]; then
+    echo "ERROR: post-restart health check FAILED (last HTTP ${health_code} on http://${BIND}/api/v1/health/)." >&2
+    echo "The new code is live but unhealthy — investigate and, if needed, roll back manually." >&2
+    exit 1
+fi
+echo ">>> Health OK (HTTP 200)."
+
 echo ">>> Deploy complete."
