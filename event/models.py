@@ -189,6 +189,22 @@ class Event(models.Model):
         program = self.refer_program
         return program.team if program is not None else None
 
+    def resolve_default_training_type(self):
+        """Cascade for the *initial* training type of this event:
+        TeamSport override (team+sport) ?? Sport default ?? STRUCTURED.
+        Only seeds `training_type` at creation; the event owns its type after."""
+        sport = self.sport
+        team = self.team
+        if sport is not None and team is not None:
+            from team.models import TeamSport
+
+            ts = TeamSport.objects.filter(team=team, sport=sport).first()
+            if ts is not None and ts.training_type:
+                return ts.training_type
+        if sport is not None and sport.default_training_type:
+            return sport.default_training_type
+        return TrainingType.STRUCTURED
+
     def _team_tzinfo(self):
         """ZoneInfo for the event's team timezone, falling back to UTC.
 
