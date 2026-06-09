@@ -9,7 +9,15 @@ class SportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sport
-        fields = ["id", "name", "slug", "is_active", "energy_systems", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "is_active",
+            "energy_systems",
+            "default_training_type",
+            "created_at",
+        ]
         read_only_fields = fields
 
 
@@ -29,6 +37,7 @@ class SportAdminSerializer(serializers.ModelSerializer):
             "slug",
             "is_active",
             "energy_systems",
+            "default_training_type",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

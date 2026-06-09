@@ -123,3 +123,16 @@ def test_switch_to_structured_clears_richtext(auth_client_trainer, trainer_user,
     assert resp.status_code == 200, resp.json()
     event.refresh_from_db()
     assert event.training_richtext == ""
+
+
+def test_sport_admin_can_set_default_training_type(api_client):
+    from tests.factories import UserFactory, SportFactory
+    staff = UserFactory(is_staff=True)
+    api_client.force_authenticate(user=staff)
+    sport = SportFactory()
+    resp = api_client.patch(
+        f"/api/v1/sports/{sport.pk}/", {"default_training_type": "freeform"}, format="json"
+    )
+    assert resp.status_code == 200, resp.json()
+    sport.refresh_from_db()
+    assert sport.default_training_type == "freeform"
