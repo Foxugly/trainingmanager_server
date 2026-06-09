@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from event.models import VisibilityMode
+from tools.choices import TrainingType
 
 
 def generate_invitation_token():
@@ -503,6 +504,17 @@ class TeamSport(models.Model):
     )
     is_default = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
+    training_type = models.CharField(
+        max_length=20,
+        choices=TrainingType.choices,
+        null=True,
+        blank=True,
+        default=None,
+        help_text=_(
+            "Team override of the sport's default training type. "
+            "Null = inherit Sport.default_training_type."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
