@@ -224,3 +224,23 @@ def test_freeform_richtext_redacted_for_non_manager_when_vis_never(api_client, t
     resp = api_client.get(f"/api/v1/events/{event.pk}/")
     assert resp.status_code == 200
     assert resp.json().get("training_richtext") in ("", None)
+
+
+def test_duplicate_freeform_event_preserves_content(auth_client_trainer, trainer_user, trainer_sport):
+    from program.models import Program
+    from tests.factories import EventFactory
+    from datetime import date, timedelta
+    team = trainer_user.owned_teams.first()
+    program = Program.objects.create(name="P", team=team)
+    event = EventFactory(refer_program=program, sport=trainer_sport,
+                         training_type=TrainingType.FREEFORM, training_richtext="<p>keep me</p>")
+    resp = auth_client_trainer.post(
+        f"/api/v1/events/{event.pk}/duplicate/",
+        {"date": str(date.today() + timedelta(days=7))}, format="json",
+    )
+    assert resp.status_code in (200, 201), resp.json()
+    from event.models import Event
+    # the newest other event for this program is the copy
+    copy = Event.objects.filter(refer_program=program).exclude(pk=event.pk).latest("id")
+    assert copy.training_type == "freeform"
+    assert "keep me" in copy.training_richtext

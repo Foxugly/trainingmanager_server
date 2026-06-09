@@ -43,6 +43,8 @@ _EVENT_COPY_FIELDS = (
     "vis_distance",
     "vis_goal",
     "vis_rounds",
+    "training_type",
+    "training_richtext",
     "refer_program",
     "generated_by_ai",
     "ai_prompt",
