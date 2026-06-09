@@ -304,6 +304,11 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API pour la gestion d entrainements",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Split request vs response schemas: request bodies (create/update/patch) get
+    # their own *Request components WITHOUT read-only fields, so the typed client's
+    # write payloads no longer need `as unknown as <Model>` casts to satisfy
+    # readonly-required fields.
+    "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {
         "JoinRequestStatusEnum": "team.models.TeamJoinRequest.STATUS_CHOICES",
         "InvitationStatusEnum": "team.models.TeamInvitation.STATUS_CHOICES",

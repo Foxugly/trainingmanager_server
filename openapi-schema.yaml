@@ -14,13 +14,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AIPingRequest'
+              $ref: '#/components/schemas/AIPingRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AIPingRequest'
+              $ref: '#/components/schemas/AIPingRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AIPingRequest'
+              $ref: '#/components/schemas/AIPingRequestRequest'
       security:
       - jwtAuth: []
       responses:
@@ -197,13 +197,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PresignUploadRequest'
+              $ref: '#/components/schemas/PresignUploadRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PresignUploadRequest'
+              $ref: '#/components/schemas/PresignUploadRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PresignUploadRequest'
+              $ref: '#/components/schemas/PresignUploadRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -294,13 +294,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -370,13 +370,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AttendanceStatusAdmin'
+              $ref: '#/components/schemas/AttendanceStatusAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -413,13 +413,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedAttendanceStatusAdmin'
+              $ref: '#/components/schemas/PatchedAttendanceStatusAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedAttendanceStatusAdmin'
+              $ref: '#/components/schemas/PatchedAttendanceStatusAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedAttendanceStatusAdmin'
+              $ref: '#/components/schemas/PatchedAttendanceStatusAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -525,13 +525,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountDelete'
+              $ref: '#/components/schemas/AccountDeleteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AccountDelete'
+              $ref: '#/components/schemas/AccountDeleteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AccountDelete'
+              $ref: '#/components/schemas/AccountDeleteRequest'
         required: true
       security:
       - jwtAuth: []
@@ -558,13 +558,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailConfirm'
+              $ref: '#/components/schemas/EmailConfirmRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EmailConfirm'
+              $ref: '#/components/schemas/EmailConfirmRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EmailConfirm'
+              $ref: '#/components/schemas/EmailConfirmRequest'
         required: true
       security:
       - {}
@@ -592,13 +592,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailResend'
+              $ref: '#/components/schemas/EmailResendRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EmailResend'
+              $ref: '#/components/schemas/EmailResendRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EmailResend'
+              $ref: '#/components/schemas/EmailResendRequest'
         required: true
       security:
       - {}
@@ -631,13 +631,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Logout'
+              $ref: '#/components/schemas/LogoutRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Logout'
+              $ref: '#/components/schemas/LogoutRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Logout'
+              $ref: '#/components/schemas/LogoutRequest'
         required: true
       security:
       - jwtAuth: []
@@ -670,13 +670,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+              $ref: '#/components/schemas/MagicLinkExchangeRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+              $ref: '#/components/schemas/MagicLinkExchangeRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/MagicLinkExchangeRequest'
+              $ref: '#/components/schemas/MagicLinkExchangeRequestRequest'
         required: true
       security:
       - {}
@@ -712,13 +712,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MagicLinkRequest'
+              $ref: '#/components/schemas/MagicLinkRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/MagicLinkRequest'
+              $ref: '#/components/schemas/MagicLinkRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/MagicLinkRequest'
+              $ref: '#/components/schemas/MagicLinkRequestRequest'
         required: true
       security:
       - {}
@@ -755,13 +755,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PasswordChange'
+              $ref: '#/components/schemas/PasswordChangeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PasswordChange'
+              $ref: '#/components/schemas/PasswordChangeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PasswordChange'
+              $ref: '#/components/schemas/PasswordChangeRequest'
         required: true
       security:
       - jwtAuth: []
@@ -796,13 +796,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
         required: true
       security:
       - {}
@@ -835,13 +835,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PasswordResetConfirm'
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
         required: true
       security:
       - {}
@@ -873,13 +873,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Register'
+              $ref: '#/components/schemas/RegisterRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Register'
+              $ref: '#/components/schemas/RegisterRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Register'
+              $ref: '#/components/schemas/RegisterRequest'
         required: true
       security:
       - {}
@@ -911,13 +911,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VerifiedTokenObtainPair'
+              $ref: '#/components/schemas/VerifiedTokenObtainPairRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/VerifiedTokenObtainPair'
+              $ref: '#/components/schemas/VerifiedTokenObtainPairRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/VerifiedTokenObtainPair'
+              $ref: '#/components/schemas/VerifiedTokenObtainPairRequest'
         required: true
       responses:
         '200':
@@ -946,13 +946,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenRefresh'
+              $ref: '#/components/schemas/TokenRefreshRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TokenRefresh'
+              $ref: '#/components/schemas/TokenRefreshRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TokenRefresh'
+              $ref: '#/components/schemas/TokenRefreshRequest'
         required: true
       responses:
         '200':
@@ -1071,13 +1071,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1139,13 +1139,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EnergySegmentAdmin'
+              $ref: '#/components/schemas/EnergySegmentAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1178,13 +1178,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySegmentAdmin'
+              $ref: '#/components/schemas/PatchedEnergySegmentAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySegmentAdmin'
+              $ref: '#/components/schemas/PatchedEnergySegmentAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySegmentAdmin'
+              $ref: '#/components/schemas/PatchedEnergySegmentAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1277,13 +1277,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1344,13 +1344,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EnergySystemAdmin'
+              $ref: '#/components/schemas/EnergySystemAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1382,13 +1382,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySystemAdmin'
+              $ref: '#/components/schemas/PatchedEnergySystemAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySystemAdmin'
+              $ref: '#/components/schemas/PatchedEnergySystemAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedEnergySystemAdmin'
+              $ref: '#/components/schemas/PatchedEnergySystemAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1568,13 +1568,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1649,13 +1649,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1721,13 +1721,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Attendance'
+              $ref: '#/components/schemas/AttendanceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1762,13 +1762,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedAttendance'
+              $ref: '#/components/schemas/PatchedAttendanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedAttendance'
+              $ref: '#/components/schemas/PatchedAttendanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedAttendance'
+              $ref: '#/components/schemas/PatchedAttendanceRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1824,13 +1824,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AttendanceBulk'
+              $ref: '#/components/schemas/AttendanceBulkRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/AttendanceBulk'
+              $ref: '#/components/schemas/AttendanceBulkRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/AttendanceBulk'
+              $ref: '#/components/schemas/AttendanceBulkRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1890,13 +1890,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RotiUpsert'
+              $ref: '#/components/schemas/RotiUpsertRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/RotiUpsert'
+              $ref: '#/components/schemas/RotiUpsertRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/RotiUpsert'
+              $ref: '#/components/schemas/RotiUpsertRequest'
         required: true
       security:
       - jwtAuth: []
@@ -1978,13 +1978,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RsvpUpsert'
+              $ref: '#/components/schemas/RsvpUpsertRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/RsvpUpsert'
+              $ref: '#/components/schemas/RsvpUpsertRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/RsvpUpsert'
+              $ref: '#/components/schemas/RsvpUpsertRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2065,13 +2065,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/EventRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2098,13 +2098,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedEvent'
+              $ref: '#/components/schemas/PatchedEventRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedEvent'
+              $ref: '#/components/schemas/PatchedEventRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedEvent'
+              $ref: '#/components/schemas/PatchedEventRequest'
       security:
       - jwtAuth: []
       responses:
@@ -2154,13 +2154,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DuplicateEventRequest'
+              $ref: '#/components/schemas/DuplicateEventRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DuplicateEventRequest'
+              $ref: '#/components/schemas/DuplicateEventRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DuplicateEventRequest'
+              $ref: '#/components/schemas/DuplicateEventRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2196,13 +2196,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenerateTrainingRequest'
+              $ref: '#/components/schemas/GenerateTrainingRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GenerateTrainingRequest'
+              $ref: '#/components/schemas/GenerateTrainingRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GenerateTrainingRequest'
+              $ref: '#/components/schemas/GenerateTrainingRequestRequest'
       security:
       - jwtAuth: []
       responses:
@@ -2246,13 +2246,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReorderRoundsRequest'
+              $ref: '#/components/schemas/ReorderRoundsRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ReorderRoundsRequest'
+              $ref: '#/components/schemas/ReorderRoundsRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ReorderRoundsRequest'
+              $ref: '#/components/schemas/ReorderRoundsRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2285,13 +2285,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EventShareRequest'
+              $ref: '#/components/schemas/EventShareRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EventShareRequest'
+              $ref: '#/components/schemas/EventShareRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EventShareRequest'
+              $ref: '#/components/schemas/EventShareRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2381,13 +2381,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2436,13 +2436,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Exercise'
+              $ref: '#/components/schemas/ExerciseRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2469,13 +2469,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedExercise'
+              $ref: '#/components/schemas/PatchedExerciseRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedExercise'
+              $ref: '#/components/schemas/PatchedExerciseRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedExercise'
+              $ref: '#/components/schemas/PatchedExerciseRequest'
       security:
       - jwtAuth: []
       responses:
@@ -2617,13 +2617,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateInvitation'
+              $ref: '#/components/schemas/CreateInvitationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CreateInvitation'
+              $ref: '#/components/schemas/CreateInvitationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CreateInvitation'
+              $ref: '#/components/schemas/CreateInvitationRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2719,13 +2719,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CompleteInvitation'
+              $ref: '#/components/schemas/CompleteInvitationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CompleteInvitation'
+              $ref: '#/components/schemas/CompleteInvitationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CompleteInvitation'
+              $ref: '#/components/schemas/CompleteInvitationRequest'
         required: true
       security:
       - {}
@@ -2760,13 +2760,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequestMagicActionPost'
+              $ref: '#/components/schemas/TeamJoinRequestMagicActionPostRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequestMagicActionPost'
+              $ref: '#/components/schemas/TeamJoinRequestMagicActionPostRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequestMagicActionPost'
+              $ref: '#/components/schemas/TeamJoinRequestMagicActionPostRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2902,13 +2902,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateJoinRequest'
+              $ref: '#/components/schemas/CreateJoinRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CreateJoinRequest'
+              $ref: '#/components/schemas/CreateJoinRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CreateJoinRequest'
+              $ref: '#/components/schemas/CreateJoinRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2957,13 +2957,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequest'
+              $ref: '#/components/schemas/TeamJoinRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequest'
+              $ref: '#/components/schemas/TeamJoinRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TeamJoinRequest'
+              $ref: '#/components/schemas/TeamJoinRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -2990,13 +2990,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedTeamJoinRequest'
+              $ref: '#/components/schemas/PatchedTeamJoinRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedTeamJoinRequest'
+              $ref: '#/components/schemas/PatchedTeamJoinRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedTeamJoinRequest'
+              $ref: '#/components/schemas/PatchedTeamJoinRequestRequest'
       security:
       - jwtAuth: []
       responses:
@@ -3086,13 +3086,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3159,13 +3159,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LevelAdmin'
+              $ref: '#/components/schemas/LevelAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3202,13 +3202,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedLevelAdmin'
+              $ref: '#/components/schemas/PatchedLevelAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedLevelAdmin'
+              $ref: '#/components/schemas/PatchedLevelAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedLevelAdmin'
+              $ref: '#/components/schemas/PatchedLevelAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -3276,13 +3276,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedMe'
+              $ref: '#/components/schemas/PatchedMeRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedMe'
+              $ref: '#/components/schemas/PatchedMeRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedMe'
+              $ref: '#/components/schemas/PatchedMeRequest'
       security:
       - jwtAuth: []
       responses:
@@ -3399,13 +3399,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3454,13 +3454,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Member'
+              $ref: '#/components/schemas/MemberRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3487,13 +3487,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedMember'
+              $ref: '#/components/schemas/PatchedMemberRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedMember'
+              $ref: '#/components/schemas/PatchedMemberRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedMember'
+              $ref: '#/components/schemas/PatchedMemberRequest'
       security:
       - jwtAuth: []
       responses:
@@ -3669,13 +3669,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+              $ref: '#/components/schemas/NotificationPreferenceUpdateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+              $ref: '#/components/schemas/NotificationPreferenceUpdateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+              $ref: '#/components/schemas/NotificationPreferenceUpdateRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3806,13 +3806,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3879,13 +3879,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Performance'
+              $ref: '#/components/schemas/PerformanceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -3921,13 +3921,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedPerformance'
+              $ref: '#/components/schemas/PatchedPerformanceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedPerformance'
+              $ref: '#/components/schemas/PatchedPerformanceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedPerformance'
+              $ref: '#/components/schemas/PatchedPerformanceRequest'
       security:
       - jwtAuth: []
       responses:
@@ -4028,13 +4028,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4095,13 +4095,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Place'
+              $ref: '#/components/schemas/PlaceRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4134,13 +4134,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedPlace'
+              $ref: '#/components/schemas/PatchedPlaceRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedPlace'
+              $ref: '#/components/schemas/PatchedPlaceRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedPlace'
+              $ref: '#/components/schemas/PatchedPlaceRequest'
       security:
       - jwtAuth: []
       responses:
@@ -4258,13 +4258,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4337,13 +4337,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Program'
+              $ref: '#/components/schemas/ProgramRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4382,13 +4382,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedProgram'
+              $ref: '#/components/schemas/PatchedProgramRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedProgram'
+              $ref: '#/components/schemas/PatchedProgramRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedProgram'
+              $ref: '#/components/schemas/PatchedProgramRequest'
       security:
       - jwtAuth: []
       responses:
@@ -4433,13 +4433,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GeneratePlanRequest'
+              $ref: '#/components/schemas/GeneratePlanRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/GeneratePlanRequest'
+              $ref: '#/components/schemas/GeneratePlanRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/GeneratePlanRequest'
+              $ref: '#/components/schemas/GeneratePlanRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4553,13 +4553,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4608,13 +4608,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Round'
+              $ref: '#/components/schemas/RoundRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4641,13 +4641,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedRound'
+              $ref: '#/components/schemas/PatchedRoundRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedRound'
+              $ref: '#/components/schemas/PatchedRoundRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedRound'
+              $ref: '#/components/schemas/PatchedRoundRequest'
       security:
       - jwtAuth: []
       responses:
@@ -4714,13 +4714,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CloneExerciseRequest'
+              $ref: '#/components/schemas/CloneExerciseRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/CloneExerciseRequest'
+              $ref: '#/components/schemas/CloneExerciseRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CloneExerciseRequest'
+              $ref: '#/components/schemas/CloneExerciseRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4755,13 +4755,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReorderExercisesRequest'
+              $ref: '#/components/schemas/ReorderExercisesRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ReorderExercisesRequest'
+              $ref: '#/components/schemas/ReorderExercisesRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ReorderExercisesRequest'
+              $ref: '#/components/schemas/ReorderExercisesRequestRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4835,13 +4835,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4908,13 +4908,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SportAdmin'
+              $ref: '#/components/schemas/SportAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -4951,13 +4951,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedSportAdmin'
+              $ref: '#/components/schemas/PatchedSportAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedSportAdmin'
+              $ref: '#/components/schemas/PatchedSportAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedSportAdmin'
+              $ref: '#/components/schemas/PatchedSportAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -5065,13 +5065,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5143,13 +5143,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ModalityAdmin'
+              $ref: '#/components/schemas/ModalityAdminRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5187,13 +5187,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedModalityAdmin'
+              $ref: '#/components/schemas/PatchedModalityAdminRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedModalityAdmin'
+              $ref: '#/components/schemas/PatchedModalityAdminRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedModalityAdmin'
+              $ref: '#/components/schemas/PatchedModalityAdminRequest'
       security:
       - jwtAuth: []
       responses:
@@ -5301,13 +5301,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5358,13 +5358,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Team'
+              $ref: '#/components/schemas/TeamRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5392,13 +5392,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedTeam'
+              $ref: '#/components/schemas/PatchedTeamRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedTeam'
+              $ref: '#/components/schemas/PatchedTeamRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedTeam'
+              $ref: '#/components/schemas/PatchedTeamRequest'
       security:
       - jwtAuth: []
       responses:
@@ -5737,13 +5737,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5830,13 +5830,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Note'
+              $ref: '#/components/schemas/NoteRequest'
         required: true
       security:
       - jwtAuth: []
@@ -5882,13 +5882,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedNote'
+              $ref: '#/components/schemas/PatchedNoteRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedNote'
+              $ref: '#/components/schemas/PatchedNoteRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedNote'
+              $ref: '#/components/schemas/PatchedNoteRequest'
       security:
       - jwtAuth: []
       responses:
@@ -6014,13 +6014,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TeamMembership'
+              $ref: '#/components/schemas/TeamMembershipRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TeamMembership'
+              $ref: '#/components/schemas/TeamMembershipRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TeamMembership'
+              $ref: '#/components/schemas/TeamMembershipRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6184,13 +6184,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Topic'
+              $ref: '#/components/schemas/TopicRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Topic'
+              $ref: '#/components/schemas/TopicRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Topic'
+              $ref: '#/components/schemas/TopicRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6367,13 +6367,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6454,13 +6454,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TopicMessage'
+              $ref: '#/components/schemas/TopicMessageRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6503,13 +6503,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedTopicMessage'
+              $ref: '#/components/schemas/PatchedTopicMessageRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedTopicMessage'
+              $ref: '#/components/schemas/PatchedTopicMessageRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedTopicMessage'
+              $ref: '#/components/schemas/PatchedTopicMessageRequest'
       security:
       - jwtAuth: []
       responses:
@@ -6620,13 +6620,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6702,13 +6702,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/TrainingSlot'
+              $ref: '#/components/schemas/TrainingSlotRequest'
         required: true
       security:
       - jwtAuth: []
@@ -6749,13 +6749,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedTrainingSlot'
+              $ref: '#/components/schemas/PatchedTrainingSlotRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedTrainingSlot'
+              $ref: '#/components/schemas/PatchedTrainingSlotRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedTrainingSlot'
+              $ref: '#/components/schemas/PatchedTrainingSlotRequest'
       security:
       - jwtAuth: []
       responses:
@@ -6798,11 +6798,12 @@ paths:
           description: No response body
 components:
   schemas:
-    AIPingRequest:
+    AIPingRequestRequest:
       type: object
       properties:
         prompt:
           type: string
+          minLength: 1
           description: Prompt to send to Claude. Defaults to a hello-world prompt.
     AIPingResponse:
       type: object
@@ -6910,7 +6911,7 @@ components:
       - output_tokens
       - total_tokens
       - username
-    AccountDelete:
+    AccountDeleteRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/account/delete/ (authenticated).
@@ -6923,6 +6924,7 @@ components:
         current_password:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - current_password
     ActionEnum:
@@ -7050,26 +7052,37 @@ components:
       - status
       - status_code
       - updated_at
-    AttendanceBulk:
-      type: object
-      properties:
-        attendances:
-          type: array
-          items:
-            $ref: '#/components/schemas/AttendanceBulkItem'
-      required:
-      - attendances
-    AttendanceBulkItem:
+    AttendanceBulkItemRequest:
       type: object
       properties:
         member_id:
           type: integer
         status_code:
           type: string
+          minLength: 1
           maxLength: 30
       required:
       - member_id
       - status_code
+    AttendanceBulkRequest:
+      type: object
+      properties:
+        attendances:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceBulkItemRequest'
+      required:
+      - attendances
+    AttendanceRequest:
+      type: object
+      properties:
+        member:
+          type: integer
+        status:
+          type: integer
+      required:
+      - member
+      - status
     AttendanceStatus:
       type: object
       description: 'Public flavor: ''label'' is auto-localized by modeltranslation.'
@@ -7167,6 +7180,62 @@ components:
       required:
       - code
       - id
+    AttendanceStatusAdminRequest:
+      type: object
+      description: 'Admin flavor: exposes per-language label variants.'
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Snake_case identifier (e.g. 'present', 'absent', 'excused')
+          maxLength: 30
+        label_fr:
+          type: string
+          nullable: true
+          title: Label [fr]
+          description: Display label, translated via modeltranslation.
+          maxLength: 100
+        label_nl:
+          type: string
+          nullable: true
+          title: Label [nl]
+          description: Display label, translated via modeltranslation.
+          maxLength: 100
+        label_en:
+          type: string
+          nullable: true
+          title: Label [en]
+          description: Display label, translated via modeltranslation.
+          maxLength: 100
+        label_it:
+          type: string
+          nullable: true
+          title: Label [it]
+          description: Display label, translated via modeltranslation.
+          maxLength: 100
+        label_es:
+          type: string
+          nullable: true
+          title: Label [es]
+          description: Display label, translated via modeltranslation.
+          maxLength: 100
+        is_default:
+          type: boolean
+          description: If True, pre-selected as default in the frontend UI.
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Display order for buttons in the frontend.
+        color:
+          type: string
+          description: Hex color (#xxxxxx) for the frontend, optional.
+          maxLength: 20
+        is_active:
+          type: boolean
+      required:
+      - code
     AudienceEnum:
       enum:
       - team
@@ -7255,18 +7324,19 @@ components:
           description: The new calendar token. The previous .ics URL is now invalid.
       required:
       - calendar_token
-    CloneExerciseRequest:
+    CloneExerciseRequestRequest:
       type: object
       properties:
         exercise_id:
           type: integer
       required:
       - exercise_id
-    CompleteInvitation:
+    CompleteInvitationRequest:
       type: object
       properties:
         username:
           type: string
+          minLength: 1
           maxLength: 150
         password:
           type: string
@@ -7291,7 +7361,7 @@ components:
       - detail
       - refresh
       - username
-    CreateInvitation:
+    CreateInvitationRequest:
       type: object
       properties:
         team:
@@ -7299,11 +7369,14 @@ components:
         email:
           type: string
           format: email
+          minLength: 1
         firstname:
           type: string
+          minLength: 1
           maxLength: 100
         lastname:
           type: string
+          minLength: 1
           maxLength: 100
         phonenumber:
           type: string
@@ -7326,6 +7399,15 @@ components:
           type: string
       required:
       - id
+      - team
+    CreateJoinRequestRequest:
+      type: object
+      properties:
+        team:
+          type: integer
+        message:
+          type: string
+      required:
       - team
     CustomUserPublic:
       type: object
@@ -7542,7 +7624,7 @@ components:
       required:
       - date
       - id
-    DuplicateEventRequest:
+    DuplicateEventRequestRequest:
       type: object
       description: |-
         Body for POST /events/{id}/duplicate/.
@@ -7574,21 +7656,23 @@ components:
             $ref: '#/components/schemas/DuplicateEventCreated'
       required:
       - created
-    EmailConfirm:
+    EmailConfirmRequest:
       type: object
       description: Body for POST /api/v1/auth/email/confirm/.
       properties:
         key:
           type: string
+          minLength: 1
       required:
       - key
-    EmailResend:
+    EmailResendRequest:
       type: object
       description: Body for POST /api/v1/auth/email/resend/.
       properties:
         email:
           type: string
           format: email
+          minLength: 1
       required:
       - email
     EndpointEnum:
@@ -7618,10 +7702,6 @@ components:
           allOf:
           - $ref: '#/components/schemas/EnergySystem'
           readOnly: true
-        energy_system_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         is_active:
           type: boolean
           readOnly: true
@@ -7673,6 +7753,63 @@ components:
       - abv
       - energy_system_id
       - id
+    EnergySegmentAdminRequest:
+      type: object
+      description: 'Admin flavor: per-language description variants + writable energy_system_id.'
+      properties:
+        abv:
+          type: string
+          minLength: 1
+          maxLength: 10
+        description_fr:
+          type: string
+          nullable: true
+          title: Description [fr]
+          maxLength: 200
+        description_nl:
+          type: string
+          nullable: true
+          title: Description [nl]
+          maxLength: 200
+        description_en:
+          type: string
+          nullable: true
+          title: Description [en]
+          maxLength: 200
+        description_it:
+          type: string
+          nullable: true
+          title: Description [it]
+          maxLength: 200
+        description_es:
+          type: string
+          nullable: true
+          title: Description [es]
+          maxLength: 200
+        energy_system_id:
+          type: integer
+        is_active:
+          type: boolean
+      required:
+      - abv
+      - energy_system_id
+    EnergySegmentRequest:
+      type: object
+      properties:
+        abv:
+          type: string
+          minLength: 1
+          maxLength: 10
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        energy_system_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+      required:
+      - abv
     EnergySystem:
       type: object
       properties:
@@ -7725,6 +7862,37 @@ components:
           type: boolean
       required:
       - id
+    EnergySystemAdminRequest:
+      type: object
+      description: 'Admin flavor: per-language name variants.'
+      properties:
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 20
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 20
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 20
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 20
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 20
+        is_active:
+          type: boolean
     Equipment:
       type: object
       description: |-
@@ -7790,10 +7958,6 @@ components:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
           nullable: true
-        place_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
@@ -7802,12 +7966,6 @@ components:
           items:
             $ref: '#/components/schemas/EquipmentMinimal'
           readOnly: true
-        equipment_item_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         color:
           type: string
           maxLength: 10
@@ -7832,17 +7990,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/ProgramMinimal'
           readOnly: true
-        refer_program_id:
-          type: integer
-          writeOnly: true
         sport:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
-        sport_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         rounds:
           type: array
           items:
@@ -7927,7 +8078,6 @@ components:
       - place
       - public_token
       - refer_program
-      - refer_program_id
       - rounds
       - rounds_detail
       - sport
@@ -8001,6 +8151,102 @@ components:
       - rounds
       - team_name
       - total
+    EventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        goal:
+          type: string
+          nullable: true
+        training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            This event's active training-content type. Seeded at creation from the team-sport / sport cascade; editable by the coach.
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
+        training_richtext:
+          type: string
+          description: Free-text training content (sanitized HTML) when training_type=freeform.
+        location:
+          type: string
+          description: Where the session takes place (venue, pool, track, address).
+            Always visible to athletes.
+          maxLength: 255
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        equipment:
+          type: string
+          description: Material/gear athletes should bring. Always visible to athletes.
+        equipment_item_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        color:
+          type: string
+          maxLength: 10
+        date:
+          type: string
+          format: date
+          nullable: true
+        hour_start:
+          type: string
+          format: time
+          nullable: true
+        hour_end:
+          type: string
+          format: time
+          nullable: true
+        total:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        refer_program_id:
+          type: integer
+          writeOnly: true
+        sport_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        vis_distance:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Visibility of this session's total distance to athletes.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+        vis_goal:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Visibility of this session's goal to athletes.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+        vis_rounds:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Visibility of this session's rounds (and exercises) to athletes.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+      required:
+      - name
+      - refer_program_id
     EventRoundDetail:
       type: object
       description: |-
@@ -8044,7 +8290,7 @@ components:
       - sport
       - t_break
       - t_start
-    EventShareRequest:
+    EventShareRequestRequest:
       type: object
       description: |-
         Body for POST /events/{id}/share/.
@@ -8111,27 +8357,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/Modality'
           readOnly: true
-        modality_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         energysegment:
           allOf:
           - $ref: '#/components/schemas/EnergySegment'
           readOnly: true
-        energysegment_id:
-          type: integer
-          writeOnly: true
-          nullable: true
-        round_id:
-          type: integer
-          writeOnly: true
-          description: 'Optional. On POST, the newly created Exercise is atomically
-            attached to this Round. On PATCH/PUT, if the Exercise is shared by several
-            Rounds (usage_count > 1), it is forked: a clone with the changes is swapped
-            into THIS Round and the shared original is left untouched. The request
-            user must manage at least one team of an Event linked to this Round (library
-            rounds with no events are accepted as-is).'
         language:
           $ref: '#/components/schemas/LanguageEnum'
         usage_count:
@@ -8153,7 +8382,59 @@ components:
       - modality
       - updated_at
       - usage_count
-    GeneratePlanRequest:
+    ExerciseRequest:
+      type: object
+      properties:
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        repetition:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        distance:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        notes:
+          type: string
+          maxLength: 200
+        t_start:
+          type: string
+          nullable: true
+          description: MM:SS format, e.g. 1:30.
+          pattern: ^\d{1,3}:[0-5]\d$
+        t_break:
+          type: string
+          nullable: true
+          description: MM:SS format, e.g. 1:30.
+          pattern: ^\d{1,3}:[0-5]\d$
+        modality_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        energysegment_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        round_id:
+          type: integer
+          writeOnly: true
+          description: 'Optional. On POST, the newly created Exercise is atomically
+            attached to this Round. On PATCH/PUT, if the Exercise is shared by several
+            Rounds (usage_count > 1), it is forked: a clone with the changes is swapped
+            into THIS Round and the shared original is left untouched. The request
+            user must manage at least one team of an Event linked to this Round (library
+            rounds with no events are accepted as-is).'
+        language:
+          $ref: '#/components/schemas/LanguageEnum'
+      required:
+      - language
+    GeneratePlanRequestRequest:
       type: object
       properties:
         date_start:
@@ -8212,7 +8493,7 @@ components:
       required:
       - input
       - output
-    GenerateTrainingRequest:
+    GenerateTrainingRequestRequest:
       type: object
       description: |-
         Optional payload for POST /events/{id}/generate-training/.
@@ -8470,7 +8751,74 @@ components:
       required:
       - code
       - id
-    Logout:
+    LevelAdminRequest:
+      type: object
+      description: 'Admin flavor: exposes per-language name/description variants.'
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 100
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 100
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 100
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 100
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 100
+        description_fr:
+          type: string
+          nullable: true
+          title: Description [fr]
+          maxLength: 255
+        description_nl:
+          type: string
+          nullable: true
+          title: Description [nl]
+          maxLength: 255
+        description_en:
+          type: string
+          nullable: true
+          title: Description [en]
+          maxLength: 255
+        description_it:
+          type: string
+          nullable: true
+          title: Description [it]
+          maxLength: 255
+        description_es:
+          type: string
+          nullable: true
+          title: Description [es]
+          maxLength: 255
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        is_active:
+          type: boolean
+      required:
+      - code
+    LogoutRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/logout/.
@@ -8484,9 +8832,10 @@ components:
         refresh:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - refresh
-    MagicLinkExchangeRequest:
+    MagicLinkExchangeRequestRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/magic-link/exchange/.
@@ -8496,6 +8845,7 @@ components:
       properties:
         token:
           type: string
+          minLength: 1
       required:
       - token
     MagicLinkExchangeResponse:
@@ -8513,7 +8863,7 @@ components:
       required:
       - access
       - refresh
-    MagicLinkRequest:
+    MagicLinkRequestRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/magic-link/request/.
@@ -8525,6 +8875,7 @@ components:
         email:
           type: string
           format: email
+          minLength: 1
       required:
       - email
     MagicLinkRequestResponse:
@@ -8634,10 +8985,6 @@ components:
           allOf:
           - $ref: '#/components/schemas/CustomUserPublic'
           readOnly: true
-        user_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         created_at:
           type: string
           format: date-time
@@ -8655,6 +9002,33 @@ components:
       - teams
       - updated_at
       - user
+    MemberRequest:
+      type: object
+      properties:
+        firstname:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastname:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 254
+        phonenumber:
+          type: string
+          nullable: true
+          maxLength: 20
+        user_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+      required:
+      - firstname
+      - lastname
     Modality:
       type: object
       properties:
@@ -8715,6 +9089,41 @@ components:
       required:
       - id
       - sport
+    ModalityAdminRequest:
+      type: object
+      description: 'Admin flavor: per-language name variants + writable sport FK.'
+      properties:
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 20
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 20
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 20
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 20
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 20
+        sport:
+          type: integer
+        is_active:
+          type: boolean
+      required:
+      - sport
     Note:
       type: object
       description: |-
@@ -8770,6 +9179,25 @@ components:
       - member
       - team
       - updated_at
+    NoteRequest:
+      type: object
+      description: |-
+        Serializer for Note. team/member/author are derived from the URL
+        and the request user; they are read-only here. The 'content' field
+        is sanitized via bleach on every write.
+      properties:
+        content:
+          type: string
+          minLength: 1
+          description: Rich HTML content (sanitized via bleach on save).
+        visible_to_athlete:
+          type: boolean
+          default: false
+          description: If True, the concerned athlete can read this note (when it
+            is also active). Default False — notes are coach-only unless explicitly
+            shared.
+      required:
+      - content
     Notification:
       type: object
       description: Read serializer for a single in-app notification.
@@ -8829,7 +9257,26 @@ components:
       - in_app
       - label
       - type
-    NotificationPreferenceUpdate:
+    NotificationPreferenceRequest:
+      type: object
+      description: |-
+        Effective per-type channel preference (one row of the matrix).
+
+        Used both as the GET response item and the PUT request item. ``label``
+        is the human-readable, localized NotificationType label; it is read-only
+        (server-derived) and ignored on input.
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        in_app:
+          type: boolean
+        email:
+          type: boolean
+      required:
+      - email
+      - in_app
+      - type
+    NotificationPreferenceUpdateRequest:
       type: object
       description: |-
         Request body for PUT /notifications/preferences/.
@@ -8840,7 +9287,7 @@ components:
         preferences:
           type: array
           items:
-            $ref: '#/components/schemas/NotificationPreference'
+            $ref: '#/components/schemas/NotificationPreferenceRequest'
       required:
       - preferences
     NullEnum:
@@ -9431,7 +9878,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TopicMessage'
-    PasswordChange:
+    PasswordChangeRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/password/change/ (authenticated).
@@ -9445,6 +9892,7 @@ components:
         current_password:
           type: string
           writeOnly: true
+          minLength: 1
         new_password:
           type: string
           writeOnly: true
@@ -9459,7 +9907,7 @@ components:
           type: string
       required:
       - detail
-    PasswordResetConfirm:
+    PasswordResetConfirmRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/password/reset/confirm/. The view decodes
@@ -9468,6 +9916,7 @@ components:
       properties:
         key:
           type: string
+          minLength: 1
         new_password:
           type: string
           writeOnly: true
@@ -9511,7 +9960,7 @@ components:
       - language
       - last_name
       - username
-    PasswordResetRequest:
+    PasswordResetRequestRequest:
       type: object
       description: |-
         Body of POST /api/v1/auth/password/reset/.
@@ -9523,9 +9972,11 @@ components:
         email:
           type: string
           format: email
+          minLength: 1
         turnstile_token:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - email
       - turnstile_token
@@ -9544,42 +9995,20 @@ components:
       - password_reset_processed
       type: string
       description: '* `password_reset_processed` - password_reset_processed'
-    PatchedAttendance:
+    PatchedAttendanceRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
-        event:
-          type: integer
-          readOnly: true
         member:
           type: integer
-        member_fullname:
-          type: string
-          readOnly: true
         status:
           type: integer
-        status_code:
-          type: string
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedAttendanceStatusAdmin:
+    PatchedAttendanceStatusAdminRequest:
       type: object
       description: 'Admin flavor: exposes per-language label variants.'
       properties:
-        id:
-          type: integer
-          readOnly: true
         code:
           type: string
+          minLength: 1
           description: Snake_case identifier (e.g. 'present', 'absent', 'excused')
           maxLength: 30
         label_fr:
@@ -9627,15 +10056,13 @@ components:
           maxLength: 20
         is_active:
           type: boolean
-    PatchedEnergySegmentAdmin:
+    PatchedEnergySegmentAdminRequest:
       type: object
       description: 'Admin flavor: per-language description variants + writable energy_system_id.'
       properties:
-        id:
-          type: integer
-          readOnly: true
         abv:
           type: string
+          minLength: 1
           maxLength: 10
         description_fr:
           type: string
@@ -9666,13 +10093,10 @@ components:
           type: integer
         is_active:
           type: boolean
-    PatchedEnergySystemAdmin:
+    PatchedEnergySystemAdminRequest:
       type: object
       description: 'Admin flavor: per-language name variants.'
       properties:
-        id:
-          type: integer
-          readOnly: true
         name_fr:
           type: string
           nullable: true
@@ -9700,14 +10124,12 @@ components:
           maxLength: 20
         is_active:
           type: boolean
-    PatchedEvent:
+    PatchedEventRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         name:
           type: string
+          minLength: 1
           maxLength: 100
         goal:
           type: string
@@ -9728,11 +10150,6 @@ components:
           description: Where the session takes place (venue, pool, track, address).
             Always visible to athletes.
           maxLength: 255
-        place:
-          allOf:
-          - $ref: '#/components/schemas/PlaceMinimal'
-          readOnly: true
-          nullable: true
         place_id:
           type: integer
           writeOnly: true
@@ -9740,11 +10157,6 @@ components:
         equipment:
           type: string
           description: Material/gear athletes should bring. Always visible to athletes.
-        equipment_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/EquipmentMinimal'
-          readOnly: true
         equipment_item_ids:
           type: array
           items:
@@ -9771,36 +10183,13 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
-        refer_program:
-          allOf:
-          - $ref: '#/components/schemas/ProgramMinimal'
-          readOnly: true
         refer_program_id:
           type: integer
           writeOnly: true
-        sport:
-          allOf:
-          - $ref: '#/components/schemas/Sport'
-          readOnly: true
         sport_id:
           type: integer
           writeOnly: true
           nullable: true
-        rounds:
-          type: array
-          items:
-            type: integer
-          readOnly: true
-        rounds_detail:
-          type: array
-          items:
-            $ref: '#/components/schemas/EventRoundDetail'
-          readOnly: true
-        members:
-          type: array
-          items:
-            type: integer
-          readOnly: true
         vis_distance:
           allOf:
           - $ref: '#/components/schemas/VisibilityMode'
@@ -9828,41 +10217,9 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
-        is_public:
-          type: boolean
-          readOnly: true
-          description: Whether this session is currently shared via its public link.
-        public_token:
-          type: string
-          readOnly: true
-          nullable: true
-          description: Unguessable token in the public share URL. Null = never shared.
-            The token authenticates the otherwise-anonymous public view.
-        generated_by_ai:
-          type: boolean
-          readOnly: true
-        ai_response:
-          type: string
-          readOnly: true
-        ai_generated_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedExercise:
+    PatchedExerciseRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         order:
           type: integer
           maximum: 9223372036854775807
@@ -9891,18 +10248,10 @@ components:
           nullable: true
           description: MM:SS format, e.g. 1:30.
           pattern: ^\d{1,3}:[0-5]\d$
-        modality:
-          allOf:
-          - $ref: '#/components/schemas/Modality'
-          readOnly: true
         modality_id:
           type: integer
           writeOnly: true
           nullable: true
-        energysegment:
-          allOf:
-          - $ref: '#/components/schemas/EnergySegment'
-          readOnly: true
         energysegment_id:
           type: integer
           writeOnly: true
@@ -9918,26 +10267,13 @@ components:
             rounds with no events are accepted as-is).'
         language:
           $ref: '#/components/schemas/LanguageEnum'
-        usage_count:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedLevelAdmin:
+    PatchedLevelAdminRequest:
       type: object
       description: 'Admin flavor: exposes per-language name/description variants.'
       properties:
-        id:
-          type: integer
-          readOnly: true
         code:
           type: string
+          minLength: 1
           maxLength: 50
         name_fr:
           type: string
@@ -9996,22 +10332,9 @@ components:
           format: int64
         is_active:
           type: boolean
-    PatchedMe:
+    PatchedMeRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
-        username:
-          type: string
-          readOnly: true
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-        email:
-          type: string
-          format: email
-          readOnly: true
-          title: Email address
         first_name:
           type: string
           maxLength: 150
@@ -10025,49 +10348,17 @@ components:
           description: 'Per-user preference for the weekly recap email. Opt-out model:
             default True. When False, this user receives no weekly recap even for
             teams they own/manage that have it enabled.'
-        is_staff:
-          type: boolean
-          readOnly: true
-          title: Staff status
-          description: Designates whether the user can log into this admin site.
-        last_login:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        date_joined:
-          type: string
-          format: date-time
-          readOnly: true
-        team_quota:
-          allOf:
-          - $ref: '#/components/schemas/TeamQuotaStatus'
-          readOnly: true
-        calendar_token:
-          type: string
-          readOnly: true
-          description: Unguessable token embedded in the user's personal iCal (.ics)
-            subscription URL. The token IS the authentication for that (otherwise
-            anonymous) feed. Rotate it to revoke an old URL.
-        member_id:
-          type: integer
-          nullable: true
-          readOnly: true
-    PatchedMember:
+    PatchedMemberRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         firstname:
           type: string
+          minLength: 1
           maxLength: 100
         lastname:
           type: string
+          minLength: 1
           maxLength: 100
-        fullname:
-          type: string
-          readOnly: true
         email:
           type: string
           format: email
@@ -10077,34 +10368,14 @@ components:
           type: string
           nullable: true
           maxLength: 20
-        teams:
-          type: array
-          items:
-            type: integer
-          readOnly: true
-        user:
-          allOf:
-          - $ref: '#/components/schemas/CustomUserPublic'
-          readOnly: true
         user_id:
           type: integer
           writeOnly: true
           nullable: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedModalityAdmin:
+    PatchedModalityAdminRequest:
       type: object
       description: 'Admin flavor: per-language name variants + writable sport FK.'
       properties:
-        id:
-          type: integer
-          readOnly: true
         name_fr:
           type: string
           nullable: true
@@ -10134,33 +10405,16 @@ components:
           type: integer
         is_active:
           type: boolean
-    PatchedNote:
+    PatchedNoteRequest:
       type: object
       description: |-
         Serializer for Note. team/member/author are derived from the URL
         and the request user; they are read-only here. The 'content' field
         is sanitized via bleach on every write.
       properties:
-        id:
-          type: integer
-          readOnly: true
-        team:
-          type: integer
-          readOnly: true
-        member:
-          type: integer
-          readOnly: true
-        author:
-          type: integer
-          readOnly: true
-          nullable: true
-          description: The coach who wrote this note. SET_NULL if the author account
-            is deleted.
-        author_username:
-          type: string
-          readOnly: true
         content:
           type: string
+          minLength: 1
           description: Rich HTML content (sanitized via bleach on save).
         visible_to_athlete:
           type: boolean
@@ -10168,18 +10422,7 @@ components:
           description: If True, the concerned athlete can read this note (when it
             is also active). Default False — notes are coach-only unless explicitly
             shared.
-        is_active:
-          type: boolean
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedPerformance:
+    PatchedPerformanceRequest:
       type: object
       description: |-
         Read/write serializer for a single Performance row.
@@ -10189,15 +10432,13 @@ components:
         team — the view drops them from validated_data in update()). `created_by`
         is set by the view from request.user and is read-only here.
       properties:
-        id:
-          type: integer
-          readOnly: true
         team:
           type: integer
         member:
           type: integer
         label:
           type: string
+          minLength: 1
           description: Discipline / test name, e.g. '100m freestyle' or 'Cooper test'.
           maxLength: 120
         value:
@@ -10208,27 +10449,13 @@ components:
             for distance, etc.).
         unit:
           $ref: '#/components/schemas/UnitEnum'
-        is_lower_better:
-          type: boolean
-          readOnly: true
         recorded_on:
           type: string
           format: date
           description: Date the performance was achieved.
         notes:
           type: string
-        created_by:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedPlace:
+    PatchedPlaceRequest:
       type: object
       description: |-
         Read/write serializer for a venue (Lieu) in the global sport-scoped pool.
@@ -10237,17 +10464,9 @@ components:
         ``team`` it is creating the place for (write-only): the view links it and
         derives the place's ``sport`` from that team. ``sport`` is read-only output.
       properties:
-        id:
-          type: integer
-          readOnly: true
-        sports:
-          type: array
-          items:
-            type: integer
-          readOnly: true
-          description: Sports this venue serves.
         name:
           type: string
+          minLength: 1
           description: Display name of the venue (e.g. 'Piscine olympique').
           maxLength: 255
         address:
@@ -10257,22 +10476,12 @@ components:
         team:
           type: integer
           writeOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedProgram:
+    PatchedProgramRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         name:
           type: string
+          minLength: 1
           maxLength: 100
         date_start:
           type: string
@@ -10282,18 +10491,9 @@ components:
           type: string
           format: date
           nullable: true
-        team:
-          allOf:
-          - $ref: '#/components/schemas/TeamMinimal'
-          readOnly: true
         team_id:
           type: integer
           writeOnly: true
-        events:
-          type: array
-          items:
-            type: integer
-          readOnly: true
         frequency_per_week:
           type: integer
           maximum: 9223372036854775807
@@ -10302,37 +10502,11 @@ components:
           nullable: true
         description:
           type: string
-        generated_by_ai:
-          type: boolean
-          readOnly: true
-        ai_response:
-          type: string
-          readOnly: true
-        ai_generated_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         is_active:
           type: boolean
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedRound:
+    PatchedRoundRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
-        sport:
-          allOf:
-          - $ref: '#/components/schemas/Sport'
-          readOnly: true
         sport_id:
           type: integer
           writeOnly: true
@@ -10368,26 +10542,12 @@ components:
           description: Optional. If provided on POST, the newly created Round is atomically
             attached to this Event. The request user must manage the Event's team.
             Ignored on PATCH/PUT.
-        usage_count:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedSportAdmin:
+    PatchedSportAdminRequest:
       type: object
       description: |-
         Admin flavor: exposes per-language name variants and write-capable
         M2M energy_systems (PK list).
       properties:
-        id:
-          type: integer
-          readOnly: true
         name_fr:
           type: string
           nullable: true
@@ -10415,6 +10575,7 @@ components:
           maxLength: 100
         slug:
           type: string
+          minLength: 1
           maxLength: 100
           pattern: ^[-a-zA-Z0-9_]+$
         is_active:
@@ -10431,28 +10592,28 @@ components:
 
             * `structured` - Structured (rounds & exercises)
             * `freeform` - Free text
-        created_at:
+    PatchedTeamJoinRequestRequest:
+      type: object
+      description: |-
+        Standard serializer for /join-requests/. Mirrors TeamMembershipSerializer's
+        pattern of exposing username/fullname denorms so the manager dashboard can
+        render the requester without a separate /users/{id}/ fetch.
+      properties:
+        team:
+          type: integer
+        status:
+          $ref: '#/components/schemas/JoinRequestStatusEnum'
+        message:
           type: string
-          format: date-time
-          readOnly: true
-    PatchedTeam:
+        response_message:
+          type: string
+    PatchedTeamRequest:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         name:
           type: string
+          minLength: 1
           maxLength: 200
-        sports:
-          type: array
-          items:
-            $ref: '#/components/schemas/TeamSportRead'
-          readOnly: true
-        sport:
-          allOf:
-          - $ref: '#/components/schemas/Sport'
-          readOnly: true
         sport_id:
           type: integer
           writeOnly: true
@@ -10468,72 +10629,34 @@ components:
         sport_training_types:
           type: array
           items:
-            $ref: '#/components/schemas/_SportTrainingTypeWrite'
+            $ref: '#/components/schemas/_SportTrainingTypeWriteRequest'
           writeOnly: true
-        level:
-          allOf:
-          - $ref: '#/components/schemas/Level'
-          readOnly: true
-          nullable: true
         level_id:
           type: integer
           writeOnly: true
           nullable: true
-        owner:
-          allOf:
-          - $ref: '#/components/schemas/CustomUserPublic'
-          readOnly: true
-        managers:
-          type: array
-          items:
-            $ref: '#/components/schemas/CustomUserPublic'
-          readOnly: true
         managers_ids:
           type: array
           items:
             type: integer
             writeOnly: true
           writeOnly: true
-        default_pool:
-          type: string
-          readOnly: true
-          description: Default venue/pool for this team's sessions (used by the season-plan
-            generator).
-        places:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlaceMinimal'
-          readOnly: true
         place_ids:
           type: array
           items:
             type: integer
             writeOnly: true
           writeOnly: true
-        default_place:
-          allOf:
-          - $ref: '#/components/schemas/PlaceMinimal'
-          readOnly: true
-          nullable: true
         default_place_id:
           type: integer
           writeOnly: true
           nullable: true
-        equipment:
-          type: array
-          items:
-            $ref: '#/components/schemas/EquipmentMinimal'
-          readOnly: true
         equipment_ids:
           type: array
           items:
             type: integer
             writeOnly: true
           writeOnly: true
-        logo_url:
-          type: string
-          nullable: true
-          readOnly: true
         language:
           $ref: '#/components/schemas/LanguageEnum'
         is_active:
@@ -10607,6 +10730,7 @@ components:
           description: Show a shared session's rounds & exercises on its public link.
         timezone:
           type: string
+          minLength: 1
           description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,
             in the team's local time, whether a session is over for per-aspect athlete
             visibility (vis_distance/vis_goal/vis_rounds).
@@ -10638,94 +10762,23 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedTeamJoinRequest:
-      type: object
-      description: |-
-        Standard serializer for /join-requests/. Mirrors TeamMembershipSerializer's
-        pattern of exposing username/fullname denorms so the manager dashboard can
-        render the requester without a separate /users/{id}/ fetch.
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        user:
-          type: integer
-          readOnly: true
-        user_username:
-          type: string
-          readOnly: true
-        user_fullname:
-          type: string
-          readOnly: true
-        team:
-          type: integer
-        status:
-          $ref: '#/components/schemas/JoinRequestStatusEnum'
-        message:
-          type: string
-        response_message:
-          type: string
-        requested_at:
-          type: string
-          format: date-time
-          readOnly: true
-        responded_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        responded_by:
-          type: integer
-          readOnly: true
-          nullable: true
-        responded_by_username:
-          type: string
-          readOnly: true
-          nullable: true
-    PatchedTopicMessage:
+    PatchedTopicMessageRequest:
       type: object
       description: |-
         A single message. ``author`` is the nested public user; ``content``
         is sanitized via bleach on every write.
       properties:
-        id:
-          type: integer
-          readOnly: true
         content:
           type: string
+          minLength: 1
           description: Rich HTML content (sanitized via bleach on save).
-        author:
-          allOf:
-          - $ref: '#/components/schemas/CustomUserPublic'
-          readOnly: true
-        edited_at:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-          description: Set when the message is edited after creation.
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-    PatchedTrainingSlot:
+    PatchedTrainingSlotRequest:
       type: object
       description: |-
         One weekly training slot (weekday + start/end time).
 
         weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
       properties:
-        id:
-          type: integer
-          readOnly: true
         weekday:
           allOf:
           - $ref: '#/components/schemas/WeekdayEnum'
@@ -10749,19 +10802,10 @@ components:
           type: string
           format: time
           description: Slot end time; must be after hour_start.
-        place:
-          allOf:
-          - $ref: '#/components/schemas/PlaceMinimal'
-          readOnly: true
-          nullable: true
         place_id:
           type: integer
           writeOnly: true
           nullable: true
-        sport:
-          allOf:
-          - $ref: '#/components/schemas/Sport'
-          readOnly: true
         sport_id:
           type: integer
           writeOnly: true
@@ -10826,6 +10870,45 @@ components:
       - team
       - updated_at
       - value
+    PerformanceRequest:
+      type: object
+      description: |-
+        Read/write serializer for a single Performance row.
+
+        `team` and `member` are writable PrimaryKeyRelatedFields on create; on
+        update they are ignored (a performance never moves to another member or
+        team — the view drops them from validated_data in update()). `created_by`
+        is set by the view from request.user and is read-only here.
+      properties:
+        team:
+          type: integer
+        member:
+          type: integer
+        label:
+          type: string
+          minLength: 1
+          description: Discipline / test name, e.g. '100m freestyle' or 'Cooper test'.
+          maxLength: 120
+        value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,7}(?:\.\d{0,3})?$
+          description: Numeric result, interpreted by unit (seconds for time, meters
+            for distance, etc.).
+        unit:
+          $ref: '#/components/schemas/UnitEnum'
+        recorded_on:
+          type: string
+          format: date
+          description: Date the performance was achieved.
+        notes:
+          type: string
+      required:
+      - label
+      - member
+      - recorded_on
+      - team
+      - value
     Place:
       type: object
       description: |-
@@ -10852,9 +10935,6 @@ components:
           type: string
           description: Optional postal address / directions for the venue.
           maxLength: 500
-        team:
-          type: integer
-          writeOnly: true
         created_at:
           type: string
           format: date-time
@@ -10889,6 +10969,29 @@ components:
       - address
       - id
       - name
+    PlaceRequest:
+      type: object
+      description: |-
+        Read/write serializer for a venue (Lieu) in the global sport-scoped pool.
+
+        A place is shared (M2M ``Team.places``). On create the requester passes the
+        ``team`` it is creating the place for (write-only): the view links it and
+        derives the place's ``sport`` from that team. ``sport`` is read-only output.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Display name of the venue (e.g. 'Piscine olympique').
+          maxLength: 255
+        address:
+          type: string
+          description: Optional postal address / directions for the venue.
+          maxLength: 500
+        team:
+          type: integer
+          writeOnly: true
+      required:
+      - name
     PresignUploadHeaders:
       type: object
       properties:
@@ -10896,7 +10999,7 @@ components:
           type: string
       required:
       - Content-Type
-    PresignUploadRequest:
+    PresignUploadRequestRequest:
       type: object
       description: Body for POST /attachments/presign/.
       properties:
@@ -10907,10 +11010,11 @@ components:
           minimum: 1
         filename:
           type: string
-          maxLength: 255
           minLength: 1
+          maxLength: 255
         content_type:
           type: string
+          minLength: 1
           maxLength: 150
         size:
           type: integer
@@ -10958,9 +11062,6 @@ components:
           allOf:
           - $ref: '#/components/schemas/TeamMinimal'
           readOnly: true
-        team_id:
-          type: integer
-          writeOnly: true
         events:
           type: array
           items:
@@ -11004,7 +11105,6 @@ components:
       - id
       - name
       - team
-      - team_id
       - updated_at
     ProgramMinimal:
       type: object
@@ -11019,6 +11119,37 @@ components:
       required:
       - id
       - name
+    ProgramRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        date_start:
+          type: string
+          format: date
+          nullable: true
+        date_end:
+          type: string
+          format: date
+          nullable: true
+        team_id:
+          type: integer
+          writeOnly: true
+        frequency_per_week:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+        description:
+          type: string
+        is_active:
+          type: boolean
+      required:
+      - name
+      - team_id
     ReadAllResponse:
       type: object
       description: Response shape for POST /notifications/read_all/.
@@ -11028,7 +11159,7 @@ components:
           description: Number of notifications marked as read.
       required:
       - updated
-    Register:
+    RegisterRequest:
       type: object
       description: |-
         Public registration payload for POST /api/v1/auth/register/.
@@ -11042,19 +11173,23 @@ components:
       properties:
         username:
           type: string
+          minLength: 1
           maxLength: 150
         email:
           type: string
           format: email
+          minLength: 1
         password:
           type: string
           writeOnly: true
           minLength: 8
         first_name:
           type: string
+          minLength: 1
           maxLength: 150
         last_name:
           type: string
+          minLength: 1
           maxLength: 150
         language:
           allOf:
@@ -11063,6 +11198,7 @@ components:
         turnstile_token:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - email
       - first_name
@@ -11070,7 +11206,7 @@ components:
       - password
       - turnstile_token
       - username
-    ReorderExercisesRequest:
+    ReorderExercisesRequestRequest:
       type: object
       description: |-
         Body for POST /rounds/{id}/exercises/reorder/.
@@ -11086,7 +11222,7 @@ components:
             minimum: 1
       required:
       - exercise_ids
-    ReorderRoundsRequest:
+    ReorderRoundsRequestRequest:
       type: object
       description: |-
         Body for POST /events/{id}/rounds/reorder/.
@@ -11129,7 +11265,7 @@ components:
       - count
       - distribution
       - my_score
-    RotiUpsert:
+    RotiUpsertRequest:
       type: object
       description: Request body for PUT .../roti/ — only the caller's own score.
       properties:
@@ -11149,6 +11285,53 @@ components:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
+        language:
+          $ref: '#/components/schemas/LanguageEnum'
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        t_start:
+          type: string
+          nullable: true
+          description: MM:SS format, e.g. 1:30.
+          pattern: ^\d{1,3}:[0-5]\d$
+        t_break:
+          type: string
+          nullable: true
+          description: MM:SS format, e.g. 1:30.
+          pattern: ^\d{1,3}:[0-5]\d$
+        exercises:
+          type: array
+          items:
+            type: integer
+        usage_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - language
+      - sport
+      - updated_at
+      - usage_count
+    RoundRequest:
+      type: object
+      properties:
         sport_id:
           type: integer
           writeOnly: true
@@ -11184,25 +11367,9 @@ components:
           description: Optional. If provided on POST, the newly created Round is atomically
             attached to this Event. The request user must manage the Event's team.
             Ignored on PATCH/PUT.
-        usage_count:
-          type: integer
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
       required:
-      - created_at
-      - id
       - language
-      - sport
       - sport_id
-      - updated_at
-      - usage_count
     RsvpApplyToAttendanceResult:
       type: object
       description: 200 response for POST .../rsvp/apply_to_attendance/.
@@ -11287,7 +11454,7 @@ components:
       - counts
       - my_status
       - total_members
-    RsvpUpsert:
+    RsvpUpsertRequest:
       type: object
       description: Request body for PUT .../rsvp/ — only the caller's own status.
       properties:
@@ -11399,6 +11566,58 @@ components:
       required:
       - created_at
       - id
+      - slug
+    SportAdminRequest:
+      type: object
+      description: |-
+        Admin flavor: exposes per-language name variants and write-capable
+        M2M energy_systems (PK list).
+      properties:
+        name_fr:
+          type: string
+          nullable: true
+          title: Name [fr]
+          maxLength: 100
+        name_nl:
+          type: string
+          nullable: true
+          title: Name [nl]
+          maxLength: 100
+        name_en:
+          type: string
+          nullable: true
+          title: Name [en]
+          maxLength: 100
+        name_it:
+          type: string
+          nullable: true
+          title: Name [it]
+          maxLength: 100
+        name_es:
+          type: string
+          nullable: true
+          title: Name [es]
+          maxLength: 100
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        is_active:
+          type: boolean
+        energy_systems:
+          type: array
+          items:
+            type: integer
+        default_training_type:
+          allOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          description: |-
+            Default training-content type for events of this sport (overridable per team and per event).
+
+            * `structured` - Structured (rounds & exercises)
+            * `freeform` - Free text
+      required:
       - slug
     StatsAttendance:
       type: object
@@ -11592,31 +11811,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
-        sport_id:
-          type: integer
-          writeOnly: true
-        sport_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
-        default_sport_id:
-          type: integer
-          writeOnly: true
-        sport_training_types:
-          type: array
-          items:
-            $ref: '#/components/schemas/_SportTrainingTypeWrite'
-          writeOnly: true
         level:
           allOf:
           - $ref: '#/components/schemas/Level'
           readOnly: true
-          nullable: true
-        level_id:
-          type: integer
-          writeOnly: true
           nullable: true
         owner:
           allOf:
@@ -11627,12 +11825,6 @@ components:
           items:
             $ref: '#/components/schemas/CustomUserPublic'
           readOnly: true
-        managers_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         default_pool:
           type: string
           readOnly: true
@@ -11643,32 +11835,16 @@ components:
           items:
             $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
-        place_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         default_place:
           allOf:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
-          nullable: true
-        default_place_id:
-          type: integer
-          writeOnly: true
           nullable: true
         equipment:
           type: array
           items:
             $ref: '#/components/schemas/EquipmentMinimal'
           readOnly: true
-        equipment_ids:
-          type: array
-          items:
-            type: integer
-            writeOnly: true
-          writeOnly: true
         logo_url:
           type: string
           nullable: true
@@ -11901,7 +12077,7 @@ components:
       - user
       - user_fullname
       - user_username
-    TeamJoinRequestMagicActionPost:
+    TeamJoinRequestMagicActionPostRequest:
       type: object
       description: |-
         Body of POST /api/v1/join-magic/. Token is the HMAC-signed link
@@ -11909,6 +12085,7 @@ components:
       properties:
         token:
           type: string
+          minLength: 1
       required:
       - token
     TeamJoinRequestMagicActionResponse:
@@ -11934,6 +12111,23 @@ components:
       - can_act
       - join_request
       - would_change_decision
+    TeamJoinRequestRequest:
+      type: object
+      description: |-
+        Standard serializer for /join-requests/. Mirrors TeamMembershipSerializer's
+        pattern of exposing username/fullname denorms so the manager dashboard can
+        render the requester without a separate /users/{id}/ fetch.
+      properties:
+        team:
+          type: integer
+        status:
+          $ref: '#/components/schemas/JoinRequestStatusEnum'
+        message:
+          type: string
+        response_message:
+          type: string
+      required:
+      - team
     TeamMembership:
       type: object
       description: |-
@@ -11984,6 +12178,17 @@ components:
       - member_username
       - team
       - updated_at
+    TeamMembershipRequest:
+      type: object
+      description: |-
+        Read/write serializer for TeamMembership.
+
+        `team` is set by the view from URL kwargs; only `member` is accepted on POST.
+      properties:
+        member:
+          type: integer
+      required:
+      - member
     TeamMinimal:
       type: object
       description: Compact team payload for nested read contexts.
@@ -12036,6 +12241,163 @@ components:
       - can_create
       - max
       - used
+    TeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sport_id:
+          type: integer
+          writeOnly: true
+        sport_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        default_sport_id:
+          type: integer
+          writeOnly: true
+        sport_training_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/_SportTrainingTypeWriteRequest'
+          writeOnly: true
+        level_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        managers_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        place_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        default_place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
+        equipment_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        language:
+          $ref: '#/components/schemas/LanguageEnum'
+        is_active:
+          type: boolean
+        is_public:
+          type: boolean
+        logo:
+          type: string
+          description: Small base64 data-URL for the team logo (e.g. 'data:image/png;base64,...').
+            Stored inline in the DB; no file storage.
+        roti_enabled:
+          type: boolean
+          description: If True, athletes can submit a per-session difficulty rating
+            (ROTI, 1..5) for the team's events.
+        rsvp_enabled:
+          type: boolean
+          description: 'If True, athletes can declare their availability (RSVP: going
+            / maybe / not going) for the team''s events.'
+        weekly_recap_enabled:
+          type: boolean
+          description: If True, this team is included in the weekly recap email sent
+            to its owner and managers. Default False (opt-in per team).
+        attendance_statuses:
+          type: array
+          items:
+            type: integer
+          description: 'Statuses available for marking attendance in this team''s
+            events. Default: present, absent, excused.'
+        join_request_policy:
+          allOf:
+          - $ref: '#/components/schemas/JoinRequestPolicyEnum'
+          description: |-
+            Manual = managers accept/reject each TeamJoinRequest. Auto = every join request is accepted immediately on submission.
+
+            * `manual` - Manual — managers accept/reject each request
+            * `auto` - Auto-accept — every join request is accepted immediately
+        topic_creation:
+          allOf:
+          - $ref: '#/components/schemas/TopicCreationEnum'
+          description: |-
+            Who may create messaging topics in this team. owner = team owner only; coaches = owner and managers; members = owner, managers, and active athlete members.
+
+            * `owner` - Owner only
+            * `coaches` - Owner and coaches
+            * `members` - Everyone (incl. athletes)
+        notify_managers_on_join_request:
+          type: boolean
+          description: When join_request_policy=manual, send the owner and managers
+            an email with accept/reject magic links on each new request. Ignored when
+            policy=auto (no manual decision is needed).
+        notify_coaches_on_note:
+          type: boolean
+          description: When True, the team owner and managers (except the author)
+            are notified each time a note is added on one of the team's athletes.
+        notify_athlete_on_visible_note:
+          type: boolean
+          description: When True, an athlete with a linked user account is notified
+            when a note shared with them (visible_to_athlete=True) is added.
+        public_sharing_enabled:
+          type: boolean
+          description: Allow individual sessions of this team to be shared via a public
+            read-only link.
+        public_show_distance:
+          type: boolean
+          description: Show a shared session's total distance on its public link.
+        public_show_goal:
+          type: boolean
+          description: Show a shared session's goal on its public link.
+        public_show_rounds:
+          type: boolean
+          description: Show a shared session's rounds & exercises on its public link.
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA timezone name (e.g. 'Europe/Brussels'). Used to decide,
+            in the team's local time, whether a session is over for per-aspect athlete
+            visibility (vis_distance/vis_goal/vis_rounds).
+          maxLength: 64
+        vis_distance:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Default visibility of a session's total distance to athletes. Inherited by new events; overridable per event.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+        vis_goal:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Default visibility of a session's goal to athletes. Inherited by new events; overridable per event.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+        vis_rounds:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityMode'
+          description: |-
+            Default visibility of a session's rounds (and their exercises) to athletes. Inherited by new events; overridable per event.
+
+            * `always` - Always
+            * `after` - After the session
+            * `never` - Never
+      required:
+      - name
     TeamSportRead:
       type: object
       description: |-
@@ -12132,6 +12494,14 @@ components:
       required:
       - access
       - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
     Topic:
       type: object
       description: |-
@@ -12222,6 +12592,43 @@ components:
       - created_at
       - edited_at
       - id
+    TopicMessageRequest:
+      type: object
+      description: |-
+        A single message. ``author`` is the nested public user; ``content``
+        is sanitized via bleach on every write.
+      properties:
+        content:
+          type: string
+          minLength: 1
+          description: Rich HTML content (sanitized via bleach on save).
+      required:
+      - content
+    TopicRequest:
+      type: object
+      description: |-
+        A team topic. ``author`` is the nested public user; ``message_count``
+        is the number of messages in the thread. ``team`` and ``author`` are
+        derived from the URL / request and are read-only.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        audience:
+          allOf:
+          - $ref: '#/components/schemas/AudienceEnum'
+          description: |-
+            team = visible to all team members; coaches = visible only to the owner and managers (staff channel).
+
+            * `team` - Whole team
+            * `coaches` - Coaches only
+        allow_athlete_replies:
+          type: boolean
+          description: Only meaningful when audience=team. When True, athlete members
+            may post messages; coaches can always post.
+      required:
+      - title
     TrainingSlot:
       type: object
       description: |-
@@ -12260,14 +12667,51 @@ components:
           - $ref: '#/components/schemas/PlaceMinimal'
           readOnly: true
           nullable: true
-        place_id:
-          type: integer
-          writeOnly: true
-          nullable: true
         sport:
           allOf:
           - $ref: '#/components/schemas/Sport'
           readOnly: true
+      required:
+      - hour_end
+      - hour_start
+      - id
+      - place
+      - sport
+      - weekday
+    TrainingSlotRequest:
+      type: object
+      description: |-
+        One weekly training slot (weekday + start/end time).
+
+        weekday uses Python's date.weekday() convention: Monday=0 … Sunday=6.
+      properties:
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          description: |-
+            Day of the week (Python convention: Monday=0 … Sunday=6).
+
+            * `0` - Monday
+            * `1` - Tuesday
+            * `2` - Wednesday
+            * `3` - Thursday
+            * `4` - Friday
+            * `5` - Saturday
+            * `6` - Sunday
+          minimum: 0
+          maximum: 9223372036854775807
+        hour_start:
+          type: string
+          format: time
+          description: Slot start time (local team time).
+        hour_end:
+          type: string
+          format: time
+          description: Slot end time; must be after hour_start.
+        place_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         sport_id:
           type: integer
           writeOnly: true
@@ -12275,9 +12719,6 @@ components:
       required:
       - hour_end
       - hour_start
-      - id
-      - place
-      - sport
       - weekday
     TrainingTemplate:
       type: object
@@ -12416,7 +12857,7 @@ components:
       - expires_at
       - status
       - team_name
-    VerifiedTokenObtainPair:
+    VerifiedTokenObtainPairRequest:
       type: object
       description: |-
         Block JWT login when the user has an unverified primary email.
@@ -12438,9 +12879,11 @@ components:
         username:
           type: string
           writeOnly: true
+          minLength: 1
         password:
           type: string
           writeOnly: true
+          minLength: 1
       required:
       - password
       - username
@@ -12496,7 +12939,7 @@ components:
           type: string
           format: date-time
         status:
-          $ref: '#/components/schemas/_MagicActionJoinRequestStatusEnum'
+          $ref: '#/components/schemas/_MagicActionJoinStatusEnum'
         responded_at:
           type: string
           format: date-time
@@ -12516,7 +12959,7 @@ components:
       - status
       - team_id
       - team_name
-    _MagicActionJoinRequestStatusEnum:
+    _MagicActionJoinStatusEnum:
       enum:
       - pending
       - accepted
@@ -12529,6 +12972,18 @@ components:
         * `rejected` - rejected
         * `cancelled` - cancelled
     _SportTrainingTypeWrite:
+      type: object
+      properties:
+        sport_id:
+          type: integer
+        training_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TrainingTypeEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - sport_id
+    _SportTrainingTypeWriteRequest:
       type: object
       properties:
         sport_id:
