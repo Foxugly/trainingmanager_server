@@ -69,10 +69,13 @@ class RotiViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated, IsTeamMemberOrCoachRoti]
 
     def get_event(self):
-        event_pk = self.kwargs.get("event_pk")
-        if not event_pk:
-            return None
-        return get_object_or_404(Event, pk=event_pk)
+        # Memoized per request: permission check + get_queryset + perform_*
+        # all resolve the same URL pk. ``None`` is a valid result (no
+        # event_pk), so use hasattr as the "resolved" sentinel.
+        if not hasattr(self, "_event"):
+            event_pk = self.kwargs.get("event_pk")
+            self._event = get_object_or_404(Event, pk=event_pk) if event_pk else None
+        return self._event
 
     def _resolve_member(self, team, user):
         """The caller's active Member within the event's team, or None.

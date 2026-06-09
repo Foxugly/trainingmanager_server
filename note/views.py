@@ -33,16 +33,19 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
     soft_delete_fields = ("is_active", "updated_at")
 
     def get_team(self):
-        team_pk = self.kwargs.get("team_pk")
-        if not team_pk:
-            return None
-        return get_object_or_404(Team, pk=team_pk)
+        # Memoized per request: permission check + get_queryset call this for
+        # the same URL pk. ``None`` is a valid result, so use hasattr as the
+        # "resolved" sentinel.
+        if not hasattr(self, "_team"):
+            team_pk = self.kwargs.get("team_pk")
+            self._team = get_object_or_404(Team, pk=team_pk) if team_pk else None
+        return self._team
 
     def get_member_or_none(self):
-        member_pk = self.kwargs.get("member_pk")
-        if not member_pk:
-            return None
-        return get_object_or_404(Member, pk=member_pk)
+        if not hasattr(self, "_member"):
+            member_pk = self.kwargs.get("member_pk")
+            self._member = get_object_or_404(Member, pk=member_pk) if member_pk else None
+        return self._member
 
     def _include_inactive_allowed(self, request):
         # Notes are team-scoped: managers (not staff) decide who sees the

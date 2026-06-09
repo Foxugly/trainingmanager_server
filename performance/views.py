@@ -64,13 +64,13 @@ class PerformanceViewSet(viewsets.ModelViewSet):
     def _base_queryset(self):
         """Everything the caller may see: own member's rows + coached teams'."""
         user = self.request.user
-        return (
-            Performance.objects.filter(
-                Q(member__user_id=user.id) | Q(team__in=managed_teams(user))
-            )
-            .select_related("team", "member", "created_by")
-            .distinct()
-        )
+        # The serializer renders team/member/created_by as bare
+        # PrimaryKeyRelatedFields (IDs only), and the *_id columns are already
+        # on the row, so select_related on those relations only adds wasted
+        # joins on the list path.
+        return Performance.objects.filter(
+            Q(member__user_id=user.id) | Q(team__in=managed_teams(user))
+        ).distinct()
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

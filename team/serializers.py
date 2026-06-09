@@ -676,6 +676,18 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
             "member_fullname",
         ]
 
+    def get_extra_kwargs(self):
+        # `member` is writable only at create time. On update/partial_update
+        # (self.instance is set), it becomes read-only so a member cannot
+        # repoint a membership row to another team's member. Defense in depth:
+        # the viewset already blocks PUT/PATCH via http_method_names.
+        extra_kwargs = super().get_extra_kwargs()
+        if self.instance is not None:
+            member_kwargs = dict(extra_kwargs.get("member", {}))
+            member_kwargs["read_only"] = True
+            extra_kwargs["member"] = member_kwargs
+        return extra_kwargs
+
     @extend_schema_field(serializers.CharField())
     def get_member_fullname(self, obj) -> str:
         m = obj.member

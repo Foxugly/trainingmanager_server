@@ -190,10 +190,13 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTeamCoachOrReadOwnAttendance]
 
     def get_event(self):
-        event_pk = self.kwargs.get("event_pk")
-        if not event_pk:
-            return None
-        return get_object_or_404(Event, pk=event_pk)
+        # Memoized per request: permission check + get_queryset + perform_*
+        # all call this for the same URL pk. ``None`` is a valid result (no
+        # event_pk), so use a sentinel to distinguish "not yet resolved".
+        if not hasattr(self, "_event"):
+            event_pk = self.kwargs.get("event_pk")
+            self._event = get_object_or_404(Event, pk=event_pk) if event_pk else None
+        return self._event
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

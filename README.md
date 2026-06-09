@@ -128,6 +128,8 @@ locale/       # Translations (fr complet, nl/it/es à compléter)
 | GET, POST | `/api/v1/invitations/lookup/<token>/` | Public | Finaliser invitation |
 | GET, PUT | `/api/v1/events/{id}/roti/` | Auth (member/coach) | ROTI : résumé (incl. my_score) / upsert son propre score (1..5, si `roti_enabled`) |
 | GET | `/api/v1/events/{id}/roti/summary/` | Auth (member/coach) | Agrégat ROTI (average/count/distribution) |
+| GET, PUT | `/api/v1/events/{id}/rsvp/` | Auth (member/coach) | RSVP : résumé (counts + my_status, by_member pour managers) / upsert sa propre dispo (going/maybe/not_going, si `rsvp_enabled`) |
+| POST | `/api/v1/events/{id}/rsvp/apply_to_attendance/` | Manager | Pré-remplir l'attendance depuis les RSVPs |
 | POST | `/api/v1/ai/ping/` | Trainer | Test API Anthropic |
 | GET | `/api/v1/sports/` | Auth | Liste des sports |
 | GET | `/api/v1/sports/<id>/modalities/` | Auth | Modalities d'un sport |
@@ -185,7 +187,7 @@ pytest --tb=short
 
 ```bash
 # Après install gettext :
-django-admin makemessages -l fr -l nl -l it -l es \
+django-admin makemessages -l fr -l nl -l en -l it -l es \
   --ignore=.venv --ignore=migrations
 django-admin compilemessages
 ```

@@ -91,3 +91,6 @@ class Exercise(models.Model):
 
     class Meta:
         verbose_name = _("Exercise")
+        indexes = [
+            models.Index(fields=["language", "order"]),
+        ]

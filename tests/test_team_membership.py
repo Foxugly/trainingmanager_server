@@ -272,3 +272,42 @@ def test_team_active_members_excludes_left(coach_team, athlete_member):
     active_ids = list(coach_team.active_members.values_list("pk", flat=True))
     assert athlete_member.pk in active_ids
     assert other.pk not in active_ids
+
+
+# =====================================================================
+# UPDATE (PATCH/PUT) is not allowed — membership has no editable fields.
+# Guards against the IDOR where an athlete repoints `member` to another id.
+# =====================================================================
+
+
+def test_athlete_cannot_patch_membership(athlete_client, coach_team, athlete_member):
+    ms = TeamMembership.objects.get(team=coach_team, member=athlete_member, left_at__isnull=True)
+    other = Member.objects.create(firstname="V", lastname="ictim", email="victim@local.test")
+    response = athlete_client.patch(
+        _url(coach_team.pk, ms.pk), {"member": other.pk}, format="json"
+    )
+    assert response.status_code == 405
+    ms.refresh_from_db()
+    assert ms.member_id == athlete_member.pk
+
+
+def test_athlete_cannot_put_membership(athlete_client, coach_team, athlete_member):
+    ms = TeamMembership.objects.get(team=coach_team, member=athlete_member, left_at__isnull=True)
+    other = Member.objects.create(firstname="V2", lastname="ictim", email="victim2@local.test")
+    response = athlete_client.put(
+        _url(coach_team.pk, ms.pk), {"member": other.pk}, format="json"
+    )
+    assert response.status_code == 405
+    ms.refresh_from_db()
+    assert ms.member_id == athlete_member.pk
+
+
+def test_post_and_delete_still_work_after_update_block(coach_client, coach_team):
+    """POST (add) and DELETE (leave) remain functional with PUT/PATCH blocked."""
+    new_member = Member.objects.create(firstname="P", lastname="D", email="pd@local.test")
+    create = coach_client.post(_url(coach_team.pk), {"member": new_member.pk}, format="json")
+    assert create.status_code == 201, create.json()
+    ms_id = create.json()["id"]
+
+    delete = coach_client.delete(_url(coach_team.pk, ms_id))
+    assert delete.status_code == 204

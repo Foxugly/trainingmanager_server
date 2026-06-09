@@ -1339,6 +1339,9 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
     serializer_class = TeamMembershipSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = None
+    # Membership has no client-editable fields; join/leave is POST/DELETE.
+    # Block PUT/PATCH so a member cannot repoint a row to an arbitrary Member.
+    http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_team(self):
         team_pk = self.kwargs.get("team_pk")

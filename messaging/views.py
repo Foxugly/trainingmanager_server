@@ -231,17 +231,23 @@ class TopicMessageViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "put", "delete", "head", "options"]
 
     def get_team(self):
-        team_pk = self.kwargs.get("team_pk")
-        if not team_pk:
-            return None
-        return get_object_or_404(Team, pk=team_pk)
+        # Memoized per request: permission check + get_queryset + perform_*
+        # resolve the same URL pk. ``None`` is a valid result, so use hasattr
+        # as the "resolved" sentinel.
+        if not hasattr(self, "_team"):
+            team_pk = self.kwargs.get("team_pk")
+            self._team = get_object_or_404(Team, pk=team_pk) if team_pk else None
+        return self._team
 
     def get_topic(self):
-        topic_pk = self.kwargs.get("topic_pk")
-        team_pk = self.kwargs.get("team_pk")
-        if not topic_pk or not team_pk:
-            return None
-        return get_object_or_404(Topic, pk=topic_pk, team_id=team_pk)
+        if not hasattr(self, "_topic"):
+            topic_pk = self.kwargs.get("topic_pk")
+            team_pk = self.kwargs.get("team_pk")
+            if not topic_pk or not team_pk:
+                self._topic = None
+            else:
+                self._topic = get_object_or_404(Topic, pk=topic_pk, team_id=team_pk)
+        return self._topic
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

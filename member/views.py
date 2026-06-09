@@ -28,7 +28,7 @@ class MemberViewSet(viewsets.ModelViewSet):
                 memberships__left_at__isnull=True,
             )
             .select_related("user")
-            .prefetch_related("memberships__team__team_sports__sport")
+            .prefetch_related("memberships")
             .distinct()
         )
 
