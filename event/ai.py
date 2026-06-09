@@ -341,8 +341,7 @@ def generate_freeform_training(*, event, user=None, additional_prompt=""):
 
     tool = build_freeform_tool_schema()
     system = build_freeform_system_prompt(sport_name)
-    language_names = {"fr": "French", "nl": "Dutch", "en": "English", "it": "Italian", "es": "Spanish"}
-    lang_label = language_names.get(language, "French")
+    lang_label = resolve_language_label(language)
     user_prompt = (
         f"Write a {sport_name} training session for the event '{event.name}'"
         f"{(' on ' + str(event.date)) if event.date else ''}. "
