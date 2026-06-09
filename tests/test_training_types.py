@@ -136,3 +136,30 @@ def test_sport_admin_can_set_default_training_type(api_client):
     assert resp.status_code == 200, resp.json()
     sport.refresh_from_db()
     assert sport.default_training_type == "freeform"
+
+
+from team.models import TeamSport
+
+
+def test_team_sports_read_includes_training_type(auth_client_trainer, trainer_user, trainer_sport):
+    team = trainer_user.owned_teams.first()
+    ts = TeamSport.objects.get(team=team, sport=trainer_sport)
+    ts.training_type = TrainingType.FREEFORM
+    ts.save()
+    resp = auth_client_trainer.get(f"/api/v1/teams/{team.pk}/")
+    assert resp.status_code == 200
+    sports = resp.json()["sports"]
+    row = next(s for s in sports if s["id"] == trainer_sport.pk)
+    assert row["training_type"] == "freeform"
+
+
+def test_team_can_set_per_sport_training_type(auth_client_trainer, trainer_user, trainer_sport):
+    team = trainer_user.owned_teams.first()
+    resp = auth_client_trainer.patch(
+        f"/api/v1/teams/{team.pk}/",
+        {"sport_training_types": [{"sport_id": trainer_sport.pk, "training_type": "freeform"}]},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    ts = TeamSport.objects.get(team=team, sport=trainer_sport)
+    assert ts.training_type == "freeform"

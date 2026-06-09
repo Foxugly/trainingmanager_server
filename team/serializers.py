@@ -16,6 +16,7 @@ from place.models import Place
 from place.serializers import PlaceMinimalSerializer
 from sport.models import Sport
 from sport.serializers import SportSerializer
+from tools.choices import TrainingType
 
 from .models import (
     Team,
@@ -53,8 +54,15 @@ class TeamSportReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeamSport
-        fields = ["id", "name", "slug", "is_default", "order"]
+        fields = ["id", "name", "slug", "is_default", "order", "training_type"]
         read_only_fields = fields
+
+
+class _SportTrainingTypeWriteSerializer(serializers.Serializer):
+    sport_id = serializers.PrimaryKeyRelatedField(queryset=Sport.objects.all())
+    training_type = serializers.ChoiceField(
+        choices=TrainingType.choices, allow_null=True, required=False
+    )
 
 
 class TeamSerializer(serializers.ModelSerializer):
@@ -83,6 +91,9 @@ class TeamSerializer(serializers.ModelSerializer):
         queryset=Sport.objects.all(),
         write_only=True,
         required=False,
+    )
+    sport_training_types = _SportTrainingTypeWriteSerializer(
+        many=True, write_only=True, required=False
     )
     level = LevelSerializer(read_only=True, allow_null=True)
     level_id = serializers.PrimaryKeyRelatedField(
@@ -137,6 +148,7 @@ class TeamSerializer(serializers.ModelSerializer):
             "sport_id",
             "sport_ids",
             "default_sport_id",
+            "sport_training_types",
             "level",
             "level_id",
             "owner",
@@ -349,12 +361,26 @@ class TeamSerializer(serializers.ModelSerializer):
         elif legacy is not None:
             self._apply_default_sport(team, legacy)
 
+    def _apply_sport_training_types(self, team, overrides):
+        """Set TeamSport.training_type for the given (sport_id, training_type)
+        pairs. Only touches sports the team has; null clears the override."""
+        if not overrides:
+            return
+        for item in overrides:
+            sport = item["sport_id"]
+            ts = team.team_sports.filter(sport=sport).first()
+            if ts is not None:
+                ts.training_type = item.get("training_type")
+                ts.save(update_fields=["training_type"])
+
     def create(self, validated_data):
         sports = validated_data.pop("sport_ids", None)
         default = validated_data.pop("default_sport_id", None)
         legacy = validated_data.pop("sport_id", None)
+        overrides = validated_data.pop("sport_training_types", None)
         team = super().create(validated_data)
         self._persist_sports(team, sports, default, legacy)
+        self._apply_sport_training_types(team, overrides)
         return team
 
     def update(self, instance, validated_data):
@@ -371,6 +397,7 @@ class TeamSerializer(serializers.ModelSerializer):
         sports = validated_data.pop("sport_ids", None)
         default = validated_data.pop("default_sport_id", None)
         legacy = validated_data.pop("sport_id", None)
+        overrides = validated_data.pop("sport_training_types", None)
         if "default_place" in validated_data and validated_data["default_place"] is not None:
             validated_data["default_pool"] = validated_data["default_place"].name
         team = super().update(instance, validated_data)
@@ -378,6 +405,7 @@ class TeamSerializer(serializers.ModelSerializer):
         if team.default_place_id and not team.places.filter(pk=team.default_place_id).exists():
             team.places.add(team.default_place_id)
         self._persist_sports(team, sports, default, legacy)
+        self._apply_sport_training_types(team, overrides)
         return team
 
     def validate_timezone(self, value):
