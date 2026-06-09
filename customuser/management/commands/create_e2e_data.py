@@ -23,6 +23,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from django.utils import timezone
+
+from event.models import Event
 from exercise.models import EnergySegment, EnergySystem, Modality
 from member.models import Member
 from program.models import Program
@@ -49,6 +52,11 @@ ENERGY_SEGMENT_ABV = "e2e-seg"
 
 TEAM_NAME = "E2E Team"
 PROGRAM_NAME = "E2E Program"
+EVENT_NAME = "E2E Session"
+
+# Seeded users render the SPA in English so the Playwright specs' English
+# accessible-name selectors are deterministic (no per-locale label drift).
+SEED_LANGUAGE = "en"
 
 ATHLETE_FIRSTNAME = "E2E"
 ATHLETE_LASTNAME = "Athlete"
@@ -83,12 +91,18 @@ class Command(BaseCommand):
         User = get_user_model()
         user, created = User.objects.get_or_create(
             username=username,
-            defaults={"email": email, "first_name": first_name, "is_active": True},
+            defaults={
+                "email": email,
+                "first_name": first_name,
+                "is_active": True,
+                "language": SEED_LANGUAGE,
+            },
         )
         # Re-assert mutable state on every run (idempotent self-heal).
         user.email = email
         user.first_name = first_name
         user.is_active = True
+        user.language = SEED_LANGUAGE
         user.set_password(E2E_PASSWORD)
         user.save()
 
@@ -156,6 +170,15 @@ class Command(BaseCommand):
             defaults={"is_active": True},
         )
 
+        # --- Event under the program (today, so it shows in the current-month
+        # calendar grid the athlete opens for the RSVP flow) ------------------
+        today = timezone.now().date()
+        event, event_created = Event.objects.update_or_create(
+            name=EVENT_NAME,
+            refer_program=program,
+            defaults={"date": today, "sport": sport},
+        )
+
         # --- Athlete user + Member + active membership ----------------------
         athlete, athlete_created = self._ensure_verified_user(
             username=ATHLETE_USERNAME, email=ATHLETE_EMAIL, first_name="E2E Athlete"
@@ -193,6 +216,7 @@ class Command(BaseCommand):
             f"  team     : id={team.id} '{TEAM_NAME}' rsvp_enabled={team.rsvp_enabled} "
             f"({mark(team_created)})",
             f"  program  : id={program.id} '{PROGRAM_NAME}' ({mark(program_created)})",
+            f"  event    : id={event.id} '{EVENT_NAME}' date={event.date} ({mark(event_created)})",
             f"  member   : id={member.id} membership id={membership.id} "
             f"active=True ({mark(membership_created)})",
         ]
