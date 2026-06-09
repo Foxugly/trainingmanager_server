@@ -315,6 +315,22 @@ def build_freeform_tool_schema():
     }
 
 
+def build_freeform_system_prompt(sport_name):
+    """Minimal system prompt for freeform generation.
+
+    Unlike the structured prompt, it makes no mention of the modalities /
+    energysegments catalogs or the structured ``create_training_session`` tool —
+    it just asks for a concise free-text session as sanitizable HTML and routes
+    the answer through the ``create_freeform_training`` tool.
+    """
+    return (
+        f"You are a coach assistant. Write a concise free-text training session "
+        f"for {sport_name} as sanitizable HTML (use only <p>, <ul>/<ol>/<li>, "
+        f"<strong>, <em>, <h2>/<h3>, <br>). Return it by calling the "
+        f"'create_freeform_training' tool."
+    )
+
+
 def generate_freeform_training(*, event, user=None, additional_prompt=""):
     """Generate free-text (HTML) training content via Claude, in the team's
     language. Returns {html, rationale, prompt_sent, model, input_tokens, output_tokens}."""
@@ -324,7 +340,7 @@ def generate_freeform_training(*, event, user=None, additional_prompt=""):
     language = team.language if team is not None else "fr"
 
     tool = build_freeform_tool_schema()
-    system = build_system_prompt(sport_name)
+    system = build_freeform_system_prompt(sport_name)
     language_names = {"fr": "French", "nl": "Dutch", "en": "English", "it": "Italian", "es": "Spanish"}
     lang_label = language_names.get(language, "French")
     user_prompt = (
