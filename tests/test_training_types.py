@@ -163,3 +163,22 @@ def test_team_can_set_per_sport_training_type(auth_client_trainer, trainer_user,
     assert resp.status_code == 200, resp.json()
     ts = TeamSport.objects.get(team=team, sport=trainer_sport)
     assert ts.training_type == "freeform"
+
+
+from unittest.mock import patch
+
+
+def test_generate_freeform_training_returns_html(trainer_user, trainer_sport):
+    from event.ai import generate_freeform_training
+    from program.models import Program
+    from tests.factories import EventFactory
+    team = trainer_user.owned_teams.first()
+    program = Program.objects.create(name="P", team=team)
+    event = EventFactory(refer_program=program, sport=trainer_sport, training_type=TrainingType.FREEFORM)
+    fake = {"tool_input": {"html": "<p>Easy run 30'</p>", "rationale": "Recovery day."},
+            "model": "claude-x", "input_tokens": 10, "output_tokens": 5}
+    with patch("event.ai.call_claude_with_tool", return_value=fake) as mocked:
+        out = generate_freeform_training(event=event, user=trainer_user, additional_prompt="easy")
+    assert out["html"] == "<p>Easy run 30'</p>"
+    assert out["rationale"] == "Recovery day."
+    assert mocked.called

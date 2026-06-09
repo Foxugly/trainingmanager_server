@@ -290,6 +290,72 @@ def build_user_prompt(
     return cached_prefix, variable_prompt
 
 
+def build_freeform_tool_schema():
+    return {
+        "name": "create_freeform_training",
+        "description": (
+            "Generate a free-text training session as a short HTML document "
+            "(headings, paragraphs, lists). No structured rounds."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string",
+                    "description": (
+                        "The session as sanitizable HTML (use only <p>, <ul>/<ol>/<li>, "
+                        "<strong>, <em>, <h2>/<h3>, <br>). Max ~4000 chars."
+                    ),
+                    "maxLength": 8000,
+                },
+                "rationale": {"type": "string", "description": "1-3 sentence explanation."},
+            },
+            "required": ["html", "rationale"],
+        },
+    }
+
+
+def generate_freeform_training(*, event, user=None, additional_prompt=""):
+    """Generate free-text (HTML) training content via Claude, in the team's
+    language. Returns {html, rationale, prompt_sent, model, input_tokens, output_tokens}."""
+    team = event.refer_program.team if event.refer_program else None
+    sport = event.sport or (team.default_sport if team else None)
+    sport_name = sport.name if sport else "the practiced sport"
+    language = team.language if team is not None else "fr"
+
+    tool = build_freeform_tool_schema()
+    system = build_system_prompt(sport_name)
+    language_names = {"fr": "French", "nl": "Dutch", "en": "English", "it": "Italian", "es": "Spanish"}
+    lang_label = language_names.get(language, "French")
+    user_prompt = (
+        f"Write a {sport_name} training session for the event '{event.name}'"
+        f"{(' on ' + str(event.date)) if event.date else ''}. "
+        f"Write ALL prose in {lang_label}. "
+        f"Return it via the create_freeform_training tool as concise HTML. "
+        f"{('Extra guidance: ' + additional_prompt) if additional_prompt else ''}"
+    )
+
+    result = call_claude_with_tool(
+        prompt=user_prompt,
+        system=system,
+        cached_prefix="",
+        tool=tool,
+        track_kwargs={"team": team, "user": user, "endpoint": "training_freeform"},
+    )
+    tool_input = result["tool_input"]
+    html = tool_input.get("html", "")
+    if not html:
+        raise AIServiceError(_("AI returned empty free-text content."))
+    return {
+        "html": html,
+        "rationale": tool_input.get("rationale", ""),
+        "prompt_sent": user_prompt,
+        "model": result["model"],
+        "input_tokens": result["input_tokens"],
+        "output_tokens": result["output_tokens"],
+    }
+
+
 def generate_training(*, event, user=None, additional_prompt=""):
     from exercise.models import EnergySegment, Modality
 
