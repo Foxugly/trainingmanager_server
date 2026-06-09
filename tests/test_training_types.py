@@ -201,3 +201,26 @@ def test_generate_training_freeform_writes_richtext(auth_client_trainer, trainer
     assert "<p>Recovery</p>" in event.training_richtext
     assert event.rounds.count() == 0
     assert event.generated_by_ai is True
+
+
+from event.models import VisibilityMode
+
+
+def test_freeform_richtext_redacted_for_non_manager_when_vis_never(api_client, trainer_user, trainer_sport):
+    from program.models import Program
+    from tests.factories import EventFactory, UserFactory, MemberFactory
+    from team.models import TeamMembership
+    team = trainer_user.owned_teams.first()
+    program = Program.objects.create(name="P", team=team)
+    event = EventFactory(
+        refer_program=program, sport=trainer_sport,
+        training_type=TrainingType.FREEFORM, training_richtext="<p>secret</p>",
+        vis_rounds=VisibilityMode.NEVER,
+    )
+    athlete = UserFactory()
+    member = MemberFactory(user=athlete)
+    TeamMembership.objects.create(team=team, member=member)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.get(f"/api/v1/events/{event.pk}/")
+    assert resp.status_code == 200
+    assert resp.json().get("training_richtext") in ("", None)

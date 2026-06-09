@@ -387,6 +387,9 @@ class EventSerializer(serializers.ModelSerializer):
             data["rounds"] = []
             if "rounds_detail" in data:
                 data["rounds_detail"] = []
+            # The freeform training content is the unstructured counterpart of
+            # rounds; the same vis_rounds gate must hide it too.
+            data["training_richtext"] = ""
         return data
 
     @extend_schema_field(EventRoundDetailSerializer(many=True))
