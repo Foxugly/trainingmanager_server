@@ -165,6 +165,8 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _handle_acceptance(join_request):
+        from django.db import IntegrityError
+
         from member.models import Member
 
         user = join_request.user
@@ -175,7 +177,15 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
             if not TeamMembership.objects.filter(
                 team=team, member=existing_member, left_at__isnull=True
             ).exists():
-                TeamMembership.objects.create(team=team, member=existing_member)
+                # The .exists() check is the fast path; the partial unique
+                # constraint (uniq_active_membership_per_team_member) is the
+                # real guard against a concurrent accept racing between the
+                # check and the insert — swallow its IntegrityError as a no-op.
+                try:
+                    with transaction.atomic():
+                        TeamMembership.objects.create(team=team, member=existing_member)
+                except IntegrityError:
+                    pass
             return
 
         member = Member.objects.create(
@@ -185,7 +195,11 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
             phonenumber="",
             user=user,
         )
-        TeamMembership.objects.create(team=team, member=member)
+        try:
+            with transaction.atomic():
+                TeamMembership.objects.create(team=team, member=member)
+        except IntegrityError:
+            pass
 
     @staticmethod
     def _revoke_membership(join_request):

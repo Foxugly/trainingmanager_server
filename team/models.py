@@ -321,6 +321,17 @@ class TeamMembership(models.Model):
             models.Index(fields=["team", "left_at"], name="membership_team_left_idx"),
             models.Index(fields=["member", "left_at"], name="membership_member_left_idx"),
         ]
+        constraints = [
+            # At most one ACTIVE membership row per (team, member). Historical
+            # (left_at IS NOT NULL) rows are unconstrained, so re-joining still
+            # adds a new period. Backstops the accept-join-request race that
+            # could otherwise create duplicate active rows.
+            models.UniqueConstraint(
+                fields=["team", "member"],
+                condition=models.Q(left_at__isnull=True),
+                name="uniq_active_membership_per_team_member",
+            ),
+        ]
 
     def __str__(self):
         status = "active" if self.left_at is None else f"left {self.left_at:%Y-%m-%d}"

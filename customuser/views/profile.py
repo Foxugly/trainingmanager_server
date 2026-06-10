@@ -27,6 +27,12 @@ from ..serializers import (
 )
 
 
+class _EmailTaken(Exception):
+    """Internal sentinel: the target email was claimed between request and
+    confirm. Raised inside the email-change atomic block to roll it back and
+    surface a 409 (kept private to this module)."""
+
+
 class MeView(RetrieveUpdateAPIView):
     """GET/PATCH du profil de l'utilisateur connecté.
 
@@ -310,6 +316,8 @@ class EmailChangeConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from django.db import IntegrityError
+
         user_id, new_email = parsed
         user = CustomUser.objects.filter(pk=user_id).first()
         if user is None:
@@ -318,29 +326,39 @@ class EmailChangeConfirmView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        taken = (
-            CustomUser.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists()
-            or EmailAddress.objects.filter(email__iexact=new_email).exclude(user_id=user.pk).exists()
-        )
-        if taken:
+        # The uniqueness check + the write run in ONE atomic block so two
+        # confirmations racing toward the same address can't both pass the
+        # check and create duplicate accounts; allauth's unique-email
+        # constraint is the backstop (IntegrityError -> clean 409).
+        try:
+            with transaction.atomic():
+                taken = (
+                    CustomUser.objects.filter(email__iexact=new_email)
+                    .exclude(pk=user.pk)
+                    .exists()
+                    or EmailAddress.objects.filter(email__iexact=new_email)
+                    .exclude(user_id=user.pk)
+                    .exists()
+                )
+                if taken:
+                    raise _EmailTaken()
+                # Demote any other primary, then make the new address
+                # primary+verified and sync the user's email column.
+                EmailAddress.objects.filter(user=user, primary=True).exclude(
+                    email__iexact=new_email
+                ).update(primary=False)
+                EmailAddress.objects.update_or_create(
+                    user=user,
+                    email=new_email,
+                    defaults={"verified": True, "primary": True},
+                )
+                user.email = new_email
+                user.save(update_fields=["email"])
+        except (_EmailTaken, IntegrityError):
             return Response(
                 {"code": "email_taken", "detail": _("This email is already in use.")},
                 status=status.HTTP_409_CONFLICT,
             )
-
-        with transaction.atomic():
-            # Demote any other primary, then make the new address primary+verified
-            # and sync the user's email column.
-            EmailAddress.objects.filter(user=user, primary=True).exclude(
-                email__iexact=new_email
-            ).update(primary=False)
-            EmailAddress.objects.update_or_create(
-                user=user,
-                email=new_email,
-                defaults={"verified": True, "primary": True},
-            )
-            user.email = new_email
-            user.save(update_fields=["email"])
 
         return Response(
             {"detail": _("Your email address has been updated."), "code": "email_changed"}

@@ -67,6 +67,7 @@ class RegisterView(APIView):
     )
     def post(self, request):
         from allauth.account.models import EmailAddress
+        from django.db import transaction
 
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -77,17 +78,24 @@ class RegisterView(APIView):
         if not verify_turnstile_token(data["turnstile_token"], remote_ip=get_remote_ip(request)):
             raise CaptchaFailed()
 
-        user = CustomUser.objects.create_user(
-            username=data["username"],
-            email=data["email"],
-            password=data["password"],
-            first_name=data["first_name"],
-            last_name=data["last_name"],
-            language=data.get("language", "en"),
-        )
-        address = EmailAddress.objects.create(
-            user=user, email=user.email, primary=True, verified=False
-        )
+        # User + EmailAddress are created atomically so a failure on the second
+        # insert can't leave an orphaned user with a now-taken username/email but
+        # no EmailAddress (which would be unable to log in OR re-register).
+        with transaction.atomic():
+            user = CustomUser.objects.create_user(
+                username=data["username"],
+                email=data["email"],
+                password=data["password"],
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+                language=data.get("language", "en"),
+            )
+            address = EmailAddress.objects.create(
+                user=user, email=user.email, primary=True, verified=False
+            )
+        # Send the confirmation AFTER commit: if the mail backend fails the
+        # account still exists with an unverified address, so /auth/email/resend/
+        # works rather than rolling back into a half-registered state.
         address.send_confirmation(request, signup=True)
 
         return Response(
