@@ -4,8 +4,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework.exceptions import PermissionDenied
 
 from member.models import Member
-from team.models import Team
-from tools.mixins import SoftDeleteIncludeInactiveModelViewSet
+from tools.mixins import SoftDeleteIncludeInactiveModelViewSet, TeamScopedViewMixin
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 
 from .models import Note
@@ -22,7 +21,7 @@ from .serializers import NoteSerializer
     update=extend_schema(parameters=[INCLUDE_INACTIVE_PARAM]),
     partial_update=extend_schema(parameters=[INCLUDE_INACTIVE_PARAM]),
 )
-class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class NoteViewSet(TeamScopedViewMixin, SoftDeleteIncludeInactiveModelViewSet):
     """CRUD on coach notes within a team-member nested context.
 
     URL: /api/v1/teams/{team_pk}/members/{member_pk}/notes/
@@ -31,15 +30,6 @@ class NoteViewSet(SoftDeleteIncludeInactiveModelViewSet):
     serializer_class = NoteSerializer
     permission_classes = [IsTeamCoachOrReadOwnNotes]
     soft_delete_fields = ("is_active", "updated_at")
-
-    def get_team(self):
-        # Memoized per request: permission check + get_queryset call this for
-        # the same URL pk. ``None`` is a valid result, so use hasattr as the
-        # "resolved" sentinel.
-        if not hasattr(self, "_team"):
-            team_pk = self.kwargs.get("team_pk")
-            self._team = get_object_or_404(Team, pk=team_pk) if team_pk else None
-        return self._team
 
     def get_member_or_none(self):
         if not hasattr(self, "_member"):

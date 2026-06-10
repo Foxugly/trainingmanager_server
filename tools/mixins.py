@@ -10,7 +10,29 @@ ProgramViewSet has a custom variant (staff OR managed_teams + a
 permission check before destroy) and is not migrated to these mixins.
 """
 
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
+
+
+class TeamScopedViewMixin:
+    """Resolve the URL's team (``team_pk``) once per request via ``get_team()``.
+
+    Five team-nested viewsets (Note, messaging Topic/Message, team
+    Membership/TrainingSlot) reimplemented this verbatim. Returns the ``Team``,
+    or ``None`` when the route carries no ``team_pk``. Memoized (``self._team``)
+    so the repeated calls across get_queryset + the permission check +
+    perform_* hit the DB once.
+    """
+
+    team_url_kwarg = "team_pk"
+
+    def get_team(self):
+        if not hasattr(self, "_team"):
+            from team.models import Team  # local import: tools must not import team at load
+
+            team_pk = self.kwargs.get(self.team_url_kwarg)
+            self._team = get_object_or_404(Team, pk=team_pk) if team_pk else None
+        return self._team
 
 
 class SoftDeleteMixin:

@@ -30,6 +30,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from tools.exceptions import NotAuthorizedMemberDenied, TeamQuotaExceeded
+from tools.mixins import TeamScopedViewMixin
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 from tools.throttling import AIReviewThrottle
 
@@ -1446,7 +1447,7 @@ class InvitationLookupView(APIView):
 
 
 @extend_schema(parameters=[INCLUDE_INACTIVE_PARAM])
-class TeamMembershipViewSet(viewsets.ModelViewSet):
+class TeamMembershipViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
     """Manage team memberships.
 
     URL: /api/v1/teams/{team_pk}/memberships/
@@ -1467,12 +1468,6 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
     # Membership has no client-editable fields; join/leave is POST/DELETE.
     # Block PUT/PATCH so a member cannot repoint a row to an arbitrary Member.
     http_method_names = ["get", "post", "delete", "head", "options"]
-
-    def get_team(self):
-        team_pk = self.kwargs.get("team_pk")
-        if not team_pk:
-            return None
-        return get_object_or_404(Team, pk=team_pk)
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -1568,7 +1563,7 @@ class TeamMembershipViewSet(viewsets.ModelViewSet):
     update=extend_schema(summary="Replace a weekly training slot (manager only)"),
     destroy=extend_schema(summary="Delete a weekly training slot (manager only)"),
 )
-class TrainingSlotViewSet(viewsets.ModelViewSet):
+class TrainingSlotViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
     """Per-slot CRUD for a team's weekly training template.
 
     URL: /api/v1/teams/{team_pk}/training-slots/
@@ -1582,9 +1577,6 @@ class TrainingSlotViewSet(viewsets.ModelViewSet):
     serializer_class = TrainingSlotSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = None
-
-    def get_team(self):
-        return get_object_or_404(Team, pk=self.kwargs.get("team_pk"))
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):

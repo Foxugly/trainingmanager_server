@@ -11,6 +11,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from team.queries import managed_teams, user_member_teams
+from tools.mixins import TeamScopedViewMixin
+
+from .models import Message, Topic, TopicAudience, TopicRead
+from .permissions import (
+    IsTeamTopicVisibilityAndCoachWrite,
+    IsTopicMessagePermission,
+)
+from .serializers import (
+    MessageSerializer,
+    TopicSerializer,
+    UnreadSummarySerializer,
+)
+
 _TEAM_PK_PARAM = OpenApiParameter(
     name="team_pk",
     type=OpenApiTypes.INT,
@@ -22,20 +36,6 @@ _TOPIC_PK_PARAM = OpenApiParameter(
     type=OpenApiTypes.INT,
     location=OpenApiParameter.PATH,
     description="ID of the parent topic.",
-)
-
-from team.models import Team
-from team.queries import managed_teams, user_member_teams
-
-from .models import Message, Topic, TopicAudience, TopicRead
-from .permissions import (
-    IsTeamTopicVisibilityAndCoachWrite,
-    IsTopicMessagePermission,
-)
-from .serializers import (
-    MessageSerializer,
-    TopicSerializer,
-    UnreadSummarySerializer,
 )
 
 
@@ -85,7 +85,7 @@ def _topic_recipients(topic, *, exclude_user=None):
         operation_id="teams_topics_destroy",
     ),
 )
-class TopicViewSet(viewsets.ModelViewSet):
+class TopicViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
     """Topics nested under a team.
 
     URL: /api/v1/teams/{team_pk}/topics/
@@ -102,12 +102,6 @@ class TopicViewSet(viewsets.ModelViewSet):
         if getattr(self, "action", None) == "read":
             return [IsAuthenticated()]
         return super().get_permissions()
-
-    def get_team(self):
-        team_pk = self.kwargs.get("team_pk")
-        if not team_pk:
-            return None
-        return get_object_or_404(Team, pk=team_pk)
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -220,7 +214,7 @@ class TopicViewSet(viewsets.ModelViewSet):
         parameters=[_TEAM_PK_PARAM, _TOPIC_PK_PARAM],
     ),
 )
-class TopicMessageViewSet(viewsets.ModelViewSet):
+class TopicMessageViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
     """Messages nested under a topic.
 
     URL: /api/v1/teams/{team_pk}/topics/{topic_pk}/messages/
@@ -229,15 +223,6 @@ class TopicMessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [IsTopicMessagePermission]
     http_method_names = ["get", "post", "patch", "put", "delete", "head", "options"]
-
-    def get_team(self):
-        # Memoized per request: permission check + get_queryset + perform_*
-        # resolve the same URL pk. ``None`` is a valid result, so use hasattr
-        # as the "resolved" sentinel.
-        if not hasattr(self, "_team"):
-            team_pk = self.kwargs.get("team_pk")
-            self._team = get_object_or_404(Team, pk=team_pk) if team_pk else None
-        return self._team
 
     def get_topic(self):
         if not hasattr(self, "_topic"):
