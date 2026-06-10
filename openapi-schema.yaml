@@ -11659,6 +11659,11 @@ components:
           type: string
           format: date
           nullable: true
+        streak:
+          type: integer
+          nullable: true
+          description: Current consecutive-present streak (per-athlete scope only;
+            null on the team aggregate).
       required:
       - last_present_date
       - member_id
@@ -11743,6 +11748,45 @@ components:
       required:
       - from
       - to
+    StatsRoti:
+      type: object
+      description: |-
+        Per-athlete ROTI (return-on-training-investment) trend over the window.
+        Empty series on the team aggregate (ROTI is per athlete).
+      properties:
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsRotiPoint'
+        average:
+          type: number
+          format: double
+          nullable: true
+        count:
+          type: integer
+      required:
+      - average
+      - count
+      - series
+    StatsRotiPoint:
+      type: object
+      properties:
+        event_id:
+          type: integer
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+          nullable: true
+        score:
+          type: integer
+          description: ROTI score 1-5 for that session.
+      required:
+      - date
+      - event_id
+      - name
+      - score
     StatsVolume:
       type: object
       properties:
@@ -12467,11 +12511,14 @@ components:
           $ref: '#/components/schemas/StatsVolume'
         intensity:
           $ref: '#/components/schemas/StatsIntensity'
+        roti:
+          $ref: '#/components/schemas/StatsRoti'
       required:
       - attendance
       - intensity
       - member
       - period
+      - roti
       - volume
     TokenObtainPairResponse:
       type: object

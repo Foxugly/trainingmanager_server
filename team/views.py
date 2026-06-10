@@ -260,6 +260,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             ),
             "volume": self._volume_stats(event_ids, events, member_names, member_id),
             "intensity": self._intensity_stats(event_ids, member_id),
+            "roti": self._roti_stats(event_ids, events, member_id),
         }
         return Response(TeamStatsSerializer(payload).data)
 
@@ -532,6 +533,8 @@ class TeamViewSet(viewsets.ModelViewSet):
                     "total": session_count,
                     "rate": rate,
                     "last_present_date": last_present,
+                    # Streak is a per-athlete metric; not computed on the aggregate.
+                    "streak": None,
                 }
             )
         by_member.sort(key=lambda m: m["name"].lower())
@@ -578,6 +581,15 @@ class TeamViewSet(viewsets.ModelViewSet):
         session_count = len(events)
         team_rate = (total_present / session_count) if session_count else None
 
+        # Current streak: consecutive present sessions counting back from the
+        # most recent (chronologically), stopping at the first absence.
+        streak = 0
+        for s in sorted(by_session, key=lambda x: (x["date"] is None, x["date"]), reverse=True):
+            if s["present"]:
+                streak += 1
+            else:
+                break
+
         name = member_names.get(member_id) or f"member #{member_id}"
         by_member = [
             {
@@ -587,6 +599,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 "total": session_count,
                 "rate": team_rate,
                 "last_present_date": last_present_date,
+                "streak": streak,
             }
         ]
 
@@ -595,6 +608,35 @@ class TeamViewSet(viewsets.ModelViewSet):
             "by_session": by_session,
             "by_member": by_member,
         }
+
+    @staticmethod
+    def _roti_stats(event_ids, events, member_id):
+        """Per-athlete ROTI (return-on-training-investment, 1-5) trend over the
+        window: a date-ordered score series + average. ROTI is per athlete, so
+        the team aggregate (member_id is None) returns an empty series."""
+        if member_id is None or not event_ids:
+            return {"series": [], "average": None, "count": 0}
+        from roti.models import Roti
+
+        score_by_event = dict(
+            Roti.objects.filter(event_id__in=event_ids, member_id=member_id).values_list(
+                "event_id", "score"
+            )
+        )
+        series = []
+        total = 0
+        for e in events:
+            score = score_by_event.get(e["id"])
+            if score is None:
+                continue
+            series.append(
+                {"event_id": e["id"], "name": e["name"], "date": e["date"], "score": score}
+            )
+            total += score
+        series.sort(key=lambda x: (x["date"] is None, x["date"]))
+        count = len(series)
+        average = (total / count) if count else None
+        return {"series": series, "average": average, "count": count}
 
     @staticmethod
     def _volume_stats(event_ids, events, member_names, member_id=None):

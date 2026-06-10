@@ -764,6 +764,11 @@ class StatsAttendanceByMemberSerializer(serializers.Serializer):
     total = serializers.IntegerField()
     rate = serializers.FloatField(allow_null=True)
     last_present_date = serializers.DateField(allow_null=True)
+    streak = serializers.IntegerField(
+        allow_null=True,
+        required=False,
+        help_text="Current consecutive-present streak (per-athlete scope only; null on the team aggregate).",
+    )
 
 
 class StatsAttendanceSerializer(serializers.Serializer):
@@ -802,6 +807,22 @@ class StatsIntensitySerializer(serializers.Serializer):
     by_segment = StatsIntensityBySegmentSerializer(many=True)
 
 
+class StatsRotiPointSerializer(serializers.Serializer):
+    event_id = serializers.IntegerField()
+    name = serializers.CharField()
+    date = serializers.DateField(allow_null=True)
+    score = serializers.IntegerField(help_text="ROTI score 1-5 for that session.")
+
+
+class StatsRotiSerializer(serializers.Serializer):
+    """Per-athlete ROTI (return-on-training-investment) trend over the window.
+    Empty series on the team aggregate (ROTI is per athlete)."""
+
+    series = StatsRotiPointSerializer(many=True)
+    average = serializers.FloatField(allow_null=True)
+    count = serializers.IntegerField()
+
+
 class StatsMemberSerializer(serializers.Serializer):
     """The athlete a per-member scoped payload is restricted to. Null on the
     team-aggregate response (no ?member= query param)."""
@@ -830,6 +851,7 @@ class TeamStatsSerializer(serializers.Serializer):
     attendance = StatsAttendanceSerializer()
     volume = StatsVolumeSerializer()
     intensity = StatsIntensitySerializer()
+    roti = StatsRotiSerializer()
 
 
 # ---------------------------------------------------------------------

@@ -409,7 +409,6 @@ def scoped_setup(team, program, present_status, absent_status):
 
 def test_manager_can_query_any_member_scoped(owner_client, team, scoped_setup):
     m_alice = scoped_setup["m_alice"]
-    e1 = scoped_setup["e1"]
     body = owner_client.get(_url(team.pk) + f"?member={m_alice.pk}").json()
 
     # member object present + identifies the scope.
@@ -475,3 +474,31 @@ def test_member_not_in_team_returns_404(owner_client, team, scoped_setup):
 def test_member_param_non_integer_returns_400(owner_client, team, scoped_setup):
     resp = owner_client.get(_url(team.pk) + "?member=abc")
     assert resp.status_code == 400
+
+
+def test_member_scope_includes_roti_trend_and_streak(owner_client, team, program, present_status):
+    """E6: per-athlete payload carries a date-ordered ROTI series + a current
+    attendance streak; the team aggregate has an empty ROTI series."""
+    from roti.models import Roti
+
+    today = timezone.localdate()
+    m = _make_member(team, "Ro", "Ti")
+    e1 = Event.objects.create(refer_program=program, name="s1", date=today - timedelta(days=14), total=100)
+    e2 = Event.objects.create(refer_program=program, name="s2", date=today - timedelta(days=7), total=100)
+    e3 = Event.objects.create(refer_program=program, name="s3", date=today - timedelta(days=1), total=100)
+    # Present only at the two most recent sessions -> streak of 2.
+    Attendance.objects.create(event=e2, member=m, status=present_status)
+    Attendance.objects.create(event=e3, member=m, status=present_status)
+    Roti.objects.create(event=e1, member=m, score=3)
+    Roti.objects.create(event=e3, member=m, score=5)
+
+    body = owner_client.get(_url(team.pk) + f"?member={m.id}").json()
+    roti = body["roti"]
+    assert roti["count"] == 2
+    assert [p["score"] for p in roti["series"]] == [3, 5]  # date-ordered
+    assert roti["average"] == 4.0
+    assert body["attendance"]["by_member"][0]["streak"] == 2
+
+    # Team aggregate: ROTI is per-athlete, so the series is empty.
+    agg = owner_client.get(_url(team.pk)).json()
+    assert agg["roti"] == {"series": [], "average": None, "count": 0}
