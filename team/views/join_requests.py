@@ -205,15 +205,23 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
     def _revoke_membership(join_request):
         """Reverse a previous acceptance — used when a manager flips the
         decision via magic link from accepted -> rejected. Sets left_at on
-        the active TeamMembership for (team, requester); does not delete."""
+        the active TeamMembership for (team, requester); does not delete.
+
+        Saves each row individually (NOT queryset.update) so the
+        post_save signal sync_event_members_on_membership_change fires and
+        DETACHES the athlete from the team's future events — a bulk .update()
+        bypasses signals and would leave them attached."""
         member = getattr(join_request.user, "member_profile", None)
         if member is None:
             return
-        TeamMembership.objects.filter(
+        now = timezone.now()
+        for membership in TeamMembership.objects.filter(
             team=join_request.team,
             member=member,
             left_at__isnull=True,
-        ).update(left_at=timezone.now())
+        ):
+            membership.left_at = now
+            membership.save(update_fields=["left_at", "updated_at"])
 
 
 class _MagicActionBase(APIView):

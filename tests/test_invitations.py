@@ -231,6 +231,41 @@ def test_POST_complete_invitation_creates_user_and_jwt(api_client, trainer_user)
     assert ea.primary is True
 
 
+def test_POST_complete_invitation_adds_member_to_team_roster(api_client, trainer_user):
+    """B-P1: finalising an invitation must put the athlete on the roster
+    (TeamMembership) AND attach them to the team's future events — the whole
+    point of the invitation. The invitation flow creates a Member with NO
+    membership; completion must create it."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from event.models import Event
+    from program.models import Program
+
+    team = trainer_user.owned_teams.first()
+    member = Member.objects.create(firstname="Ros", lastname="Ter", email="ros@local.test")
+    inv = TeamInvitation.objects.create(team=team, member=member, email="ros@local.test")
+    assert not TeamMembership.objects.filter(team=team, member=member).exists()
+
+    program = Program.objects.create(name="P", team=team)
+    future = Event.objects.create(
+        refer_program=program, name="F", date=timezone.localdate() + timedelta(days=3)
+    )
+
+    resp = api_client.post(
+        f"/api/v1/invitations/lookup/{inv.token}/",
+        {"username": "rosterath", "password": "StrongPass!2026"},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.json()
+
+    assert (
+        TeamMembership.objects.filter(team=team, member=member, left_at__isnull=True).count() == 1
+    )
+    assert future.members.filter(pk=member.pk).exists()
+
+
 def test_POST_complete_invitation_invalid_username_returns_400(api_client, trainer_user):
     UserFactory(username="taken")
     team = trainer_user.owned_teams.first()

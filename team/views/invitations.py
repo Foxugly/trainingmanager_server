@@ -200,7 +200,10 @@ class InvitationLookupView(APIView):
     )
     def post(self, request, token):
         from allauth.account.models import EmailAddress
+        from django.db import IntegrityError
         from rest_framework_simplejwt.tokens import RefreshToken
+
+        from ..models import TeamMembership
 
         invitation = get_object_or_404(TeamInvitation, token=token)
         if not invitation.is_valid():
@@ -233,6 +236,22 @@ class InvitationLookupView(APIView):
             )
             invitation.member.user = user
             invitation.member.save()
+
+            # Add the now-registered athlete to the team — the whole point of
+            # the invitation. The TeamMembership post_save signal then attaches
+            # them to the team's future events. Guard the active-membership
+            # unique constraint with a savepoint (idempotent if somehow already
+            # a member).
+            if not TeamMembership.objects.filter(
+                team=invitation.team, member=invitation.member, left_at__isnull=True
+            ).exists():
+                try:
+                    with transaction.atomic():
+                        TeamMembership.objects.create(
+                            team=invitation.team, member=invitation.member
+                        )
+                except IntegrityError:
+                    pass
 
             invitation.status = "completed"
             invitation.completed_at = timezone.now()

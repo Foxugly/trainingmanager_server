@@ -190,6 +190,41 @@ def test_PATCH_already_handled_returns_400(auth_client_trainer, trainer_user):
     assert response.status_code == 400
 
 
+def test_magic_reject_after_accept_detaches_member_from_future_events(api_client, trainer_user):
+    """B-P1: flipping accepted->rejected via the magic link must DETACH the
+    athlete from the team's future events. _revoke_membership now saves each row
+    (so the post_save signal fires); a bulk .update() bypassed it and left the
+    athlete attached."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from event.models import Event
+    from member.models import Member
+    from program.models import Program
+    from team.magic_action import make_token
+
+    team = trainer_user.owned_teams.first()
+    requester = UserFactory()
+    jr = TeamJoinRequest.objects.create(user=requester, team=team, status="pending")
+    program = Program.objects.create(name="P", team=team)
+    future = Event.objects.create(
+        refer_program=program, name="F", date=timezone.localdate() + timedelta(days=3)
+    )
+
+    api_client.force_authenticate(user=trainer_user)
+    r1 = api_client.post("/api/v1/join-magic/", {"token": make_token(jr.id, "accept")}, format="json")
+    assert r1.status_code == 200, r1.json()
+    member = Member.objects.get(user=requester)
+    assert TeamMembership.objects.filter(team=team, member=member, left_at__isnull=True).exists()
+    assert future.members.filter(pk=member.pk).exists()
+
+    r2 = api_client.post("/api/v1/join-magic/", {"token": make_token(jr.id, "reject")}, format="json")
+    assert r2.status_code == 200, r2.json()
+    assert not TeamMembership.objects.filter(team=team, member=member, left_at__isnull=True).exists()
+    assert not future.members.filter(pk=member.pk).exists()
+
+
 def test_PATCH_other_user_cant_modify(api_client, authenticated_user):
     requester = UserFactory()
     team = TeamFactory(is_active=True, is_public=True)
