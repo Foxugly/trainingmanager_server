@@ -248,6 +248,10 @@ CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage")
 # throttles / Turnstile remoteip. Set higher if a CDN is added in front.
 TRUSTED_PROXY_COUNT = env.int("TRUSTED_PROXY_COUNT", default=1)
 
+# Retention window (days) for audit-log rows; the purge_audit_log command's
+# --days default reads this. Caps storage + PII-adjacent target_repr lifetime.
+AUDIT_RETENTION_DAYS = env.int("AUDIT_RETENTION_DAYS", default=365)
+
 REST_FRAMEWORK = {
     "NUM_PROXIES": TRUSTED_PROXY_COUNT,
     "DEFAULT_AUTHENTICATION_CLASSES": (

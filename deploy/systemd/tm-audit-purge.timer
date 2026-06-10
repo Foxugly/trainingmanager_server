@@ -1,0 +1,14 @@
+[Unit]
+Description=Training Manager — audit-log retention purge schedule (Sunday 03:30)
+
+[Timer]
+# Every Sunday at 03:30 local time (low-traffic window). The command deletes
+# rows older than its --days retention window, so the exact cadence is not
+# load-bearing — weekly is plenty.
+OnCalendar=Sun *-*-* 03:30:00
+# Catch up if the box was down at the scheduled time.
+Persistent=true
+Unit=tm-audit-purge.service
+
+[Install]
+WantedBy=timers.target

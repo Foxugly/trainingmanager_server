@@ -12,6 +12,8 @@ tree into `/etc/systemd/system`, copy them).
 | `tm-weekly-recap.timer` | runs the recap service Monday 07:00 (`Persistent=true`) |
 | `tm-session-reminder.service` | oneshot: `manage.py send_session_reminders`, `User=django` |
 | `tm-session-reminder.timer` | runs the reminder service daily 07:00 (`Persistent=true`); notifies athletes of tomorrow's sessions |
+| `tm-audit-purge.service` | oneshot: `manage.py purge_audit_log`, `User=django` |
+| `tm-audit-purge.timer` | runs the purge service Sunday 03:30 (`Persistent=true`); deletes audit rows older than the retention window |
 
 ## Installing the weekly recap (root, on the box)
 
@@ -71,3 +73,31 @@ sudo -u django env DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod \
 
 It runs as `User=django` with the same `EnvironmentFile=` / settings / `UMask=0027`
 as the recap service.
+
+## Installing the audit-log retention purge (root, on the box)
+
+Same pattern. Deletes `audit.AuditLogEntry` rows older than the retention window
+(`--days`, default 365), batched and idempotent — caps storage and the lifetime
+of any PII-adjacent `target_repr` snapshots.
+
+```bash
+sudo install -o root -g root -m 0644 \
+  /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-audit-purge.service \
+  /etc/systemd/system/tm-audit-purge.service
+sudo install -o root -g root -m 0644 \
+  /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-audit-purge.timer \
+  /etc/systemd/system/tm-audit-purge.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now tm-audit-purge.timer
+
+# Verify the schedule and do a safe dry-run (counts, deletes nothing):
+systemctl list-timers tm-audit-purge.timer
+sudo -u django env DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod \
+  /var/www/django_websites/trainingmanager_server/.venv/bin/python \
+  /var/www/django_websites/trainingmanager_server/manage.py purge_audit_log --dry-run
+```
+
+Tune retention with `--days N` in the service `ExecStart`, or set
+`AUDIT_RETENTION_DAYS` in SSM (`/run/tm/.env`) and let the command's default
+pick it up.

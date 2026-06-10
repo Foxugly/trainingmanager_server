@@ -1,0 +1,21 @@
+[Unit]
+Description=Training Manager — purge old audit-log entries (management command)
+After=network-online.target tm-env-fetch.service
+Wants=network-online.target
+# Needs the SSM-fetched env (DB creds) to run.
+Requires=tm-env-fetch.service
+
+[Service]
+# One-shot batch job triggered by tm-audit-purge.timer.
+Type=oneshot
+User=django
+Group=www-data
+UMask=0027
+WorkingDirectory=/var/www/django_websites/trainingmanager_server
+# Settings package is named with a hyphen ("django-trainingmanager"); select
+# prod explicitly (manage.py defaults to .settings.dev otherwise).
+Environment=DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod
+EnvironmentFile=/run/tm/.env
+ExecStart=/var/www/django_websites/trainingmanager_server/.venv/bin/python /var/www/django_websites/trainingmanager_server/manage.py purge_audit_log
+StandardOutput=journal
+StandardError=journal
