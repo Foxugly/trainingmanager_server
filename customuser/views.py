@@ -19,6 +19,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from customuser.calendar import build_calendar_for_user
 from tools.exceptions import CaptchaFailed, OwnsTeams
 from tools.throttling import (
+    ChangeEmailRequestThrottle,
     LoginThrottle,
     LogoutThrottle,
     MagicLinkRequestThrottle,
@@ -32,6 +33,8 @@ from .models import CustomUser
 from .serializers import (
     AccountDeleteSerializer,
     CalendarTokenSerializer,
+    EmailChangeConfirmSerializer,
+    EmailChangeRequestSerializer,
     EmailConfirmSerializer,
     EmailResendSerializer,
     LogoutSerializer,
@@ -995,6 +998,141 @@ class PasswordChangeView(APIView):
         user.save(update_fields=["password"])
 
         return Response({"detail": _("Password updated.")})
+
+
+class EmailChangeRequestView(APIView):
+    """POST /api/v1/me/email/change/ — authenticated: request an email change.
+
+    Body: {new_email}. Sends a signed confirmation link to the NEW address; the
+    change only takes effect once that link is confirmed (deferred-to-v2 flow,
+    now implemented). Rate-limited per user."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ChangeEmailRequestThrottle]
+
+    @extend_schema(
+        request=EmailChangeRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="EmailChangeRequestResponse",
+                    fields={
+                        "detail": drf_serializers.CharField(),
+                        "code": drf_serializers.ChoiceField(choices=["email_change_requested"]),
+                    },
+                ),
+                description="A confirmation link was sent to the new address.",
+            ),
+            400: OpenApiResponse(
+                description="new_email equals current (email_unchanged) or taken (email_taken)."
+            ),
+            401: OpenApiResponse(description="Access token missing or invalid."),
+            429: OpenApiResponse(description="Too Many Requests (rate limit)."),
+        },
+    )
+    def post(self, request):
+        from customuser.email_change import send_email_change_email
+
+        serializer = EmailChangeRequestSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        send_email_change_email(request.user, serializer.validated_data["new_email"])
+        return Response(
+            {
+                "detail": _("A confirmation link has been sent to the new email address."),
+                "code": "email_change_requested",
+            }
+        )
+
+
+class EmailChangeConfirmView(APIView):
+    """POST /api/v1/auth/email/change/confirm/ — public: finalize an email change.
+
+    Body: {token}. Verifies the signed token, re-checks the new email is still
+    free, then swaps the account's primary email. Public so the link works even
+    if the SPA session has expired."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        request=EmailChangeConfirmSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="EmailChangeConfirmResponse",
+                    fields={
+                        "detail": drf_serializers.CharField(),
+                        "code": drf_serializers.ChoiceField(choices=["email_changed"]),
+                    },
+                ),
+                description="Email changed. The SPA should refetch /me/.",
+            ),
+            400: OpenApiResponse(description="Token invalid (code=invalid_or_expired_token)."),
+            409: OpenApiResponse(description="email_taken (claimed since the request)."),
+            410: OpenApiResponse(description="token_expired."),
+        },
+    )
+    def post(self, request):
+        from allauth.account.models import EmailAddress
+        from django.core.signing import SignatureExpired
+        from django.db import transaction
+
+        from customuser.email_change import parse_email_change_token
+
+        serializer = EmailChangeConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["token"]
+
+        try:
+            parsed = parse_email_change_token(token)
+        except SignatureExpired:
+            return Response(
+                {"code": "token_expired", "detail": _("This link has expired.")},
+                status=status.HTTP_410_GONE,
+            )
+        if parsed is None:
+            return Response(
+                {"code": "invalid_or_expired_token", "detail": _("Invalid or expired link.")},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_id, new_email = parsed
+        user = CustomUser.objects.filter(pk=user_id).first()
+        if user is None:
+            return Response(
+                {"code": "invalid_or_expired_token", "detail": _("Invalid or expired link.")},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        taken = (
+            CustomUser.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists()
+            or EmailAddress.objects.filter(email__iexact=new_email).exclude(user_id=user.pk).exists()
+        )
+        if taken:
+            return Response(
+                {"code": "email_taken", "detail": _("This email is already in use.")},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        with transaction.atomic():
+            # Demote any other primary, then make the new address primary+verified
+            # and sync the user's email column.
+            EmailAddress.objects.filter(user=user, primary=True).exclude(
+                email__iexact=new_email
+            ).update(primary=False)
+            EmailAddress.objects.update_or_create(
+                user=user,
+                email=new_email,
+                defaults={"verified": True, "primary": True},
+            )
+            user.email = new_email
+            user.save(update_fields=["email"])
+
+        return Response(
+            {"detail": _("Your email address has been updated."), "code": "email_changed"}
+        )
 
 
 class AccountDeleteView(APIView):

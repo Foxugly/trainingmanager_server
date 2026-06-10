@@ -231,6 +231,40 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, min_length=8)
 
 
+class EmailChangeRequestSerializer(serializers.Serializer):
+    """Body of POST /api/v1/me/email/change/ (authenticated). Validates that the
+    new email is different from the caller's current one and not already taken."""
+
+    new_email = serializers.EmailField()
+
+    def validate_new_email(self, value):
+        from allauth.account.models import EmailAddress
+
+        normalized = value.lower()
+        user = getattr(self.context.get("request"), "user", None)
+        if user is not None and user.email and user.email.lower() == normalized:
+            raise serializers.ValidationError(
+                _("This is already your email address."), code="email_unchanged"
+            )
+        users = CustomUser.objects.filter(email__iexact=normalized)
+        addrs = EmailAddress.objects.filter(email__iexact=normalized)
+        if user is not None:
+            users = users.exclude(pk=user.pk)
+            addrs = addrs.exclude(user_id=user.pk)
+        if users.exists() or addrs.exists():
+            raise serializers.ValidationError(
+                _("This email is already in use."), code="email_taken"
+            )
+        return normalized
+
+
+class EmailChangeConfirmSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/email/change/confirm/. The view decodes the
+    signed `token` (user pk + new email)."""
+
+    token = serializers.CharField()
+
+
 class PasswordChangeSerializer(serializers.Serializer):
     """Body of POST /api/v1/auth/password/change/ (authenticated).
 

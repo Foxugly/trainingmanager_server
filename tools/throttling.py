@@ -63,3 +63,10 @@ class LogoutThrottle(UserRateThrottle):
     blacklist many candidate refresh strings at once)."""
 
     scope = "auth_logout"
+
+
+class ChangeEmailRequestThrottle(UserRateThrottle):
+    """Per-user throttle on /me/email/change/ (authenticated) — anti-spam on the
+    confirmation email sent to a user-supplied new address."""
+
+    scope = "change_email_request"

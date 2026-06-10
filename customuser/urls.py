@@ -6,6 +6,8 @@ from .views import (
     CalendarTokenRotateView,
     ConfirmEmailView,
     DataExportView,
+    EmailChangeConfirmView,
+    EmailChangeRequestView,
     LogoutView,
     MagicLinkExchangeView,
     MagicLinkRequestView,
@@ -35,6 +37,12 @@ urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth_register"),
     path("auth/email/confirm/", ConfirmEmailView.as_view(), name="auth_email_confirm"),
     path("auth/email/resend/", ResendEmailView.as_view(), name="auth_email_resend"),
+    path("me/email/change/", EmailChangeRequestView.as_view(), name="me_email_change"),
+    path(
+        "auth/email/change/confirm/",
+        EmailChangeConfirmView.as_view(),
+        name="auth_email_change_confirm",
+    ),
     path("auth/logout/", LogoutView.as_view(), name="auth_logout"),
     path(
         "auth/password/reset/",

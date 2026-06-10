@@ -548,6 +548,44 @@ paths:
         '409':
           description: The user still owns one or more teams (code=owns_teams). Transfer
             ownership of those teams first; the account is NOT deleted.
+  /api/v1/auth/email/change/confirm/:
+    post:
+      operationId: auth_email_change_confirm_create
+      description: |-
+        POST /api/v1/auth/email/change/confirm/ — public: finalize an email change.
+
+        Body: {token}. Verifies the signed token, re-checks the new email is still
+        free, then swaps the account's primary email. Public so the link works even
+        if the SPA session has expired.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailChangeConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailChangeConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailChangeConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailChangeConfirmResponse'
+          description: Email changed. The SPA should refetch /me/.
+        '400':
+          description: Token invalid (code=invalid_or_expired_token).
+        '409':
+          description: email_taken (claimed since the request).
+        '410':
+          description: token_expired.
   /api/v1/auth/email/confirm/:
     post:
       operationId: auth_email_confirm_create
@@ -3317,6 +3355,44 @@ paths:
             subscription URL is now invalid.
         '401':
           description: Access token missing or invalid.
+  /api/v1/me/email/change/:
+    post:
+      operationId: me_email_change_create
+      description: |-
+        POST /api/v1/me/email/change/ — authenticated: request an email change.
+
+        Body: {new_email}. Sends a signed confirmation link to the NEW address; the
+        change only takes effect once that link is confirmed (deferred-to-v2 flow,
+        now implemented). Rate-limited per user.
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailChangeRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailChangeRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailChangeRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailChangeRequestResponse'
+          description: A confirmation link was sent to the new address.
+        '400':
+          description: new_email equals current (email_unchanged) or taken (email_taken).
+        '401':
+          description: Access token missing or invalid.
+        '429':
+          description: Too Many Requests (rate limit).
   /api/v1/me/export/:
     get:
       operationId: me_export_retrieve
@@ -7658,6 +7734,59 @@ components:
             $ref: '#/components/schemas/DuplicateEventCreated'
       required:
       - created
+    EmailChangeConfirmRequest:
+      type: object
+      description: |-
+        Body of POST /api/v1/auth/email/change/confirm/. The view decodes the
+        signed `token` (user pk + new email).
+      properties:
+        token:
+          type: string
+          minLength: 1
+      required:
+      - token
+    EmailChangeConfirmResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          $ref: '#/components/schemas/EmailChangeConfirmResponseCodeEnum'
+      required:
+      - code
+      - detail
+    EmailChangeConfirmResponseCodeEnum:
+      enum:
+      - email_changed
+      type: string
+      description: '* `email_changed` - email_changed'
+    EmailChangeRequestRequest:
+      type: object
+      description: |-
+        Body of POST /api/v1/me/email/change/ (authenticated). Validates that the
+        new email is different from the caller's current one and not already taken.
+      properties:
+        new_email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - new_email
+    EmailChangeRequestResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          $ref: '#/components/schemas/EmailChangeRequestResponseCodeEnum'
+      required:
+      - code
+      - detail
+    EmailChangeRequestResponseCodeEnum:
+      enum:
+      - email_change_requested
+      type: string
+      description: '* `email_change_requested` - email_change_requested'
     EmailConfirmRequest:
       type: object
       description: Body for POST /api/v1/auth/email/confirm/.

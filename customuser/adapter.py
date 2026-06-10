@@ -25,3 +25,10 @@ class FrontendAccountAdapter(DefaultAccountAdapter):
         strict-routing convention (cf. magic-link 277b331)."""
         base = settings.FRONTEND_URL.rstrip("/")
         return f"{base}/auth/reset-password/{key}"
+
+    @staticmethod
+    def get_email_change_url(token: str) -> str:
+        """Absolute frontend URL for the verified change-email confirmation link
+        (sent to the NEW address). No trailing slash (strict-routing SPA)."""
+        base = settings.FRONTEND_URL.rstrip("/")
+        return f"{base}/auth/confirm-email-change/{token}"
