@@ -103,7 +103,13 @@ def notify(recipient, type, title, body="", url="", *, actor=None, email_extra="
                 url=url,
             )
 
-    if email and getattr(recipient, "email", None):
+    # digest_email users get no immediate email — the daily send_digests cron
+    # batches the day's notifications instead (the in-app row above still fires).
+    if (
+        email
+        and getattr(recipient, "email", None)
+        and not getattr(recipient, "digest_email", False)
+    ):
         _send_email(recipient, title, body, url, email_extra=email_extra)
 
     return created
@@ -172,7 +178,11 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
                     )
                 )
             in_app_recipients.append(recipient)
-        if email and getattr(recipient, "email", None):
+        if (
+            email
+            and getattr(recipient, "email", None)
+            and not getattr(recipient, "digest_email", False)
+        ):
             email_recipients.append(recipient)
 
     created = []

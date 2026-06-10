@@ -9636,6 +9636,11 @@ components:
           description: 'Per-user preference for the weekly recap email. Opt-out model:
             default True. When False, this user receives no weekly recap even for
             teams they own/manage that have it enabled.'
+        digest_email:
+          type: boolean
+          description: When True, suppress immediate notification emails and instead
+            send a single daily digest of the day's notifications. Opt-in (default
+            False).
         is_staff:
           type: boolean
           readOnly: true
@@ -11095,6 +11100,11 @@ components:
           description: 'Per-user preference for the weekly recap email. Opt-out model:
             default True. When False, this user receives no weekly recap even for
             teams they own/manage that have it enabled.'
+        digest_email:
+          type: boolean
+          description: When True, suppress immediate notification emails and instead
+            send a single daily digest of the day's notifications. Opt-in (default
+            False).
     PatchedMemberRequest:
       type: object
       properties:

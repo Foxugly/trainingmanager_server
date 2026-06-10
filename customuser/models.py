@@ -67,6 +67,18 @@ class CustomUser(AbstractUser):
             "for teams they own/manage that have it enabled."
         ),
     )
+    digest_email = models.BooleanField(
+        default=False,
+        help_text=_(
+            "When True, suppress immediate notification emails and instead send a "
+            "single daily digest of the day's notifications. Opt-in (default False)."
+        ),
+    )
+    last_digest_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=_("When the last notification digest was sent to this user."),
+    )
     team_quota = models.PositiveIntegerField(
         default=0,
         help_text=_(
