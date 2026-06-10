@@ -258,6 +258,29 @@ def test_apply_to_attendance_maps_statuses(
     assert not Attendance.objects.filter(event=future_event, member=maybe).exists()
 
 
+def test_apply_to_attendance_skips_departed_members(
+    coach_client, future_event, coach_team, seeded_statuses
+):
+    """B-P2: an RSVP left behind by a member who has since LEFT the team must
+    NOT be materialized into attendance (integrity + RGPD)."""
+    from django.utils import timezone
+
+    from team.models import TeamMembership
+
+    coach_team.attendance_statuses.set(seeded_statuses.values())
+    gone = _member(coach_team, "gone", future_event.pk)
+    Rsvp.objects.create(event=future_event, member=gone, status="going")
+    TeamMembership.objects.filter(team=coach_team, member=gone, left_at__isnull=True).update(
+        left_at=timezone.now()
+    )
+
+    response = coach_client.post(_apply_url(future_event.pk))
+    assert response.status_code == 200, response.json()
+    assert response.json()["applied"] == 0
+    assert response.json()["skipped"] == 1
+    assert not Attendance.objects.filter(event=future_event, member=gone).exists()
+
+
 def test_apply_to_attendance_skips_when_status_code_missing(
     coach_client, future_event, coach_team, athlete_member
 ):

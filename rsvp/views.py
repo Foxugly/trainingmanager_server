@@ -255,11 +255,23 @@ class RsvpViewSet(viewsets.ViewSet):
             )
         }
 
+        # Only members still on the team's roster may get a presence/absence
+        # materialized: an RSVP left behind by someone who has since LEFT must
+        # not reintroduce them into attendance (integrity + the denominators of
+        # team stats; also RGPD — don't keep producing records for a departed
+        # member). Mirrors the bulk-attendance write path's team_member_ids gate.
+        active_member_ids = set(
+            team.memberships.filter(left_at__isnull=True).values_list("member_id", flat=True)
+        )
+
         rsvps = Rsvp.objects.filter(event=event)
         applied = 0
         skipped = 0
         with transaction.atomic():
             for rsvp in rsvps:
+                if rsvp.member_id not in active_member_ids:
+                    skipped += 1
+                    continue
                 code = status_code_for_rsvp.get(rsvp.status)
                 attendance_status = status_objs.get(code) if code else None
                 if attendance_status is None:

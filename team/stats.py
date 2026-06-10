@@ -275,10 +275,16 @@ def attendance_stats_member(event_ids, events, member_names, covered_events, pre
     sessions the athlete was rostered for (their coverage set)."""
     from attendance.models import Attendance
 
-    # Restrict to the sessions this member was rostered for; if coverage is
-    # unknown (no membership row found), fall back to all window events.
-    covered = covered_events.get(member_id)
-    scoped_events = [e for e in events if e["id"] in covered] if covered else events
+    # Restrict to the sessions this member was rostered for. Distinguish a
+    # MISSING key (no membership row at all -> fall back to all window events)
+    # from an EMPTY set (rostered for zero sessions in the window -> no sessions
+    # count). A `if covered` truthiness test would wrongly treat the empty set
+    # like the missing case and count the member against EVERY session.
+    if member_id in covered_events:
+        covered = covered_events[member_id]
+        scoped_events = [e for e in events if e["id"] in covered]
+    else:
+        scoped_events = events
 
     present_event_ids = set(
         Attendance.objects.filter(
