@@ -1,3 +1,5 @@
+from django.utils.csp import CSP
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
@@ -48,3 +50,36 @@ SECURE_REFERRER_POLICY = "same-origin"
 # prod .env (comma-separated, e.g.
 #   CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com
 # ).
+
+# ---------------------- Content-Security-Policy ----------------------
+# Native Django 6 CSP (django.middleware.csp), enforced on every Django HTML
+# response: the admin, the DRF browsable API, error pages and the
+# server-rendered RSVP magic page (rsvp.magic_views, which additionally sets a
+# *stricter* per-page policy via @csp_override).
+#
+# This is NOT the SPA's CSP. The Angular app is served by nginx as static
+# files, so the policy that protects end users against XSS in the app lives in
+# the nginx vhost (next phase: Content-Security-Policy-Report-Only first,
+# observe, then enforce).
+#
+# script-src / style-src keep 'unsafe-inline' because the Django admin and the
+# DRF browsable API ship non-nonced inline assets; tightening those (e.g. by
+# disabling the browsable API in prod and switching to nonces) is deferred to
+# the report-only-then-enforce pass. The remaining directives are real,
+# non-breaking hardening that no Django-served page depends on:
+#   - object-src 'none'      no <object>/<embed> plugins
+#   - base-uri 'self'        block <base> tag hijacking
+#   - form-action 'self'     forms may only POST to this origin
+#   - frame-ancestors 'none' anti-clickjacking, reinforces X_FRAME_OPTIONS=DENY
+SECURE_CSP = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "img-src": [CSP.SELF, "data:"],
+    "font-src": [CSP.SELF, "data:"],
+    "connect-src": [CSP.SELF],
+    "object-src": [CSP.NONE],
+    "base-uri": [CSP.SELF],
+    "form-action": [CSP.SELF],
+    "frame-ancestors": [CSP.NONE],
+}

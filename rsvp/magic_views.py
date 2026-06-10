@@ -13,9 +13,12 @@ is no SPA route for it. Excluded from the OpenAPI schema.
 """
 
 from django.http import HttpResponse
+from django.middleware.csp import get_nonce
 from django.shortcuts import get_object_or_404
+from django.utils.csp import CSP
 from django.utils.html import escape
 from django.utils.translation import gettext as _
+from django.views.decorators.csp import csp_override
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -25,6 +28,17 @@ from .magic_rsvp import SignatureExpired, parse_token
 from .models import Rsvp, RsvpStatus
 from .views import _team_for_event
 
+# This page is self-contained: no scripts, no external assets, one inline
+# <style> (nonce'd below), and a single self-POST form. Lock it right down —
+# this overrides the looser global SECURE_CSP for this view only.
+_RSVP_CSP = {
+    "default-src": [CSP.NONE],
+    "style-src": [CSP.NONCE],
+    "form-action": [CSP.SELF],
+    "base-uri": [CSP.NONE],
+    "frame-ancestors": [CSP.NONE],
+}
+
 _STATUS_LABELS = {
     RsvpStatus.GOING: _("Going"),
     RsvpStatus.MAYBE: _("Maybe"),
@@ -32,11 +46,12 @@ _STATUS_LABELS = {
 }
 
 
-def _page(title: str, body: str, status: int = 200) -> HttpResponse:
+def _page(title: str, body: str, nonce: str, status: int = 200) -> HttpResponse:
     """Wrap a body fragment in a minimal self-contained HTML document.
 
     No external CSS/JS — this page is reached straight from an email client,
-    often outside the SPA origin, so everything is inline."""
+    often outside the SPA origin, so everything is inline. The single inline
+    <style> carries the CSP nonce so the strict per-page policy admits it."""
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,7 +59,7 @@ def _page(title: str, body: str, status: int = 200) -> HttpResponse:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>{escape(title)}</title>
-<style>
+<style nonce="{escape(str(nonce))}">
   body {{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
          background: #f3f4f6; color: #111827; margin: 0; padding: 2rem 1rem; }}
   .card {{ max-width: 28rem; margin: 2rem auto; background: #fff; border-radius: 12px;
@@ -64,12 +79,12 @@ def _page(title: str, body: str, status: int = 200) -> HttpResponse:
     return HttpResponse(html, status=status, content_type="text/html; charset=utf-8")
 
 
-def _error_page(message: str, status: int = 400) -> HttpResponse:
+def _error_page(message: str, nonce: str, status: int = 400) -> HttpResponse:
     body = f'<h1 class="err">{escape(_("RSVP link"))}</h1><p>{escape(message)}</p>'
-    return _page(_("RSVP link"), body, status=status)
+    return _page(_("RSVP link"), body, nonce, status=status)
 
 
-def _resolve(token: str):
+def _resolve(token: str, nonce: str):
     """Return ``(event, member_id, status, team)`` for a valid, actionable token,
     or an :class:`HttpResponse` error page to short-circuit on. Raises nothing —
     expired/invalid/disabled/non-member all map to a rendered page."""
@@ -78,23 +93,29 @@ def _resolve(token: str):
     except SignatureExpired:
         return _error_page(
             _("This RSVP link has expired. Open the app to set your availability."),
+            nonce,
             status=410,
         )
     if parsed is None:
-        return _error_page(_("This RSVP link is invalid."), status=400)
+        return _error_page(_("This RSVP link is invalid."), nonce, status=400)
 
     event_id, member_id, status = parsed
     event = get_object_or_404(Event, pk=event_id)
     team = _team_for_event(event)
     if team is None:
-        return _error_page(_("This event is no longer available."), status=404)
+        return _error_page(_("This event is no longer available."), nonce, status=404)
     if not team.rsvp_enabled:
-        return _error_page(_("Availability (RSVP) is turned off for this team."), status=409)
+        return _error_page(
+            _("Availability (RSVP) is turned off for this team."), nonce, status=409
+        )
     if not team.memberships.filter(member_id=member_id, left_at__isnull=True).exists():
-        return _error_page(_("You are no longer an active member of this team."), status=403)
+        return _error_page(
+            _("You are no longer an active member of this team."), nonce, status=403
+        )
     return event, member_id, status, team
 
 
+@csp_override(_RSVP_CSP)
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def rsvp_magic(request, token: str) -> HttpResponse:
@@ -102,8 +123,10 @@ def rsvp_magic(request, token: str) -> HttpResponse:
 
     CSRF-exempt because the signed token (unguessable, athlete-scoped, single
     action) is the credential and the page is reached cross-origin from an
-    email client with no session cookie."""
-    resolved = _resolve(token)
+    email client with no session cookie. A strict per-page CSP (`_RSVP_CSP`)
+    overrides the global policy for this self-contained page."""
+    nonce = get_nonce(request)
+    resolved = _resolve(token, nonce)
     if isinstance(resolved, HttpResponse):
         return resolved
     event, member_id, status, team = resolved
@@ -126,7 +149,7 @@ def rsvp_magic(request, token: str) -> HttpResponse:
             f'<button type="submit">{escape(_("Confirm"))}</button>'
             f"</form>"
         )
-        return _page(_("Confirm your availability"), body)
+        return _page(_("Confirm your availability"), body, nonce)
 
     # POST — perform the idempotent upsert.
     Rsvp.objects.update_or_create(
@@ -139,4 +162,4 @@ def rsvp_magic(request, token: str) -> HttpResponse:
         f"<p>{escape(event_name)} — <strong>{escape(str(status_label))}</strong></p>"
         f'<p class="muted">{escape(_("You can change it any time from the app."))}</p>'
     )
-    return _page(_("Availability saved"), body)
+    return _page(_("Availability saved"), body, nonce)

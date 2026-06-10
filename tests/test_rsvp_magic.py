@@ -111,6 +111,23 @@ def test_get_renders_confirmation_without_mutating(client, event, member):
     assert not Rsvp.objects.filter(event=event, member=member).exists()
 
 
+def test_get_carries_strict_nonced_csp(client, event, member):
+    """The page sets its own locked-down CSP (overriding the global policy):
+    default-src 'none', and the inline <style> is admitted only via a nonce
+    that matches the header."""
+    import re
+
+    token = make_token(event.pk, member.pk, "going")
+    response = client.get(_url(token))
+    csp = response.headers.get("Content-Security-Policy")
+    assert csp is not None
+    assert "default-src 'none'" in csp
+    assert "form-action 'self'" in csp
+    m = re.search(r"style-src 'nonce-([^']+)'", csp)
+    assert m, csp
+    assert f'<style nonce="{m.group(1)}">'.encode() in response.content
+
+
 # ---------------------------------------------------------------------------
 # POST performs the upsert
 # ---------------------------------------------------------------------------

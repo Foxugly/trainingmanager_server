@@ -70,6 +70,10 @@ SITE_ID = 1
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Native CSP (Django 6). Harmless when SECURE_CSP is empty (no header
+    # emitted) — the policy itself is set in prod.py; the per-view
+    # `@csp_override` on the RSVP magic page works regardless.
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
