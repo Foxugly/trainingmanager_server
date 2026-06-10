@@ -381,12 +381,23 @@ class RegisterView(APIView):
         request=RegisterSerializer,
         responses={
             201: OpenApiResponse(
+                response=inline_serializer(
+                    name="RegisterResponse",
+                    fields={
+                        "detail": drf_serializers.CharField(),
+                        "code": drf_serializers.ChoiceField(
+                            choices=["registration_pending_verification"]
+                        ),
+                        "username": drf_serializers.CharField(),
+                        "email": drf_serializers.EmailField(),
+                    },
+                ),
                 description=(
                     "Account created. Returns "
                     "{detail, code: 'registration_pending_verification', username, email}. "
                     "JWT is intentionally NOT returned — the user must confirm their "
                     "email first."
-                )
+                ),
             ),
             400: OpenApiResponse(
                 description=(
@@ -445,7 +456,27 @@ class ConfirmEmailView(APIView):
     @extend_schema(
         request=EmailConfirmSerializer,
         responses={
-            200: OpenApiResponse(description="Email verified. Returns {access, refresh, user}."),
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="EmailConfirmResponse",
+                    fields={
+                        "access": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(),
+                        "user": inline_serializer(
+                            name="EmailConfirmUser",
+                            fields={
+                                "id": drf_serializers.IntegerField(),
+                                "username": drf_serializers.CharField(),
+                                "email": drf_serializers.EmailField(),
+                                "first_name": drf_serializers.CharField(),
+                                "last_name": drf_serializers.CharField(),
+                                "language": drf_serializers.CharField(),
+                            },
+                        ),
+                    },
+                ),
+                description="Email verified. Returns {access, refresh, user}.",
+            ),
             400: OpenApiResponse(
                 description="Token invalid or expired. code=invalid_or_expired_token."
             ),
@@ -506,11 +537,18 @@ class ResendEmailView(APIView):
         request=EmailResendSerializer,
         responses={
             200: OpenApiResponse(
+                response=inline_serializer(
+                    name="EmailResendResponse",
+                    fields={
+                        "detail": drf_serializers.CharField(),
+                        "code": drf_serializers.ChoiceField(choices=["resend_processed"]),
+                    },
+                ),
                 description=(
                     "Always 200. Returns {detail, code: 'resend_processed'}. "
                     "If a matching unverified account exists, a new confirmation "
                     "email has been dispatched; otherwise the response is identical."
-                )
+                ),
             ),
             400: OpenApiResponse(description="Body validation error (e.g. malformed email)."),
         },

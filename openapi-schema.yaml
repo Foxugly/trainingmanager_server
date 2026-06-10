@@ -610,6 +610,10 @@ paths:
       - {}
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailConfirmResponse'
           description: Email verified. Returns {access, refresh, user}.
         '400':
           description: Token invalid or expired. code=invalid_or_expired_token.
@@ -644,6 +648,10 @@ paths:
       - {}
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResendResponse'
           description: 'Always 200. Returns {detail, code: ''resend_processed''}.
             If a matching unverified account exists, a new confirmation email has
             been dispatched; otherwise the response is identical.'
@@ -925,6 +933,10 @@ paths:
       - {}
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
           description: 'Account created. Returns {detail, code: ''registration_pending_verification'',
             username, email}. JWT is intentionally NOT returned — the user must confirm
             their email first.'
@@ -7796,6 +7808,42 @@ components:
           minLength: 1
       required:
       - key
+    EmailConfirmResponse:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+        user:
+          $ref: '#/components/schemas/EmailConfirmUser'
+      required:
+      - access
+      - refresh
+      - user
+    EmailConfirmUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        language:
+          type: string
+      required:
+      - email
+      - first_name
+      - id
+      - language
+      - last_name
+      - username
     EmailResendRequest:
       type: object
       description: Body for POST /api/v1/auth/email/resend/.
@@ -7806,6 +7854,21 @@ components:
           minLength: 1
       required:
       - email
+    EmailResendResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          $ref: '#/components/schemas/EmailResendResponseCodeEnum'
+      required:
+      - code
+      - detail
+    EmailResendResponseCodeEnum:
+      enum:
+      - resend_processed
+      type: string
+      description: '* `resend_processed` - resend_processed'
     EndpointEnum:
       enum:
       - ping
@@ -11337,6 +11400,28 @@ components:
       - password
       - turnstile_token
       - username
+    RegisterResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          $ref: '#/components/schemas/RegisterResponseCodeEnum'
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - code
+      - detail
+      - email
+      - username
+    RegisterResponseCodeEnum:
+      enum:
+      - registration_pending_verification
+      type: string
+      description: '* `registration_pending_verification` - registration_pending_verification'
     ReorderExercisesRequestRequest:
       type: object
       description: |-
