@@ -19,8 +19,8 @@ from django.contrib.contenttypes.models import ContentType
 
 from attachment.models import Attachment
 from member.models import Member
-from performance.models import Performance
 from messaging.models import Message, Topic, TopicAudience
+from performance.models import Performance
 from team.models import TeamMembership
 from tests.factories import (
     EventFactory,

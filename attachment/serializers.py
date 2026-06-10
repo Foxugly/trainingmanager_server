@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from .models import Attachment
-from .permissions import label_for_instance
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
