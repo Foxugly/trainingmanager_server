@@ -1,19 +1,24 @@
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import serializers, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from team.permissions import IsTrainer
 from tools.ai import call_claude
 from tools.throttling import AIPingThrottle
 
 
 class AIPingView(APIView):
-    """POST /api/v1/ai/ping/ — minimal Claude call for diagnostics."""
+    """POST /api/v1/ai/ping/ — minimal Claude call for diagnostics.
 
-    permission_classes = [IsAuthenticated, IsTrainer]
+    Staff-only: this forwards an arbitrary free-text prompt to the paid
+    Anthropic API and is a diagnostic, not a product feature. Gating it to
+    is_staff removes the arbitrary-prompt-to-LLM cost/abuse channel that an
+    IsTrainer gate (satisfied by creating any team) left open.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
     throttle_classes = [AIPingThrottle]
 
     @extend_schema(

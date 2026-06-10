@@ -86,15 +86,24 @@ def presign_put(key: str, content_type: str, expires: int) -> str:
     )
 
 
-def presign_get(key: str, filename: str, expires: int) -> str:
-    """Presigned URL the browser GETs the file from, forcing a download name."""
+def presign_get(key: str, filename: str, expires: int, content_type: str | None = None) -> str:
+    """Presigned URL the browser GETs the file from, forcing a download name.
+
+    Pins ``ResponseContentType`` to the attachment's declared MIME (when given)
+    so the browser can't be coerced into sniffing the bytes into an active type;
+    combined with the ``attachment`` disposition the file is always downloaded,
+    never rendered inline.
+    """
+    params = {
+        "Bucket": settings.ATTACHMENTS_S3_BUCKET,
+        "Key": key,
+        "ResponseContentDisposition": f'attachment; filename="{filename}"',
+    }
+    if content_type:
+        params["ResponseContentType"] = content_type
     return _client().generate_presigned_url(
         "get_object",
-        Params={
-            "Bucket": settings.ATTACHMENTS_S3_BUCKET,
-            "Key": key,
-            "ResponseContentDisposition": f'attachment; filename="{filename}"',
-        },
+        Params=params,
         ExpiresIn=expires,
     )
 

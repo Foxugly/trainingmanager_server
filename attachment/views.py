@@ -187,22 +187,34 @@ class AttachmentViewSet(viewsets.GenericViewSet):
 
         from django.conf import settings
 
+        def _reject_and_cleanup(code, detail):
+            try:
+                s3.delete_object(attachment.s3_key)
+            except Exception:  # noqa: BLE001 - best-effort cleanup
+                logger.exception(
+                    "S3 delete failed for rejected attachment %s (key=%s)",
+                    attachment.pk,
+                    attachment.s3_key,
+                )
+            raise ValidationError({"code": code, "detail": detail})
+
         real_size = int(head.get("ContentLength", attachment.size_bytes))
         # Re-check the size cap against the REAL object: the presigned PUT does
         # not constrain the uploaded length, so a client can ignore the size it
         # declared at presign. Reject (best-effort delete the object first,
         # mirroring destroy) instead of flipping to READY.
         if real_size > settings.ATTACHMENTS_MAX_BYTES:
-            try:
-                s3.delete_object(attachment.s3_key)
-            except Exception:  # noqa: BLE001 - best-effort cleanup
-                logger.exception(
-                    "S3 delete failed for oversized attachment %s (key=%s)",
-                    attachment.pk,
-                    attachment.s3_key,
-                )
-            raise ValidationError(
-                {"code": "file_too_large", "detail": _("File exceeds the maximum allowed size.")}
+            _reject_and_cleanup(
+                "file_too_large", _("File exceeds the maximum allowed size.")
+            )
+
+        # Re-validate the REAL stored MIME against the allow-list: the presigned
+        # PUT pins Content-Type, but defence-in-depth against a stored object
+        # whose type drifted from / was never in the allow-list.
+        real_mime = head.get("ContentType")
+        if real_mime and real_mime not in settings.ATTACHMENTS_ALLOWED_MIME:
+            _reject_and_cleanup(
+                "mime_not_allowed", _("This file type is not allowed.")
             )
 
         attachment.size_bytes = real_size
@@ -251,7 +263,10 @@ class AttachmentViewSet(viewsets.GenericViewSet):
         from django.conf import settings
 
         url = s3.presign_get(
-            attachment.s3_key, attachment.filename, settings.ATTACHMENTS_PRESIGN_EXPIRY
+            attachment.s3_key,
+            attachment.filename,
+            settings.ATTACHMENTS_PRESIGN_EXPIRY,
+            content_type=attachment.content_type_mime,
         )
         return Response({"url": url}, status=status.HTTP_200_OK)
 
