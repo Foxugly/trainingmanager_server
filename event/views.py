@@ -20,6 +20,7 @@ from .ai import generate_training as ai_generate_training
 from .models import Event
 from .serializers import (
     DuplicateEventRequestSerializer,
+    EventDebriefSerializer,
     EventSerializer,
     EventShareRequestSerializer,
     GenerateTrainingRequestSerializer,
@@ -552,3 +553,66 @@ class EventViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @extend_schema(
+        operation_id="events_debrief_retrieve",
+        summary="Consolidated post-session debrief (managers only)",
+        description=(
+            "One read with everything a coach reviews after a session: "
+            "attendance (present/absent vs active roster), ROTI (average + "
+            "count), RSVP (going/maybe/not_going/no_response) and the attachment "
+            "count, plus the free-text `debrief` (edited via the normal event "
+            "PATCH). Managers of the event's team only."
+        ),
+        responses={
+            200: EventDebriefSerializer,
+            403: OpenApiResponse(description="Not a manager of this event's team"),
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="debrief")
+    def debrief(self, request, pk=None):
+        """GET /events/{id}/debrief/ — consolidated post-session summary."""
+        from django.contrib.contenttypes.models import ContentType
+        from django.db.models import Avg, Count
+
+        from attachment.models import Attachment
+        from attendance.models import Attendance
+        from roti.models import Roti
+        from rsvp.models import Rsvp, RsvpStatus
+
+        event = self.get_object()
+        team = event.team
+        if team is None or not team.is_managed_by(request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        present = Attendance.objects.filter(event=event, status__code="present").count()
+        absent = Attendance.objects.filter(event=event, status__code="absent").count()
+        total_active = team.memberships.filter(left_at__isnull=True).count()
+
+        roti_agg = Roti.objects.filter(event=event).aggregate(avg=Avg("score"), n=Count("id"))
+
+        rsvp_counts = {RsvpStatus.GOING: 0, RsvpStatus.MAYBE: 0, RsvpStatus.NOT_GOING: 0}
+        for status_value, n in (
+            Rsvp.objects.filter(event=event).values_list("status").annotate(n=Count("id"))
+        ):
+            if status_value in rsvp_counts:
+                rsvp_counts[status_value] = n
+        responded = sum(rsvp_counts.values())
+
+        attachments_count = Attachment.objects.filter(
+            content_type=ContentType.objects.get_for_model(Event), object_id=event.id
+        ).count()
+
+        payload = {
+            "debrief": event.debrief,
+            "attendance": {"present": present, "absent": absent, "total": total_active},
+            "roti": {"average": roti_agg["avg"], "count": roti_agg["n"]},
+            "rsvp": {
+                "going": rsvp_counts[RsvpStatus.GOING],
+                "maybe": rsvp_counts[RsvpStatus.MAYBE],
+                "not_going": rsvp_counts[RsvpStatus.NOT_GOING],
+                "no_response": max(0, total_active - responded),
+            },
+            "attachments_count": attachments_count,
+        }
+        return Response(EventDebriefSerializer(payload).data)

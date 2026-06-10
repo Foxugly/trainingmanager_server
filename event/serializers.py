@@ -195,6 +195,7 @@ class EventSerializer(serializers.ModelSerializer):
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
+            "debrief",
             "created_at",
             "updated_at",
         ]
@@ -402,3 +403,33 @@ class EventSerializer(serializers.ModelSerializer):
             return None
         ordered = sorted(event.rounds.all(), key=lambda r: r.order or 0)
         return EventRoundDetailSerializer(ordered, many=True, context=self.context).data
+
+
+class _DebriefAttendanceSerializer(serializers.Serializer):
+    present = serializers.IntegerField()
+    absent = serializers.IntegerField()
+    total = serializers.IntegerField(help_text="Active athlete members of the team.")
+
+
+class _DebriefRotiSerializer(serializers.Serializer):
+    average = serializers.FloatField(allow_null=True)
+    count = serializers.IntegerField()
+
+
+class _DebriefRsvpSerializer(serializers.Serializer):
+    going = serializers.IntegerField()
+    maybe = serializers.IntegerField()
+    not_going = serializers.IntegerField()
+    no_response = serializers.IntegerField()
+
+
+class EventDebriefSerializer(serializers.Serializer):
+    """Consolidated post-session debrief for one event (managers only):
+    attendance + ROTI + RSVP summaries, attachment count, and the coach's
+    free-text debrief — all in a single read."""
+
+    debrief = serializers.CharField(allow_blank=True)
+    attendance = _DebriefAttendanceSerializer()
+    roti = _DebriefRotiSerializer()
+    rsvp = _DebriefRsvpSerializer()
+    attachments_count = serializers.IntegerField()

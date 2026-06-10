@@ -2183,6 +2183,34 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/events/{id}/debrief/:
+    get:
+      operationId: events_debrief_retrieve
+      description: 'One read with everything a coach reviews after a session: attendance
+        (present/absent vs active roster), ROTI (average + count), RSVP (going/maybe/not_going/no_response)
+        and the attachment count, plus the free-text `debrief` (edited via the normal
+        event PATCH). Managers of the event''s team only.'
+      summary: Consolidated post-session debrief (managers only)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDebrief'
+          description: ''
+        '403':
+          description: Not a manager of this event's team
   /api/v1/events/{id}/duplicate/:
     post:
       operationId: events_duplicate_create
@@ -8419,6 +8447,8 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        debrief:
+          type: string
         created_at:
           type: string
           format: date-time
@@ -8444,6 +8474,29 @@ components:
       - rounds_detail
       - sport
       - updated_at
+    EventDebrief:
+      type: object
+      description: |-
+        Consolidated post-session debrief for one event (managers only):
+        attendance + ROTI + RSVP summaries, attachment count, and the coach's
+        free-text debrief — all in a single read.
+      properties:
+        debrief:
+          type: string
+        attendance:
+          $ref: '#/components/schemas/_DebriefAttendance'
+        roti:
+          $ref: '#/components/schemas/_DebriefRoti'
+        rsvp:
+          $ref: '#/components/schemas/_DebriefRsvp'
+        attachments_count:
+          type: integer
+      required:
+      - attachments_count
+      - attendance
+      - debrief
+      - roti
+      - rsvp
     EventPublic:
       type: object
       description: |-
@@ -8606,6 +8659,8 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
+        debrief:
+          type: string
       required:
       - name
       - refer_program_id
@@ -10579,6 +10634,8 @@ components:
             * `always` - Always
             * `after` - After the session
             * `never` - Never
+        debrief:
+          type: string
     PatchedExerciseRequest:
       type: object
       properties:
@@ -13560,6 +13617,48 @@ components:
         * `4` - Friday
         * `5` - Saturday
         * `6` - Sunday
+    _DebriefAttendance:
+      type: object
+      properties:
+        present:
+          type: integer
+        absent:
+          type: integer
+        total:
+          type: integer
+          description: Active athlete members of the team.
+      required:
+      - absent
+      - present
+      - total
+    _DebriefRoti:
+      type: object
+      properties:
+        average:
+          type: number
+          format: double
+          nullable: true
+        count:
+          type: integer
+      required:
+      - average
+      - count
+    _DebriefRsvp:
+      type: object
+      properties:
+        going:
+          type: integer
+        maybe:
+          type: integer
+        not_going:
+          type: integer
+        no_response:
+          type: integer
+      required:
+      - going
+      - maybe
+      - no_response
+      - not_going
     _MagicActionJoinRequest:
       type: object
       description: |-

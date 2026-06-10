@@ -169,6 +169,9 @@ class Event(models.Model):
     ai_prompt = models.TextField(blank=True, default="")
     ai_response = models.TextField(blank=True, default="")
     ai_generated_at = models.DateTimeField(null=True, blank=True)
+    # Coach's free-text post-session debrief (manager-written; shown on the
+    # event-detail debrief tab alongside the consolidated attendance/ROTI/RSVP).
+    debrief = models.TextField(blank=True, default="", verbose_name=_("debrief"))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
