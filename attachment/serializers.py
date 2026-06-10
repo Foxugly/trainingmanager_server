@@ -48,7 +48,9 @@ def _label_lookup():
 class PresignUploadRequestSerializer(serializers.Serializer):
     """Body for POST /attachments/presign/."""
 
-    target_type = serializers.ChoiceField(choices=["event", "message"])
+    target_type = serializers.ChoiceField(
+        choices=["event", "message", "program", "performance"]
+    )
     target_id = serializers.IntegerField(min_value=1)
     filename = serializers.CharField(min_length=1, max_length=255)
     content_type = serializers.CharField(max_length=150)

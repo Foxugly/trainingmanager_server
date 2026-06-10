@@ -23,6 +23,10 @@ from rest_framework.exceptions import ValidationError
 TARGET_MODELS = {
     "event": ("event", "event"),
     "message": ("messaging", "message"),
+    # Program: read = any member of the program's team; write = a manager of it.
+    "program": ("program", "program"),
+    # Performance: read/write = the owning athlete OR a coach of its team.
+    "performance": ("performance", "performance"),
 }
 
 
@@ -64,6 +68,14 @@ def resolve_target(content_type_label: str, object_id):
         from messaging.models import Message
 
         return Message.objects.filter(pk=object_id).first()
+    if content_type_label == "program":
+        from program.models import Program
+
+        return Program.objects.filter(pk=object_id).first()
+    if content_type_label == "performance":
+        from performance.models import Performance
+
+        return Performance.objects.filter(pk=object_id).first()
     return None
 
 
@@ -85,6 +97,18 @@ def can_read_target(user, target) -> bool:
         from messaging.permissions import can_see_topic
 
         return can_see_topic(target.topic, user)
+
+    if label == "program":
+        from team.queries import user_member_teams
+
+        return user_member_teams(user).filter(pk=target.team_id).exists()
+
+    if label == "performance":
+        from team.queries import managed_teams
+
+        if target.member.user_id == user.pk:
+            return True
+        return managed_teams(user).filter(pk=target.team_id).exists()
 
     return False
 
@@ -108,5 +132,15 @@ def can_write_target(user, target) -> bool:
         if target.topic.team.is_managed_by(user):
             return True
         return target.author_id == user.pk
+
+    if label == "program":
+        return target.team.is_managed_by(user)
+
+    if label == "performance":
+        from team.queries import managed_teams
+
+        if target.member.user_id == user.pk:
+            return True
+        return managed_teams(user).filter(pk=target.team_id).exists()
 
     return False

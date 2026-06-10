@@ -78,6 +78,8 @@ paths:
           enum:
           - event
           - message
+          - performance
+          - program
         required: true
       tags:
       - attachments
@@ -11833,10 +11835,14 @@ components:
       enum:
       - event
       - message
+      - program
+      - performance
       type: string
       description: |-
         * `event` - event
         * `message` - message
+        * `program` - program
+        * `performance` - performance
     Team:
       type: object
       properties:

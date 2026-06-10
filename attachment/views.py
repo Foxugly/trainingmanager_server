@@ -264,7 +264,7 @@ class AttachmentViewSet(viewsets.GenericViewSet):
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 required=True,
-                enum=["event", "message"],
+                enum=["event", "message", "program", "performance"],
             ),
             OpenApiParameter(
                 "target_id", OpenApiTypes.INT, OpenApiParameter.QUERY, required=True
@@ -365,6 +365,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
                     audit_team = target.refer_program.team
                 elif getattr(target, "topic", None) is not None:
                     audit_team = target.topic.team
+                elif getattr(target, "team", None) is not None:
+                    # Program and Performance both carry .team directly.
+                    audit_team = target.team
         except Exception:  # noqa: BLE001 - audit scoping must never block the delete
             audit_team = None
 

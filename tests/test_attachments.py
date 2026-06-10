@@ -9,6 +9,8 @@ the permission rules (event-team manager write / team-member read; message
 author write / topic reader read), the MIME + size guards, and the 503 path.
 """
 
+from datetime import date
+from decimal import Decimal
 from unittest import mock
 from uuid import uuid4
 
@@ -17,6 +19,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from attachment.models import Attachment
 from member.models import Member
+from performance.models import Performance
 from messaging.models import Message, Topic, TopicAudience
 from team.models import TeamMembership
 from tests.factories import (
@@ -353,3 +356,58 @@ def test_outsider_cannot_download_message_attachment(
 def test_endpoints_require_auth(api_client, event):
     resp = api_client.get(LIST_URL, {"target_type": "event", "target_id": event.pk})
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# presign — program target (E4): write = manager of the program's team
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def program(team):
+    return ProgramFactory(team=team)
+
+
+@pytest.fixture
+def performance(team, athlete_member):
+    return Performance.objects.create(
+        team=team,
+        member=athlete_member,
+        label="100m",
+        value=Decimal("12.50"),
+        recorded_on=date.today(),
+    )
+
+
+def test_presign_program_as_manager(api_client, manager_user, program):
+    api_client.force_authenticate(user=manager_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("program", program.pk), format="json")
+    assert resp.status_code == 201, resp.content
+    assert Attachment.objects.get(pk=resp.json()["attachment_id"]).object_id == program.pk
+
+
+def test_presign_program_as_outsider_forbidden(api_client, outsider_user, program):
+    api_client.force_authenticate(user=outsider_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("program", program.pk), format="json")
+    assert resp.status_code == 403
+    assert not Attachment.objects.exists()
+
+
+def test_presign_performance_as_owning_athlete(api_client, athlete_user, performance, athlete_member):
+    api_client.force_authenticate(user=athlete_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    assert resp.status_code == 201, resp.content
+    assert Attachment.objects.get(pk=resp.json()["attachment_id"]).object_id == performance.pk
+
+
+def test_presign_performance_as_coach(api_client, manager_user, performance):
+    api_client.force_authenticate(user=manager_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    assert resp.status_code == 201, resp.content
+
+
+def test_presign_performance_as_outsider_forbidden(api_client, outsider_user, performance):
+    api_client.force_authenticate(user=outsider_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    assert resp.status_code == 403
+    assert not Attachment.objects.exists()
