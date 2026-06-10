@@ -31,6 +31,7 @@ from rest_framework.views import APIView
 
 from tools.exceptions import NotAuthorizedMemberDenied, TeamQuotaExceeded
 from tools.openapi import INCLUDE_INACTIVE_PARAM
+from tools.throttling import AIReviewThrottle
 
 from .models import Team, TeamInvitation, TeamJoinRequest, TeamMembership, TrainingSlot
 from .permissions import (
@@ -45,6 +46,8 @@ from .serializers import (
     CreateJoinRequestSerializer,
     JoinMagicCancelledResponseSerializer,
     JoinMagicErrorSerializer,
+    ReviewBlockRequestSerializer,
+    ReviewBlockResponseSerializer,
     TeamInvitationSerializer,
     TeamJoinRequestMagicActionPostSerializer,
     TeamJoinRequestMagicActionResponseSerializer,
@@ -205,8 +208,6 @@ class TeamViewSet(viewsets.ModelViewSet):
           - ?member=<id>    -> scoped to that athlete; owner/manager (any
                                member) or the athlete themselves (own id only).
         """
-        from event.models import Event
-
         team = self.get_object()
         is_manager = team.is_managed_by(request.user)
 
@@ -214,6 +215,18 @@ class TeamViewSet(viewsets.ModelViewSet):
         scope_member = self._resolve_member_scope(request, team, is_manager)
 
         date_from, date_to = self._parse_window(request)
+        payload = self._assemble_stats(team, date_from, date_to, scope_member)
+        return Response(TeamStatsSerializer(payload).data)
+
+    @classmethod
+    def _assemble_stats(cls, team, date_from, date_to, scope_member=None):
+        """Build the team-stats payload dict for [date_from, date_to].
+
+        ``scope_member`` is ``None`` (team aggregate) or a ``{"id", "name"}``
+        dict (per-athlete scope). Shared by the ``stats`` endpoint and the
+        AI ``review_block`` endpoint (which always passes ``None``).
+        """
+        from event.models import Event
 
         # All of this team's events in the window. Filtering on the related
         # program.team keeps the scope strict.
@@ -252,17 +265,87 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         member_id = scope_member["id"] if scope_member else None
 
-        payload = {
+        return {
             "period": {"from": date_from, "to": date_to},
             "member": scope_member,
-            "attendance": self._attendance_stats(
+            "attendance": cls._attendance_stats(
                 event_ids, events, member_names, expected_per_session, member_id
             ),
-            "volume": self._volume_stats(event_ids, events, member_names, member_id),
-            "intensity": self._intensity_stats(event_ids, member_id),
-            "roti": self._roti_stats(event_ids, events, member_id),
+            "volume": cls._volume_stats(event_ids, events, member_names, member_id),
+            "intensity": cls._intensity_stats(event_ids, member_id),
+            "roti": cls._roti_stats(event_ids, events, member_id),
         }
-        return Response(TeamStatsSerializer(payload).data)
+
+    @extend_schema(
+        operation_id="teams_review_block_create",
+        summary="AI review / critique of the team's training block",
+        description=(
+            "Managers only. Runs an AI analysis over the team's recorded "
+            "training data for the [from, to] window (same window params as "
+            "/stats/) and returns a structured critique: overall load "
+            "assessment, findings, and recommended adjustments. Throttled to "
+            "10/hour per user."
+        ),
+        parameters=[
+            OpenApiParameter("from", OpenApiTypes.DATE, description="Window start (ISO)."),
+            OpenApiParameter("to", OpenApiTypes.DATE, description="Window end (ISO)."),
+        ],
+        request=ReviewBlockRequestSerializer,
+        responses={
+            200: ReviewBlockResponseSerializer,
+            400: OpenApiResponse(description="Invalid window"),
+            403: OpenApiResponse(description="Not a team manager"),
+            500: OpenApiResponse(description="AI configuration error"),
+            502: OpenApiResponse(description="AI service error"),
+        },
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="review-block",
+        throttle_classes=[AIReviewThrottle],
+    )
+    def review_block(self, request, pk=None):
+        """POST /teams/{id}/review-block/ — AI critique of the team's block."""
+        from .ai_review import review_training_block
+
+        team = self.get_object()
+        if not team.is_managed_by(request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can request a training review.")
+            )
+
+        body = ReviewBlockRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        date_from, date_to = self._parse_window(request)
+
+        # Run the analysis in the team's language so translatable labels in the
+        # assembled stats (energy-zone descriptions) match the prose.
+        with translation.override(team.language or "en"):
+            stats = self._assemble_stats(team, date_from, date_to, scope_member=None)
+            ai_result = review_training_block(
+                team=team,
+                date_from=date_from,
+                date_to=date_to,
+                stats=stats,
+                user=request.user if request.user.is_authenticated else None,
+            )
+
+        payload = {
+            "period": {"from": date_from, "to": date_to},
+            "summary": ai_result["summary"],
+            "load_assessment": ai_result["load_assessment"],
+            "findings": ai_result["findings"],
+            "adjustments": ai_result["adjustments"],
+            "confidence": ai_result["confidence"],
+            "model": ai_result["model"],
+            "tokens_used": {
+                "input": ai_result["input_tokens"],
+                "output": ai_result["output_tokens"],
+            },
+        }
+        return Response(ReviewBlockResponseSerializer(payload).data)
 
     @extend_schema(
         operation_id="teams_pools_retrieve",

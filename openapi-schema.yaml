@@ -5573,6 +5573,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeamPoolsResponse'
           description: ''
+  /api/v1/teams/{id}/review-block/:
+    post:
+      operationId: teams_review_block_create
+      description: 'Managers only. Runs an AI analysis over the team''s recorded training
+        data for the [from, to] window (same window params as /stats/) and returns
+        a structured critique: overall load assessment, findings, and recommended
+        adjustments. Throttled to 10/hour per user.'
+      summary: AI review / critique of the team's training block
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Window start (ISO).
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Window end (ISO).
+      tags:
+      - teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewBlockRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewBlockRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewBlockRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewBlockResponse'
+          description: ''
+        '400':
+          description: Invalid window
+        '403':
+          description: Not a team manager
+        '500':
+          description: AI configuration error
+        '502':
+          description: AI service error
   /api/v1/teams/{id}/stats/:
     get:
       operationId: teams_stats_retrieve
@@ -7874,11 +7931,15 @@ components:
       - ping
       - plan
       - training
+      - training_freeform
+      - review
       type: string
       description: |-
         * `ping` - Ping
         * `plan` - Generate plan
         * `training` - Generate training
+        * `training_freeform` - Generate free-text training
+        * `review` - Review training block
     EnergySegment:
       type: object
       properties:
@@ -11454,6 +11515,84 @@ components:
             minimum: 1
       required:
       - round_ids
+    ReviewAdjustment:
+      type: object
+      properties:
+        recommendation:
+          type: string
+        rationale:
+          type: string
+      required:
+      - rationale
+      - recommendation
+    ReviewBlockRequestRequest:
+      type: object
+      description: |-
+        Optional free-text guidance appended to the AI review prompt. The
+        [from, to] window is taken from the same query params as /stats/.
+      properties:
+        additional_prompt:
+          type: string
+          default: ''
+          maxLength: 2000
+    ReviewBlockResponse:
+      type: object
+      description: Structured AI critique of a team's training block over the window.
+      properties:
+        period:
+          $ref: '#/components/schemas/StatsPeriod'
+        summary:
+          type: string
+        load_assessment:
+          type: string
+          description: 'One of: too_light, balanced, too_heavy, uncertain.'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewFinding'
+        adjustments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewAdjustment'
+        confidence:
+          type: string
+          description: 'One of: low, medium, high.'
+        model:
+          type: string
+        tokens_used:
+          $ref: '#/components/schemas/ReviewTokensUsed'
+      required:
+      - adjustments
+      - confidence
+      - findings
+      - load_assessment
+      - model
+      - period
+      - summary
+      - tokens_used
+    ReviewFinding:
+      type: object
+      properties:
+        area:
+          type: string
+        severity:
+          type: string
+        observation:
+          type: string
+      required:
+      - area
+      - observation
+      - severity
+    ReviewTokensUsed:
+      type: object
+      properties:
+        input:
+          type: integer
+        output:
+          type: integer
+      required:
+      - input
+      - output
     RotiSummary:
       type: object
       description: |-

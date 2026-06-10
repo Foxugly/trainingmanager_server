@@ -13,6 +13,12 @@ class AITrainingGenerationThrottle(UserRateThrottle):
     scope = "ai_training_generation"
 
 
+class AIReviewThrottle(UserRateThrottle):
+    """Per-user throttle on the team training-block AI review."""
+
+    scope = "ai_review"
+
+
 # ---------------------------------------------------------------------
 # Anonymous auth-flow throttles (per-IP). Rates configured in
 # REST_FRAMEWORK.DEFAULT_THROTTLE_RATES in settings.

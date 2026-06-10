@@ -276,6 +276,7 @@ REST_FRAMEWORK = {
         "ai_ping": "30/hour",
         "ai_plan_generation": "10/hour",
         "ai_training_generation": "10/hour",
+        "ai_review": "10/hour",
         # Anonymous auth-flow throttles (per IP)
         "auth_register": "5/hour",
         "auth_resend_email": "3/hour",

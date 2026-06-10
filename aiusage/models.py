@@ -11,6 +11,8 @@ class AIUsage(models.Model):
         PING = "ping", _("Ping")
         PLAN = "plan", _("Generate plan")
         TRAINING = "training", _("Generate training")
+        TRAINING_FREEFORM = "training_freeform", _("Generate free-text training")
+        REVIEW = "review", _("Review training block")
 
     team = models.ForeignKey(
         "team.Team",
