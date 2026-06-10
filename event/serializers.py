@@ -196,6 +196,7 @@ class EventSerializer(serializers.ModelSerializer):
             "ai_response",
             "ai_generated_at",
             "debrief",
+            "ai_athlete_brief",
             "created_at",
             "updated_at",
         ]
@@ -208,6 +209,8 @@ class EventSerializer(serializers.ModelSerializer):
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
+            # ai_athlete_brief is written ONLY via /events/{id}/explain/.
+            "ai_athlete_brief",
             "created_at",
             "updated_at",
         ]
@@ -384,6 +387,8 @@ class EventSerializer(serializers.ModelSerializer):
             data["total"] = None
         if not instance.aspect_visible_to_athlete("goal"):
             data["goal"] = None
+            # The athlete brief summarises the session/goal — gate it with goal.
+            data["ai_athlete_brief"] = ""
         if not instance.aspect_visible_to_athlete("rounds"):
             data["rounds"] = []
             if "rounds_detail" in data:

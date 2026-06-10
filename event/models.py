@@ -172,6 +172,11 @@ class Event(models.Model):
     # Coach's free-text post-session debrief (manager-written; shown on the
     # event-detail debrief tab alongside the consolidated attendance/ROTI/RSVP).
     debrief = models.TextField(blank=True, default="", verbose_name=_("debrief"))
+    # AI-generated plain-language brief of the session FOR THE ATHLETES (manager
+    # triggers it; shown to athletes only when they may see the goal). Distinct
+    # from ai_response (the coach-facing generation rationale).
+    ai_athlete_brief = models.TextField(blank=True, default="")
+    ai_brief_generated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

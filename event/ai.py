@@ -371,6 +371,86 @@ def generate_freeform_training(*, event, user=None, additional_prompt=""):
     }
 
 
+def build_explain_tool_schema():
+    return {
+        "name": "explain_session_for_athletes",
+        "description": (
+            "Turn a planned training session into a short, encouraging "
+            "plain-language brief addressed to the athletes."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "athlete_brief": {
+                    "type": "string",
+                    "description": (
+                        "2-4 sentences, addressed to the athletes, explaining "
+                        "what today's session is about and what to focus on. "
+                        "Plain language, no jargon, motivating but concrete."
+                    ),
+                    "maxLength": 1200,
+                },
+            },
+            "required": ["athlete_brief"],
+        },
+    }
+
+
+def explain_session(*, event, user=None):
+    """Generate a short athlete-facing brief for a session via Claude, in the
+    team's language. Returns {athlete_brief, prompt_sent, model, input_tokens,
+    output_tokens}."""
+    team = event.refer_program.team if event.refer_program else None
+    sport = event.sport or (team.default_sport if team else None)
+    sport_name = sport.name if sport else "the practiced sport"
+    language = team.language if team is not None else "fr"
+    lang_label = resolve_language_label(language)
+
+    # A compact, athlete-appropriate view of the session (no internal ids).
+    goal = strip_html(event.goal) or ""
+    rounds_summary = []
+    for r in event.rounds.all():
+        ex_bits = []
+        for ex in r.exercises.all():
+            modality = ex.modality.name if ex.modality_id else ""
+            ex_bits.append(f"{ex.repetition}x{ex.distance}m {modality}".strip())
+        if ex_bits:
+            rounds_summary.append(f"{r.count}x ({', '.join(ex_bits)})")
+    structure = "; ".join(rounds_summary) if rounds_summary else "(no structured rounds)"
+
+    tool = build_explain_tool_schema()
+    system = (
+        f"You are a {sport_name} coach writing a short brief for your athletes. "
+        f"Write ALL prose in {lang_label}. Be concrete and encouraging; no jargon. "
+        f"Return it via the 'explain_session_for_athletes' tool only."
+    )
+    user_prompt = (
+        f"Session: {event.name}\n"
+        f"Goal: {goal or '(not specified)'}\n"
+        f"Planned total: {event.total or 0} meters\n"
+        f"Structure: {structure}\n\n"
+        f"Write the athlete brief."
+    )
+
+    result = call_claude_with_tool(
+        prompt=user_prompt,
+        system=system,
+        cached_prefix="",
+        tool=tool,
+        track_kwargs={"team": team, "user": user, "endpoint": "explain"},
+    )
+    brief = (result["tool_input"].get("athlete_brief") or "").strip()
+    if not brief:
+        raise AIServiceError(_("AI returned an empty brief."))
+    return {
+        "athlete_brief": brief,
+        "prompt_sent": user_prompt,
+        "model": result["model"],
+        "input_tokens": result["input_tokens"],
+        "output_tokens": result["output_tokens"],
+    }
+
+
 def generate_training(*, event, user=None, additional_prompt=""):
     from exercise.models import EnergySegment, Modality
 

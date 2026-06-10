@@ -12,9 +12,10 @@ from rest_framework.response import Response
 from round.models import Round
 from team.queries import managed_teams, user_member_teams
 from tools.exceptions import NotAManagerDenied, NotAuthorizedEventDenied
-from tools.throttling import AITrainingGenerationThrottle
+from tools.throttling import AIReviewThrottle, AITrainingGenerationThrottle
 from tools.validators import validate_reorder_ids
 
+from .ai import explain_session as ai_explain_session
 from .ai import generate_freeform_training as ai_generate_freeform_training
 from .ai import generate_training as ai_generate_training
 from .models import Event
@@ -616,3 +617,66 @@ class EventViewSet(viewsets.ModelViewSet):
             "attachments_count": attachments_count,
         }
         return Response(EventDebriefSerializer(payload).data)
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="ExplainSessionResponse",
+                    fields={
+                        "athlete_brief": serializers.CharField(),
+                        "model": serializers.CharField(),
+                        "tokens_used": inline_serializer(
+                            name="ExplainTokensUsed",
+                            fields={
+                                "input": serializers.IntegerField(),
+                                "output": serializers.IntegerField(),
+                            },
+                        ),
+                    },
+                ),
+                description="Athlete brief generated and stored on the event.",
+            ),
+            403: OpenApiResponse(description="Not a manager of this event's team"),
+            500: OpenApiResponse(description="AI configuration error"),
+            502: OpenApiResponse(description="AI service error"),
+        },
+        description=(
+            "Generate a short, plain-language brief of this session FOR THE "
+            "ATHLETES and store it on the event (ai_athlete_brief). Managers of "
+            "the event's team only. The brief is shown to athletes only when "
+            "they may see the goal (vis_goal). Throttled."
+        ),
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="explain",
+        throttle_classes=[AIReviewThrottle],
+    )
+    def explain(self, request, pk=None):
+        """POST /events/{id}/explain/ — AI athlete-facing brief."""
+        event = self.get_object()
+        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        ai_result = ai_explain_session(
+            event=event,
+            user=request.user if request.user.is_authenticated else None,
+        )
+        event.ai_athlete_brief = ai_result["athlete_brief"]
+        event.ai_brief_generated_at = timezone.now()
+        event.save(update_fields=["ai_athlete_brief", "ai_brief_generated_at", "updated_at"])
+
+        return Response(
+            {
+                "athlete_brief": ai_result["athlete_brief"],
+                "model": ai_result["model"],
+                "tokens_used": {
+                    "input": ai_result["input_tokens"],
+                    "output": ai_result["output_tokens"],
+                },
+            },
+            status=status.HTTP_200_OK,
+        )

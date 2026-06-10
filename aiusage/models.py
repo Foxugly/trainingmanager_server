@@ -13,6 +13,7 @@ class AIUsage(models.Model):
         TRAINING = "training", _("Generate training")
         TRAINING_FREEFORM = "training_freeform", _("Generate free-text training")
         REVIEW = "review", _("Review training block")
+        EXPLAIN = "explain", _("Explain session for athletes")
 
     team = models.ForeignKey(
         "team.Team",

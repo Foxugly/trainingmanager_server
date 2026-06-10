@@ -2257,6 +2257,37 @@ paths:
           description: Not a manager of this event team
         '404':
           description: Event not found / not in scope
+  /api/v1/events/{id}/explain/:
+    post:
+      operationId: events_explain_create
+      description: Generate a short, plain-language brief of this session FOR THE
+        ATHLETES and store it on the event (ai_athlete_brief). Managers of the event's
+        team only. The brief is shown to athletes only when they may see the goal
+        (vis_goal). Throttled.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      tags:
+      - events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplainSessionResponse'
+          description: Athlete brief generated and stored on the event.
+        '403':
+          description: Not a manager of this event's team
+        '500':
+          description: AI configuration error
+        '502':
+          description: AI service error
   /api/v1/events/{id}/generate-training/:
     post:
       operationId: events_generate_training_create
@@ -8068,6 +8099,7 @@ components:
       - training
       - training_freeform
       - review
+      - explain
       type: string
       description: |-
         * `ping` - Ping
@@ -8075,6 +8107,7 @@ components:
         * `training` - Generate training
         * `training_freeform` - Generate free-text training
         * `review` - Review training block
+        * `explain` - Explain session for athletes
     EnergySegment:
       type: object
       properties:
@@ -8449,6 +8482,9 @@ components:
           nullable: true
         debrief:
           type: string
+        ai_athlete_brief:
+          type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -8458,6 +8494,7 @@ components:
           format: date-time
           readOnly: true
       required:
+      - ai_athlete_brief
       - ai_generated_at
       - ai_response
       - created_at
@@ -8851,6 +8888,29 @@ components:
           $ref: '#/components/schemas/LanguageEnum'
       required:
       - language
+    ExplainSessionResponse:
+      type: object
+      properties:
+        athlete_brief:
+          type: string
+        model:
+          type: string
+        tokens_used:
+          $ref: '#/components/schemas/ExplainTokensUsed'
+      required:
+      - athlete_brief
+      - model
+      - tokens_used
+    ExplainTokensUsed:
+      type: object
+      properties:
+        input:
+          type: integer
+        output:
+          type: integer
+      required:
+      - input
+      - output
     GeneratePlanRequestRequest:
       type: object
       properties:
