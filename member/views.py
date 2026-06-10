@@ -145,14 +145,13 @@ class MemberViewSet(viewsets.ModelViewSet):
 
             # Audit the erasure (best-effort; never breaks the action).
             from audit.models import AuditAction
-            from audit.services import record
+            from audit.services import audit_event
 
-            record(
+            audit_event(
+                request,
                 AuditAction.MEMBER_ANONYMIZED,
-                actor=request.user,
                 team=audit_team,
                 target_repr=f"Member #{member.id}",
-                request=request,
             )
 
         member.refresh_from_db()

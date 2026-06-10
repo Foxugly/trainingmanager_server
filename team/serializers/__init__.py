@@ -19,7 +19,6 @@ from .ai_review import (
     ReviewBlockRequestSerializer,
     ReviewBlockResponseSerializer,
     ReviewFindingSerializer,
-    ReviewTokensUsedSerializer,
 )
 from .core import (
     LOGO_DATA_URL_RE,
@@ -79,7 +78,6 @@ __all__ = [
     "ReviewBlockRequestSerializer",
     "ReviewBlockResponseSerializer",
     "ReviewFindingSerializer",
-    "ReviewTokensUsedSerializer",
     "RosterHistoryEntrySerializer",
     "RosterHistoryResponseSerializer",
     "RotiDriftEntrySerializer",

@@ -391,14 +391,13 @@ class AttachmentViewSet(viewsets.GenericViewSet):
 
         # Audit the deletion (best-effort; never breaks the action).
         from audit.models import AuditAction
-        from audit.services import record
+        from audit.services import audit_event
 
-        record(
+        audit_event(
+            request,
             AuditAction.ATTACHMENT_DELETED,
-            actor=request.user,
             team=audit_team,
             target_repr=f"Attachment #{att_id} ({att_filename})",
-            request=request,
         )
 
         return Response(status=status.HTTP_204_NO_CONTENT)

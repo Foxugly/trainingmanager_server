@@ -20,6 +20,7 @@ from event.models import Event
 from team.queries import managed_teams, user_member_teams
 from tools.exceptions import NotAManagerDenied
 from tools.openapi import INCLUDE_INACTIVE_PARAM
+from tools.serializers import TokensUsedSerializer
 from tools.throttling import AIPlanGenerationThrottle
 
 from .ai import generate_plan
@@ -108,13 +109,7 @@ class ProgramViewSet(viewsets.ModelViewSet):
                         "deleted_count": serializers.IntegerField(),
                         "rationale": serializers.CharField(),
                         "model": serializers.CharField(),
-                        "tokens_used": inline_serializer(
-                            name="GeneratePlanTokensUsed",
-                            fields={
-                                "input": serializers.IntegerField(),
-                                "output": serializers.IntegerField(),
-                            },
-                        ),
+                        "tokens_used": TokensUsedSerializer(),
                     },
                 ),
                 description="Plan generated successfully",

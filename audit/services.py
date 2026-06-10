@@ -51,3 +51,11 @@ def record(action, *, actor=None, team=None, target_repr="", metadata=None, requ
     except Exception:  # noqa: BLE001 - auditing must never break the audited action
         logger.warning("audit.record failed (action=%r)", action, exc_info=True)
         return None
+
+
+def audit_event(request, action, **kwargs):
+    """View-side convenience over :func:`record`: pulls ``actor`` from
+    ``request.user`` and forwards the request, so callers only pass the
+    action + ``team`` / ``target_repr`` / ``metadata``. Same never-raises
+    contract as ``record``."""
+    return record(action, actor=getattr(request, "user", None), request=request, **kwargs)

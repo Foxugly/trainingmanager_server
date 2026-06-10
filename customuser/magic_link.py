@@ -52,7 +52,7 @@ def _magic_link_url(token: str) -> str:
 
 
 def send_magic_link_email(user) -> None:
-    """Mail the user a one-shot magic-link to sign in.
+    """Mail the user a magic-link to sign in (valid for 15 minutes).
 
     Localized to the user's language (gettext), plain-text body, sent
     through the same ``send_mail`` + DEFAULT_FROM_EMAIL path as the
@@ -68,7 +68,7 @@ def send_magic_link_email(user) -> None:
             f"{_('Hello')} {user.first_name or user.username},\n\n"
             f"{_('Click the link below to sign in without a password:')}\n"
             f"{link}\n\n"
-            f"{_('This link expires in 15 minutes and can be used only once.')}\n"
+            f"{_('This link is valid for 15 minutes.')}\n"
             f"{_('If you did not request this, you can safely ignore this email.')}\n"
         )
         try:

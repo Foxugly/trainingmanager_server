@@ -9133,21 +9133,11 @@ components:
         model:
           type: string
         tokens_used:
-          $ref: '#/components/schemas/ExplainTokensUsed'
+          $ref: '#/components/schemas/TokensUsed'
       required:
       - athlete_brief
       - model
       - tokens_used
-    ExplainTokensUsed:
-      type: object
-      properties:
-        input:
-          type: integer
-        output:
-          type: integer
-      required:
-      - input
-      - output
     GeneratePlanRequestRequest:
       type: object
       properties:
@@ -9190,23 +9180,13 @@ components:
         model:
           type: string
         tokens_used:
-          $ref: '#/components/schemas/GeneratePlanTokensUsed'
+          $ref: '#/components/schemas/TokensUsed'
       required:
       - created_count
       - deleted_count
       - model
       - rationale
       - tokens_used
-    GeneratePlanTokensUsed:
-      type: object
-      properties:
-        input:
-          type: integer
-        output:
-          type: integer
-      required:
-      - input
-      - output
     GenerateTrainingRequestRequest:
       type: object
       description: |-
@@ -9233,21 +9213,11 @@ components:
         model:
           type: string
         tokens_used:
-          $ref: '#/components/schemas/GenerateTrainingTokensUsed'
+          $ref: '#/components/schemas/TokensUsed'
       required:
       - model
       - rationale
       - tokens_used
-    GenerateTrainingTokensUsed:
-      type: object
-      properties:
-        input:
-          type: integer
-        output:
-          type: integer
-      required:
-      - input
-      - output
     HealthCheck:
       type: object
       properties:
@@ -12066,7 +12036,7 @@ components:
         model:
           type: string
         tokens_used:
-          $ref: '#/components/schemas/ReviewTokensUsed'
+          $ref: '#/components/schemas/TokensUsed'
       required:
       - adjustments
       - confidence
@@ -12089,16 +12059,6 @@ components:
       - area
       - observation
       - severity
-    ReviewTokensUsed:
-      type: object
-      properties:
-        input:
-          type: integer
-        output:
-          type: integer
-      required:
-      - input
-      - output
     RosterHistoryEntry:
       type: object
       description: One membership period (active or past) for the roster-history timeline.
@@ -13553,6 +13513,20 @@ components:
           minLength: 1
       required:
       - refresh
+    TokensUsed:
+      type: object
+      description: |-
+        The ``{input, output}`` token-usage block returned by every AI endpoint
+        (training/plan generation, session explain, training-block review). Shared
+        so the shape is declared once instead of an inline_serializer per endpoint.
+      properties:
+        input:
+          type: integer
+        output:
+          type: integer
+      required:
+      - input
+      - output
     Topic:
       type: object
       description: |-

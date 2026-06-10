@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from tools.serializers import TokensUsedSerializer
+
 from .stats import StatsPeriodSerializer
 
 # ---------------------------------------------------------------------
@@ -27,11 +29,6 @@ class ReviewAdjustmentSerializer(serializers.Serializer):
     rationale = serializers.CharField(allow_blank=True)
 
 
-class ReviewTokensUsedSerializer(serializers.Serializer):
-    input = serializers.IntegerField()
-    output = serializers.IntegerField()
-
-
 class ReviewBlockResponseSerializer(serializers.Serializer):
     """Structured AI critique of a team's training block over the window."""
 
@@ -44,4 +41,4 @@ class ReviewBlockResponseSerializer(serializers.Serializer):
     adjustments = ReviewAdjustmentSerializer(many=True)
     confidence = serializers.CharField(help_text="One of: low, medium, high.")
     model = serializers.CharField()
-    tokens_used = ReviewTokensUsedSerializer()
+    tokens_used = TokensUsedSerializer()

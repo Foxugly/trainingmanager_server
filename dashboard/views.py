@@ -167,7 +167,7 @@ class DashboardSummaryView(APIView):
                 "events_next_7d": events7.get(tid, 0),
                 "members_count": members.get(tid, 0),
             }
-            for tid in team_ids
+            for tid in sorted(team_ids)
         ]
 
     @staticmethod
@@ -191,7 +191,7 @@ class DashboardSummaryView(APIView):
                 "members_count": members.get(tid, 0),
                 "my_member_id": my_ids.get(tid),
             }
-            for tid in team_ids
+            for tid in sorted(team_ids)
         ]
 
     # -- event lists --------------------------------------------------------

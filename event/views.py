@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from round.models import Round
 from team.queries import managed_teams, user_member_teams
 from tools.exceptions import NotAManagerDenied, NotAuthorizedEventDenied
+from tools.serializers import TokensUsedSerializer
 from tools.throttling import AIExplainThrottle, AITrainingGenerationThrottle
 from tools.validators import validate_reorder_ids
 
@@ -210,13 +211,7 @@ class EventViewSet(viewsets.ModelViewSet):
                         "exercises_reused": serializers.IntegerField(required=False),
                         "rationale": serializers.CharField(),
                         "model": serializers.CharField(),
-                        "tokens_used": inline_serializer(
-                            name="GenerateTrainingTokensUsed",
-                            fields={
-                                "input": serializers.IntegerField(),
-                                "output": serializers.IntegerField(),
-                            },
-                        ),
+                        "tokens_used": TokensUsedSerializer(),
                     },
                 ),
                 description="Training session generated successfully",
@@ -520,14 +515,13 @@ class EventViewSet(viewsets.ModelViewSet):
 
         # Audit the share-state change (best-effort; never breaks the action).
         from audit.models import AuditAction
-        from audit.services import record
+        from audit.services import audit_event
 
-        record(
+        audit_event(
+            request,
             AuditAction.SESSION_SHARED if event.is_public else AuditAction.SESSION_UNSHARED,
-            actor=request.user,
             team=team,
             target_repr=f"Event #{event.id}",
-            request=request,
         )
 
         token = event.get_public_token()
@@ -610,13 +604,7 @@ class EventViewSet(viewsets.ModelViewSet):
                     fields={
                         "athlete_brief": serializers.CharField(),
                         "model": serializers.CharField(),
-                        "tokens_used": inline_serializer(
-                            name="ExplainTokensUsed",
-                            fields={
-                                "input": serializers.IntegerField(),
-                                "output": serializers.IntegerField(),
-                            },
-                        ),
+                        "tokens_used": TokensUsedSerializer(),
                     },
                 ),
                 description="Athlete brief generated and stored on the event.",

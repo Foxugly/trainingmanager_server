@@ -113,15 +113,14 @@ class TeamMembershipViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
 
             # Audit the membership end (best-effort; never breaks the action).
             from audit.models import AuditAction
-            from audit.services import record
+            from audit.services import audit_event
 
             member = instance.member
-            record(
+            audit_event(
+                self.request,
                 AuditAction.MEMBER_REMOVED,
-                actor=user,
                 team=team,
                 target_repr=f"Member #{member.id} ({member.get_fullname()})",
-                request=self.request,
             )
 
 
