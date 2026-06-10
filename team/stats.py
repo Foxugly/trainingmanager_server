@@ -517,3 +517,84 @@ def rsvp_reliability(team, date_from, date_to):
     # Worst reliability first (the coach's actionable list), then name.
     entries.sort(key=lambda e: (e["reliability"] if e["reliability"] is not None else 1.0, e["name"].lower()))
     return entries
+
+
+# Drift threshold: how far an athlete's mean ROTI must sit from the squad mean
+# (on a 1..5 scale) to be flagged as rating the sessions notably harder/easier.
+ROTI_DRIFT_THRESHOLD = 0.75
+
+
+def roti_drift(team, date_from, date_to):
+    """Per-athlete perceived-effort (ROTI) drift vs the squad over the window.
+
+    Compares each athlete's mean ROTI to the squad mean. An athlete rating
+    sessions consistently HARDER than peers (delta >= +threshold) may be
+    overreaching; consistently EASIER (delta <= -threshold) may be
+    underchallenged. Returns ``{squad_average, count, entries}`` where each
+    entry is ``{member_id, name, average, count, delta, flag}`` (flag ∈
+    high/low/normal), sorted by |delta| desc (most divergent first).
+    """
+    from event.models import Event
+    from roti.models import Roti
+
+    event_ids = list(
+        Event.objects.filter(
+            refer_program__team=team,
+            date__isnull=False,
+            date__gte=date_from,
+            date__lte=date_to,
+        ).values_list("id", flat=True)
+    )
+    if not event_ids:
+        return {"squad_average": None, "count": 0, "entries": []}
+
+    rows = Roti.objects.filter(event_id__in=event_ids).values_list(
+        "member_id", "score", "member__firstname", "member__lastname"
+    )
+
+    per_member: dict[int, dict] = {}
+    total = 0
+    n = 0
+    for member_id, score, firstname, lastname in rows:
+        total += score
+        n += 1
+        entry = per_member.setdefault(
+            member_id,
+            {
+                "member_id": member_id,
+                "name": f"{firstname} {lastname}".strip() or f"member #{member_id}",
+                "_sum": 0,
+                "count": 0,
+            },
+        )
+        entry["_sum"] += score
+        entry["count"] += 1
+
+    if n == 0:
+        return {"squad_average": None, "count": 0, "entries": []}
+
+    squad_average = total / n
+
+    entries = []
+    for entry in per_member.values():
+        avg = entry["_sum"] / entry["count"]
+        delta = avg - squad_average
+        if delta >= ROTI_DRIFT_THRESHOLD:
+            flag = "high"
+        elif delta <= -ROTI_DRIFT_THRESHOLD:
+            flag = "low"
+        else:
+            flag = "normal"
+        entries.append(
+            {
+                "member_id": entry["member_id"],
+                "name": entry["name"],
+                "average": round(avg, 2),
+                "count": entry["count"],
+                "delta": round(delta, 2),
+                "flag": flag,
+            }
+        )
+
+    entries.sort(key=lambda e: (-abs(e["delta"]), e["name"].lower()))
+    return {"squad_average": round(squad_average, 2), "count": n, "entries": entries}

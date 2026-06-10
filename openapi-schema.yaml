@@ -5659,6 +5659,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/RosterHistoryResponse'
           description: ''
+  /api/v1/teams/{id}/roti-drift/:
+    get:
+      operationId: teams_roti_drift_retrieve
+      description: Manager-only. Over the [from, to] window (same params as /stats/),
+        compares each athlete's mean ROTI (perceived session difficulty, 1..5) to
+        the squad mean. flag=high (>= +0.75) flags possible overreaching; flag=low
+        (<= -0.75) possible under-challenge. Sorted by |delta| desc (most divergent
+        first).
+      summary: Per-athlete ROTI drift vs the squad
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Window start (ISO).
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Window end (ISO).
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotiDriftResponse'
+          description: ''
   /api/v1/teams/{id}/rsvp-reliability/:
     get:
       operationId: teams_rsvp_reliability_retrieve
@@ -11699,6 +11738,56 @@ components:
             $ref: '#/components/schemas/RosterHistoryEntry'
       required:
       - entries
+    RotiDriftEntry:
+      type: object
+      description: One athlete's mean ROTI vs the squad over the window.
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        average:
+          type: number
+          format: double
+          description: Athlete's mean ROTI (1..5).
+        count:
+          type: integer
+          description: Number of ROTI scores.
+        delta:
+          type: number
+          format: double
+          description: average - squad_average.
+        flag:
+          type: string
+          description: 'One of: high, low, normal.'
+      required:
+      - average
+      - count
+      - delta
+      - flag
+      - member_id
+      - name
+    RotiDriftResponse:
+      type: object
+      description: Squad mean + per-athlete drift (non-paginated wrapper).
+      properties:
+        period:
+          $ref: '#/components/schemas/StatsPeriod'
+        squad_average:
+          type: number
+          format: double
+          nullable: true
+        count:
+          type: integer
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/RotiDriftEntry'
+      required:
+      - count
+      - entries
+      - period
+      - squad_average
     RotiSummary:
       type: object
       description: |-

@@ -49,6 +49,7 @@ from .serializers import (
     ReviewBlockRequestSerializer,
     ReviewBlockResponseSerializer,
     RosterHistoryResponseSerializer,
+    RotiDriftResponseSerializer,
     RsvpReliabilityResponseSerializer,
     TeamInvitationSerializer,
     TeamJoinRequestMagicActionPostSerializer,
@@ -61,7 +62,7 @@ from .serializers import (
     TrainingTemplateSerializer,
     ValidateInvitationSerializer,
 )
-from .stats import assemble_stats, parse_window, rsvp_reliability
+from .stats import assemble_stats, parse_window, roti_drift, rsvp_reliability
 
 logger = logging.getLogger(__name__)
 
@@ -438,6 +439,38 @@ class TeamViewSet(viewsets.ModelViewSet):
         return Response(
             RsvpReliabilityResponseSerializer(
                 {"period": {"from": date_from, "to": date_to}, "entries": entries}
+            ).data
+        )
+
+    @extend_schema(
+        operation_id="teams_roti_drift_retrieve",
+        summary="Per-athlete ROTI drift vs the squad",
+        description=(
+            "Manager-only. Over the [from, to] window (same params as /stats/), "
+            "compares each athlete's mean ROTI (perceived session difficulty, "
+            "1..5) to the squad mean. flag=high (>= +0.75) flags possible "
+            "overreaching; flag=low (<= -0.75) possible under-challenge. Sorted "
+            "by |delta| desc (most divergent first)."
+        ),
+        parameters=[
+            OpenApiParameter("from", OpenApiTypes.DATE, description="Window start (ISO)."),
+            OpenApiParameter("to", OpenApiTypes.DATE, description="Window end (ISO)."),
+        ],
+        responses={200: RotiDriftResponseSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="roti-drift")
+    def roti_drift(self, request, pk=None):
+        """GET /teams/{id}/roti-drift/ — perceived-effort drift per athlete."""
+        team = self.get_object()
+        if not team.is_managed_by(request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can view ROTI drift.")
+            )
+        date_from, date_to = parse_window(request)
+        result = roti_drift(team, date_from, date_to)
+        return Response(
+            RotiDriftResponseSerializer(
+                {"period": {"from": date_from, "to": date_to}, **result}
             ).data
         )
 

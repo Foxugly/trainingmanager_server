@@ -1039,3 +1039,28 @@ class RsvpReliabilityResponseSerializer(serializers.Serializer):
 
     period = StatsPeriodSerializer()
     entries = RsvpReliabilityEntrySerializer(many=True)
+
+
+# ---------------------------------------------------------------------
+# ROTI drift — GET /api/v1/teams/{id}/roti-drift/
+# ---------------------------------------------------------------------
+
+
+class RotiDriftEntrySerializer(serializers.Serializer):
+    """One athlete's mean ROTI vs the squad over the window."""
+
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    average = serializers.FloatField(help_text="Athlete's mean ROTI (1..5).")
+    count = serializers.IntegerField(help_text="Number of ROTI scores.")
+    delta = serializers.FloatField(help_text="average - squad_average.")
+    flag = serializers.CharField(help_text="One of: high, low, normal.")
+
+
+class RotiDriftResponseSerializer(serializers.Serializer):
+    """Squad mean + per-athlete drift (non-paginated wrapper)."""
+
+    period = StatsPeriodSerializer()
+    squad_average = serializers.FloatField(allow_null=True)
+    count = serializers.IntegerField()
+    entries = RotiDriftEntrySerializer(many=True)
