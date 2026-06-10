@@ -16,7 +16,8 @@ from zoneinfo import ZoneInfo
 
 from django.db.models import Q
 from django.utils import timezone as dj_timezone
-from icalendar import Calendar, Event as ICalEvent
+from icalendar import Calendar
+from icalendar import Event as ICalEvent
 
 from tools.html_sanitizer import strip_html
 
