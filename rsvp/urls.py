@@ -3,16 +3,21 @@
 One namespace, nested under events (mirrors roti/urls.py's nesting):
 - /api/v1/events/{event_pk}/rsvp/                       GET (summary incl. my_status), PUT (upsert own)
 - /api/v1/events/{event_pk}/rsvp/apply_to_attendance/  POST (managers pre-fill attendance)
+- /api/v1/rsvp-magic/<token>/                          GET (confirm page) / POST (one-click upsert)
 
 RSVP is a thin ViewSet (not a ModelViewSet): the collection URL itself
 carries GET (summary incl. my_status) and PUT (update -> upsert own status),
 so the methods are mapped explicitly via as_view(). The GET handler is named
 ``summary`` (not ``list``) so drf-spectacular emits a single-object response
 schema instead of array-wrapping it as a collection.
+
+``rsvp-magic`` is a server-rendered HTML view (not DRF) for the one-click
+RSVP link in the session-reminder email — see :mod:`rsvp.magic_views`.
 """
 
 from django.urls import path
 
+from .magic_views import rsvp_magic
 from .views import RsvpViewSet
 
 rsvp_collection = RsvpViewSet.as_view({"get": "summary", "put": "update"})
@@ -28,5 +33,10 @@ urlpatterns = [
         "events/<int:event_pk>/rsvp/apply_to_attendance/",
         rsvp_apply_to_attendance,
         name="event-rsvp-apply-to-attendance",
+    ),
+    path(
+        "rsvp-magic/<str:token>/",
+        rsvp_magic,
+        name="rsvp-magic",
     ),
 ]

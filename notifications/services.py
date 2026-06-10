@@ -60,7 +60,7 @@ def _resolve_channels(recipient, type):
     return pref.in_app, pref.email
 
 
-def notify(recipient, type, title, body="", url="", *, actor=None):
+def notify(recipient, type, title, body="", url="", *, actor=None, email_extra=""):
     """Deliver a notification to ``recipient`` over their enabled channels.
 
     Args:
@@ -74,6 +74,9 @@ def notify(recipient, type, title, body="", url="", *, actor=None):
             the absolute link ``FRONTEND_BASE_URL + url``.
         actor: the user who triggered the event, if any. The recipient is
             NEVER notified of their own action (skip when recipient == actor).
+        email_extra: extra text appended to the EMAIL body only (after the deep
+            link); never stored on the in-app row. Used for per-recipient
+            content like one-click RSVP links.
 
     Returns the created ``Notification`` instance when an in-app row was
     created, else ``None``.
@@ -101,12 +104,12 @@ def notify(recipient, type, title, body="", url="", *, actor=None):
             )
 
     if email and getattr(recipient, "email", None):
-        _send_email(recipient, title, body, url)
+        _send_email(recipient, title, body, url, email_extra=email_extra)
 
     return created
 
 
-def notify_many(recipients, type, title, body="", url="", *, actor=None):
+def notify_many(recipients, type, title, body="", url="", *, actor=None, email_extra_for=None):
     """Bulk variant of :func:`notify` for a set/iterable of recipients.
 
     Behaviour-identical to calling ``notify()`` once per recipient, but it
@@ -118,6 +121,10 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None):
     The actor is never notified of their own action; ``None`` recipients are
     skipped. Returns the list of created ``Notification`` instances (in-app
     rows only), matching the subset of recipients whose in-app channel is on.
+
+    ``email_extra_for``: optional ``callable(recipient) -> str``. When given,
+    the returned text is appended to that recipient's EMAIL body only (never to
+    the in-app row). Used for per-recipient content like one-click RSVP links.
     """
     # De-dupe while preserving order; drop None and the actor.
     actor_pk = getattr(actor, "pk", None)
@@ -173,12 +180,13 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None):
         created = Notification.objects.bulk_create(to_create)
 
     for recipient in email_recipients:
-        _send_email(recipient, title, body, url)
+        extra = email_extra_for(recipient) if email_extra_for is not None else ""
+        _send_email(recipient, title, body, url, email_extra=extra)
 
     return created
 
 
-def _send_email(recipient, title, body, url):
+def _send_email(recipient, title, body, url, email_extra=""):
     """Send the localized notification email. Logs and swallows any error so
     a mail failure never breaks the triggering request."""
     lang = getattr(recipient, "language", None) or "en"
@@ -195,6 +203,8 @@ def _send_email(recipient, title, body, url):
                 parts.append(str(body))
             if deep_link:
                 parts.append(deep_link)
+            if email_extra:
+                parts.append(str(email_extra))
             message = "\n\n".join(parts) if parts else subject
             send_mail(
                 subject=subject,

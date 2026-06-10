@@ -293,3 +293,52 @@ def test_reminder_dry_run_creates_nothing():
     assert not Notification.objects.filter(
         type=NotificationType.SESSION_REMINDER
     ).exists()
+
+
+def test_reminder_email_has_rsvp_links_when_enabled():
+    from django.core import mail
+
+    team, user, member, program = _team_with_athlete()
+    team.rsvp_enabled = True
+    team.save(update_fields=["rsvp_enabled"])
+    tomorrow = timezone.localdate() + datetime.timedelta(days=1)
+    event = EventFactory(refer_program=program, date=tomorrow, name="RSVP swim")
+
+    call_command("send_session_reminders", stdout=StringIO())
+
+    assert len(mail.outbox) == 1
+    body = mail.outbox[0].body
+    assert "/api/v1/rsvp-magic/" in body
+    # One link per status (going / maybe / not_going).
+    assert body.count("/api/v1/rsvp-magic/") == 3
+    # The per-recipient link must NOT leak into the stored in-app row.
+    notif = Notification.objects.get(
+        recipient=user, type=NotificationType.SESSION_REMINDER
+    )
+    assert "rsvp-magic" not in notif.body
+    # Each token is member-scoped to this athlete + event (re-signing yields a
+    # different timestamp, so parse the emitted token rather than compare it).
+    import re
+
+    from rsvp.magic_rsvp import parse_token
+
+    tokens = re.findall(r"/api/v1/rsvp-magic/([^/\s]+)/", body)
+    parsed = {parse_token(t) for t in tokens}
+    assert parsed == {
+        (event.pk, member.pk, "going"),
+        (event.pk, member.pk, "maybe"),
+        (event.pk, member.pk, "not_going"),
+    }
+
+
+def test_reminder_email_no_rsvp_links_when_disabled():
+    from django.core import mail
+
+    team, user, member, program = _team_with_athlete()  # rsvp_enabled defaults False
+    tomorrow = timezone.localdate() + datetime.timedelta(days=1)
+    EventFactory(refer_program=program, date=tomorrow, name="No RSVP")
+
+    call_command("send_session_reminders", stdout=StringIO())
+
+    assert len(mail.outbox) == 1
+    assert "rsvp-magic" not in mail.outbox[0].body

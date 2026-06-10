@@ -40,10 +40,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from django.utils import translation
+
         from event.models import Event
         from member.models import Member
         from notifications.models import NotificationType
         from notifications.services import notify_many
+        from rsvp.magic_rsvp import rsvp_action_url
+        from rsvp.models import RsvpStatus
 
         dry_run = options["dry_run"]
         target_date = timezone.localdate() + datetime.timedelta(days=1)
@@ -74,18 +78,43 @@ class Command(BaseCommand):
             )
 
             # De-dupe (user, event): distinct() above guards membership dupes,
-            # but keep an explicit per-event seen set for safety.
+            # but keep an explicit per-event seen set for safety. Track the
+            # Member per user so one-click RSVP tokens can be member-scoped.
             seen_user_ids: set[int] = set()
             recipients = []
+            member_by_user: dict[int, int] = {}
             for member in members:
                 user = member.user
                 if user.pk in seen_user_ids:
                     continue
                 seen_user_ids.add(user.pk)
                 recipients.append(user)
+                member_by_user[user.pk] = member.pk
 
             hour = event.hour_start.strftime("%H:%M") if event.hour_start else _("TBD")
             location = event.location or _("TBD")
+
+            # One-click RSVP links go in the email only, and only when the team
+            # has RSVP enabled. Built per recipient (member-scoped signed token),
+            # in that recipient's language.
+            email_extra_for = None
+            if team.rsvp_enabled:
+
+                def email_extra_for(user, _event=event, _members=member_by_user):
+                    member_id = _members.get(user.pk)
+                    if member_id is None:
+                        return ""
+                    with translation.override(getattr(user, "language", None) or "en"):
+                        lines = [str(_("Set your availability:"))]
+                        for status in (
+                            RsvpStatus.GOING,
+                            RsvpStatus.MAYBE,
+                            RsvpStatus.NOT_GOING,
+                        ):
+                            label = str(RsvpStatus(status).label)
+                            url = rsvp_action_url(_event.pk, member_id, status)
+                            lines.append(f"{label}: {url}")
+                    return "\n".join(lines)
 
             if dry_run:
                 for user in recipients:
@@ -107,6 +136,7 @@ class Command(BaseCommand):
                     },
                     url=f"/events/{event.pk}",
                     actor=None,
+                    email_extra_for=email_extra_for,
                 )
                 notified += len(recipients)
             except Exception:  # pragma: no cover - defensive per event
