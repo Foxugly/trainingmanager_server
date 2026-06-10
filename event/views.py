@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from round.models import Round
 from team.queries import managed_teams, user_member_teams
 from tools.exceptions import NotAManagerDenied, NotAuthorizedEventDenied
-from tools.throttling import AIReviewThrottle, AITrainingGenerationThrottle
+from tools.throttling import AIExplainThrottle, AITrainingGenerationThrottle
 from tools.validators import validate_reorder_ids
 
 from .ai import explain_session as ai_explain_session
@@ -676,7 +676,7 @@ class EventViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["post"],
         url_path="explain",
-        throttle_classes=[AIReviewThrottle],
+        throttle_classes=[AIExplainThrottle],
     )
     def explain(self, request, pk=None):
         """POST /events/{id}/explain/ — AI athlete-facing brief."""

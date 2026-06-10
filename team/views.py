@@ -251,15 +251,14 @@ class TeamViewSet(viewsets.ModelViewSet):
         from .ai_review import review_training_block
 
         team = self.get_object()
-        if not team.is_managed_by(request.user):
-            raise PermissionDenied(
-                _("Only the team owner or managers can request a training review.")
-            )
+        self._require_manager(
+            team, _("Only the team owner or managers can request a training review.")
+        )
 
         body = ReviewBlockRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
 
-        date_from, date_to = parse_window(request)
+        date_from, date_to, period = self._window(request)
 
         # Run the analysis in the team's language so translatable labels in the
         # assembled stats (energy-zone descriptions) match the prose.
@@ -274,7 +273,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             )
 
         payload = {
-            "period": {"from": date_from, "to": date_to},
+            "period": period,
             "summary": ai_result["summary"],
             "load_assessment": ai_result["load_assessment"],
             "findings": ai_result["findings"],
@@ -391,10 +390,9 @@ class TeamViewSet(viewsets.ModelViewSet):
     def roster_history(self, request, pk=None):
         """GET /teams/{id}/roster-history/ — membership periods (managers only)."""
         team = self.get_object()
-        if not team.is_managed_by(request.user):
-            raise PermissionDenied(
-                _("Only the team owner or managers can view the roster history.")
-            )
+        self._require_manager(
+            team, _("Only the team owner or managers can view the roster history.")
+        )
         rows = team.memberships.select_related("member").order_by(
             "member__lastname", "member__firstname", "joined_at"
         )
@@ -430,16 +428,13 @@ class TeamViewSet(viewsets.ModelViewSet):
     def rsvp_reliability(self, request, pk=None):
         """GET /teams/{id}/rsvp-reliability/ — going-but-absent per athlete."""
         team = self.get_object()
-        if not team.is_managed_by(request.user):
-            raise PermissionDenied(
-                _("Only the team owner or managers can view RSVP reliability.")
-            )
-        date_from, date_to = parse_window(request)
+        self._require_manager(
+            team, _("Only the team owner or managers can view RSVP reliability.")
+        )
+        date_from, date_to, period = self._window(request)
         entries = rsvp_reliability(team, date_from, date_to)
         return Response(
-            RsvpReliabilityResponseSerializer(
-                {"period": {"from": date_from, "to": date_to}, "entries": entries}
-            ).data
+            RsvpReliabilityResponseSerializer({"period": period, "entries": entries}).data
         )
 
     @extend_schema(
@@ -462,17 +457,24 @@ class TeamViewSet(viewsets.ModelViewSet):
     def roti_drift(self, request, pk=None):
         """GET /teams/{id}/roti-drift/ — perceived-effort drift per athlete."""
         team = self.get_object()
-        if not team.is_managed_by(request.user):
-            raise PermissionDenied(
-                _("Only the team owner or managers can view ROTI drift.")
-            )
-        date_from, date_to = parse_window(request)
+        self._require_manager(team, _("Only the team owner or managers can view ROTI drift."))
+        date_from, date_to, period = self._window(request)
         result = roti_drift(team, date_from, date_to)
-        return Response(
-            RotiDriftResponseSerializer(
-                {"period": {"from": date_from, "to": date_to}, **result}
-            ).data
-        )
+        return Response(RotiDriftResponseSerializer({"period": period, **result}).data)
+
+    def _require_manager(self, team, message):
+        """Raise 403 unless the caller owns/manages ``team``. Shared by the
+        manager-only read actions (stats aggregate, roster-history,
+        rsvp-reliability, roti-drift, review-block)."""
+        if team is None or not team.is_managed_by(self.request.user):
+            raise PermissionDenied(message)
+
+    @staticmethod
+    def _window(request):
+        """``parse_window`` + the ``{from, to}`` period dict the windowed
+        responses wrap their payload in."""
+        date_from, date_to = parse_window(request)
+        return date_from, date_to, {"from": date_from, "to": date_to}
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.

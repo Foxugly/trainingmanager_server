@@ -19,6 +19,16 @@ class AIReviewThrottle(UserRateThrottle):
     scope = "ai_review"
 
 
+class AIExplainThrottle(UserRateThrottle):
+    """Per-user throttle on the per-session AI athlete brief (events/{id}/explain).
+
+    Separate bucket from ``ai_review`` so a manager reviewing a training block
+    and explaining individual sessions don't share — and exhaust — one budget.
+    """
+
+    scope = "ai_explain"
+
+
 # ---------------------------------------------------------------------
 # Anonymous auth-flow throttles (per-IP). Rates configured in
 # REST_FRAMEWORK.DEFAULT_THROTTLE_RATES in settings.
