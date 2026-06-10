@@ -17,9 +17,10 @@ a non-empty email. Recaps are AGGREGATED per recipient: a coach managing
 several enabled teams gets ONE email listing each team's recap. The email is
 localized to each recipient's language.
 
-Idempotent enough for a weekly cron: there is no hard dedup table, but the
-command never crashes on empty data and is safe to re-run (it will simply send
-the same recap again). --dry-run computes + logs without sending.
+Idempotent: a ``WeeklyRecapLog(user, week_start)`` marker is written after each
+successful send, so re-running the command in the same week skips already-sent
+recipients instead of double-sending (a failed send is NOT marked, so it retries
+next run). --dry-run computes + logs without sending or marking.
 """
 
 import datetime
@@ -185,6 +186,7 @@ class Command(BaseCommand):
         return last_completed_week(today, offset=options["week_offset"])
 
     def handle(self, *args, **options):
+        from customuser.models import WeeklyRecapLog
         from team.models import Team
 
         dry_run = options["dry_run"]
@@ -225,10 +227,19 @@ class Command(BaseCommand):
                 entry["recaps"].append(recap)
 
         sent = 0
+        skipped = 0
         for entry in recaps_by_user.values():
             user = entry["user"]
             recaps = entry["recaps"]
             if not recaps:  # defensive: skip recipients with no enabled teams
+                continue
+
+            # Idempotency: once a recap for this (user, week) was sent, don't
+            # re-send on a same-week re-run. Checked before building the email.
+            if not dry_run and WeeklyRecapLog.objects.filter(
+                user=user, week_start=date_from
+            ).exists():
+                skipped += 1
                 continue
 
             lang = user.language or "en"
@@ -250,6 +261,9 @@ class Command(BaseCommand):
                     recipient_list=[user.email],
                     fail_silently=False,
                 )
+                # Mark sent only after a successful delivery, so a failed send
+                # is retried on the next run rather than silently skipped.
+                WeeklyRecapLog.objects.get_or_create(user=user, week_start=date_from)
                 sent += 1
             except Exception:
                 logger.exception("Failed to send weekly recap to %s", user.email)
@@ -260,4 +274,8 @@ class Command(BaseCommand):
                 len(recaps_by_user),
             )
         else:
-            logger.info("Weekly recap complete: %d email(s) sent.", sent)
+            logger.info(
+                "Weekly recap complete: %d email(s) sent, %d already-sent skipped.",
+                sent,
+                skipped,
+            )

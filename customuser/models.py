@@ -118,3 +118,30 @@ class CustomUser(AbstractUser):
             return self.calendar_token
         # Practically unreachable (256-bit collision five times in a row).
         raise RuntimeError("Could not generate a unique calendar_token.")
+
+
+class WeeklyRecapLog(models.Model):
+    """Idempotency marker for the weekly-recap email.
+
+    One row per (recipient, recap week-start) once the email has been sent, so
+    re-running ``send_weekly_recaps`` in the same week is a no-op instead of a
+    double-send. The unique constraint also makes concurrent runs safe.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="weekly_recap_logs",
+    )
+    week_start = models.DateField(help_text=_("Monday of the recap week."))
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "week_start"], name="uniq_weekly_recap_user_week"
+            ),
+        ]
+
+    def __str__(self):
+        return f"recap {self.user_id} / {self.week_start}"

@@ -106,6 +106,39 @@ def test_emails_opted_in_owner_of_enabled_team(present_status):
     assert "300" in msg.body  # total volume
 
 
+def test_idempotent_no_double_send_on_same_week_rerun(present_status):
+    """Re-running the command for the same week must not re-email a recipient
+    already marked sent (WeeklyRecapLog)."""
+    owner = UserFactory(email="owner@local.test", weekly_recap_opt_in=True)
+    team = TeamFactory(owner=owner, is_active=True, weekly_recap_enabled=True)
+    program = ProgramFactory(team=team)
+    Event.objects.create(
+        refer_program=program, name="sess", date=WEEK_FROM + datetime.timedelta(days=1), total=300
+    )
+
+    _run()
+    assert len(mail.outbox) == 1
+
+    _run()  # same window again
+    assert len(mail.outbox) == 1  # still one — second run skipped
+
+
+def test_dry_run_does_not_mark_sent(present_status):
+    """--dry-run must not write the idempotency marker, so a real run after a
+    dry-run still sends."""
+    owner = UserFactory(email="owner@local.test", weekly_recap_opt_in=True)
+    team = TeamFactory(owner=owner, is_active=True, weekly_recap_enabled=True)
+    program = ProgramFactory(team=team)
+    Event.objects.create(
+        refer_program=program, name="sess", date=WEEK_FROM + datetime.timedelta(days=1), total=300
+    )
+
+    _run(**{"dry_run": True})
+    assert mail.outbox == []
+    _run()
+    assert len(mail.outbox) == 1
+
+
 def test_skips_disabled_team():
     owner = UserFactory(email="owner@local.test", weekly_recap_opt_in=True)
     TeamFactory(owner=owner, is_active=True, weekly_recap_enabled=False)

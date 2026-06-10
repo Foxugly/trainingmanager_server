@@ -73,6 +73,10 @@ class Attendance(models.Model):
         indexes = [
             models.Index(fields=["event", "member"]),
             models.Index(fields=["member", "-created_at"]),
+            # The stats / weekly-recap / dashboard hot path filters
+            # status_id (the team's "present") over a set of event_ids; this
+            # composite lets that predicate use an index instead of scanning.
+            models.Index(fields=["status", "event"]),
         ]
         ordering = ["-created_at"]
 

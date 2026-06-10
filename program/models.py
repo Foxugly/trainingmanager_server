@@ -33,3 +33,9 @@ class Program(models.Model):
     class Meta:
         verbose_name = _("Program")
         ordering = ["-updated_at", "-id"]
+        indexes = [
+            # The list endpoint filters team__in + is_active (then orders by
+            # name over the small per-team result). Matches that predicate —
+            # NOT (team, -updated_at), which the list does not order by.
+            models.Index(fields=["team", "is_active"]),
+        ]
