@@ -502,3 +502,92 @@ def test_member_scope_includes_roti_trend_and_streak(owner_client, team, program
     # Team aggregate: ROTI is per-athlete, so the series is empty.
     agg = owner_client.get(_url(team.pk)).json()
     assert agg["roti"] == {"series": [], "average": None, "count": 0}
+
+
+# =====================================================================
+# Historical roster: departed athletes (B-P1 family)
+# =====================================================================
+
+
+def test_departed_athlete_does_not_inflate_rate_above_100(
+    owner_client, team, program, present_status
+):
+    """A member present at a session and who has since LEFT must still be
+    counted as expected for that session — the present rate can never exceed
+    100% (regression test for the current-roster denominator bug)."""
+    today = timezone.localdate()
+    stayer = _make_member(team, "Stay", "Er")
+    leaver = _make_member(team, "Leave", "Er")
+
+    e1 = Event.objects.create(
+        refer_program=program, name="E1", date=today - timedelta(days=10), total=100
+    )
+    # Both present at E1.
+    Attendance.objects.create(event=e1, member=stayer, status=present_status)
+    Attendance.objects.create(event=e1, member=leaver, status=present_status)
+
+    # The leaver leaves AFTER E1 (yesterday) — they were on the roster for E1.
+    leaver_membership = TeamMembership.objects.get(team=team, member=leaver)
+    leaver_membership.left_at = timezone.now() - timedelta(days=1)
+    leaver_membership.save(update_fields=["left_at"])
+
+    att = owner_client.get(_url(team.pk)).json()["attendance"]
+    by_session = {s["name"]: s for s in att["by_session"]}
+    # E1 expected = 2 (both rostered then), present = 2 -> exactly 100%, not >100.
+    assert by_session["E1"]["total"] == 2
+    assert by_session["E1"]["present"] == 2
+    assert by_session["E1"]["rate"] == pytest.approx(1.0)
+    assert att["team_rate"] <= 1.0
+
+    # The departed athlete still appears in the per-member breakdown.
+    names = {m["name"] for m in att["by_member"]}
+    assert "Leave Er" in names
+    leaver_row = next(m for m in att["by_member"] if m["name"] == "Leave Er")
+    assert leaver_row["present"] == 1
+    assert leaver_row["rate"] == pytest.approx(1.0)
+
+
+def test_member_who_left_before_session_is_not_expected(
+    owner_client, team, program, present_status
+):
+    """A member who left BEFORE a session must not be counted in that
+    session's expected denominator."""
+    today = timezone.localdate()
+    stayer = _make_member(team, "Stay", "Er")
+    early = _make_member(team, "Early", "Gone")
+
+    e_recent = Event.objects.create(
+        refer_program=program, name="recent", date=today - timedelta(days=2), total=100
+    )
+    Attendance.objects.create(event=e_recent, member=stayer, status=present_status)
+
+    # `early` left 5 days ago — before the recent session.
+    m = TeamMembership.objects.get(team=team, member=early)
+    m.left_at = timezone.now() - timedelta(days=5)
+    m.save(update_fields=["left_at"])
+
+    att = owner_client.get(_url(team.pk)).json()["attendance"]
+    by_session = {s["name"]: s for s in att["by_session"]}
+    # Only `stayer` was rostered for the recent session.
+    assert by_session["recent"]["total"] == 1
+
+
+def test_manager_can_scope_departed_member(owner_client, team, program, present_status):
+    """End-of-season review: a manager can request ?member=<id> for an athlete
+    who has since left (no longer 404)."""
+    today = timezone.localdate()
+    gone = _make_member(team, "Gone", "Athlete")
+    e1 = Event.objects.create(
+        refer_program=program, name="E1", date=today - timedelta(days=10), total=100
+    )
+    Attendance.objects.create(event=e1, member=gone, status=present_status)
+
+    m = TeamMembership.objects.get(team=team, member=gone)
+    m.left_at = timezone.now() - timedelta(days=1)
+    m.save(update_fields=["left_at"])
+
+    resp = owner_client.get(_url(team.pk) + f"?member={gone.pk}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["member"] == {"id": gone.pk, "name": "Gone Athlete"}
+    assert body["attendance"]["by_member"][0]["present"] == 1

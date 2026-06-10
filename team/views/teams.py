@@ -478,11 +478,14 @@ class TeamViewSet(viewsets.ModelViewSet):
                 code="invalid_member",
             )
 
-        membership = (
-            team.memberships.filter(member_id=member_id, left_at__isnull=True)
-            .select_related("member")
-            .first()
-        )
+        # Managers may review any member who was EVER on the team (active or
+        # departed) — end-of-season review of someone who has since left must
+        # still work. A non-manager (athlete) is restricted to an active
+        # membership of their own below.
+        membership_qs = team.memberships.filter(member_id=member_id)
+        if not is_manager:
+            membership_qs = membership_qs.filter(left_at__isnull=True)
+        membership = membership_qs.select_related("member").order_by("-joined_at").first()
         if membership is None:
             from rest_framework.exceptions import NotFound
 

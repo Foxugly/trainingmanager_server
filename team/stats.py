@@ -91,26 +91,47 @@ def assemble_stats(team, date_from, date_to, scope_member=None):
     )
     event_ids = [e["id"] for e in events]
 
-    # Expected head-count for attendance "total": current active athlete
-    # members of the team. Documented simplification: the same expected
-    # roster applies to every session in the window (we do not reconstruct
-    # the historical roster per event date).
-    active_members = list(
-        team.memberships.filter(left_at__isnull=True)
-        .select_related("member")
-        .values(
-            "member_id",
-            "member__firstname",
-            "member__lastname",
-        )
-    )
-    member_names = {
-        m["member_id"]: (
-            f"{m['member__firstname']} {m['member__lastname']}".strip()
-        )
-        for m in active_members
-    }
-    expected_per_session = len(active_members)
+    # Reconstruct the roster PER SESSION rather than applying today's active
+    # roster to every date. A member is "on the roster" for a session if they
+    # had not left before that session's date. Coverage keys off ``left_at``
+    # ONLY (not ``joined_at``): ``joined_at`` is the row-creation time, but
+    # coaches routinely add a member and backfill past sessions, so a join
+    # date must not exclude earlier sessions. This keeps the attendance
+    # denominator consistent with the numerator — a member who attended a
+    # session and has since left is still counted as expected FOR THAT
+    # session (no more >100% rates), and departed athletes still surface in
+    # the per-member breakdown for the sessions they were around for.
+    member_names: dict[int, str] = {}
+    left_date: dict[int, datetime.date | None] = {}
+    for m in team.memberships.values(
+        "member_id", "member__firstname", "member__lastname", "left_at"
+    ):
+        mid = m["member_id"]
+        member_names[mid] = f"{m['member__firstname']} {m['member__lastname']}".strip()
+        ld = m["left_at"].date() if m["left_at"] else None
+        # A member may have several membership periods (left & rejoined); keep
+        # the most permissive coverage (an active period -> None wins).
+        if mid not in left_date:
+            left_date[mid] = ld
+        elif left_date[mid] is not None and (ld is None or ld > left_date[mid]):
+            left_date[mid] = ld
+
+    def _covers(mid, d):
+        ld = left_date.get(mid)
+        return ld is None or ld >= d
+
+    # Per-event expected head-count + the set of sessions each member was
+    # rostered for (their personal attendance denominator).
+    expected_by_event: dict[int, int] = {}
+    covered_events: dict[int, set[int]] = {mid: set() for mid in member_names}
+    for e in events:
+        d = e["date"]
+        count = 0
+        for mid in member_names:
+            if _covers(mid, d):
+                count += 1
+                covered_events[mid].add(e["id"])
+        expected_by_event[e["id"]] = count
 
     member_id = scope_member["id"] if scope_member else None
 
@@ -118,7 +139,7 @@ def assemble_stats(team, date_from, date_to, scope_member=None):
         "period": {"from": date_from, "to": date_to},
         "member": scope_member,
         "attendance": attendance_stats(
-            event_ids, events, member_names, expected_per_session, member_id
+            event_ids, events, member_names, expected_by_event, covered_events, member_id
         ),
         "volume": volume_stats(event_ids, events, member_names, member_id),
         "intensity": intensity_stats(event_ids, member_id),
@@ -126,17 +147,20 @@ def assemble_stats(team, date_from, date_to, scope_member=None):
     }
 
 
-def attendance_stats(event_ids, events, member_names, expected_per_session, member_id=None):
+def attendance_stats(event_ids, events, member_names, expected_by_event, covered_events, member_id=None):
     """Attendance present-counts grouped per event and per member.
 
     "present" = Attendance rows whose status.code == 'present'.
 
-    Team aggregate (member_id is None): "total" per session = number of
-    currently-active athlete members; by_member spans all members.
+    Team aggregate (member_id is None): per-session "total" = the head-count
+    rostered for THAT session date (``expected_by_event``); by_member spans
+    everyone rostered during the window plus anyone with a present record
+    (so departed athletes still surface), each with their own rostered-session
+    denominator (``covered_events``).
 
-    Per-athlete scope (member_id set): by_session is that member's
-    personal timeline (present 0/1, total 1 per session), team_rate is
-    their overall present rate, by_member is the single scoped member.
+    Per-athlete scope (member_id set): by_session is that member's personal
+    timeline over the sessions they were rostered for (present 0/1, total 1),
+    team_rate is their overall present rate, by_member is the single member.
     """
     from attendance.models import Attendance
 
@@ -144,7 +168,7 @@ def attendance_stats(event_ids, events, member_names, expected_per_session, memb
         return {"team_rate": None, "by_session": [], "by_member": []}
 
     if member_id is not None:
-        return attendance_stats_member(event_ids, events, member_names, member_id)
+        return attendance_stats_member(event_ids, events, member_names, covered_events, member_id)
 
     # present count per event
     per_event = dict(
@@ -156,10 +180,12 @@ def attendance_stats(event_ids, events, member_names, expected_per_session, memb
 
     by_session = []
     total_present = 0
+    total_expected = 0
     for e in events:
         present = per_event.get(e["id"], 0)
         total_present += present
-        total = expected_per_session
+        total = expected_by_event.get(e["id"], 0)
+        total_expected += total
         rate = (present / total) if total else None
         by_session.append(
             {
@@ -172,7 +198,6 @@ def attendance_stats(event_ids, events, member_names, expected_per_session, memb
             }
         )
 
-    total_expected = expected_per_session * len(events)
     team_rate = (total_present / total_expected) if total_expected else None
 
     # per-member present count + last present date across the window
@@ -186,19 +211,29 @@ def attendance_stats(event_ids, events, member_names, expected_per_session, memb
     )
     present_by_member = {r["member_id"]: r for r in present_rows}
 
-    session_count = len(events)
     by_member = []
-    for member_id_, name in member_names.items():
+    # Everyone rostered during the window, plus anyone with a present record
+    # (covers an athlete who has since left but attended in-window).
+    for member_id_ in set(member_names) | set(present_by_member):
         row = present_by_member.get(member_id_)
         present = row["present"] if row else 0
         last_present = row["last_present_date"] if row else None
-        rate = (present / session_count) if session_count else None
+        total = len(covered_events.get(member_id_, ()))
+        # Anomaly guard: a present record with no rostered session in the
+        # window (e.g. a membership row deleted outright) — fall back to the
+        # present count so the rate never exceeds 100%.
+        if total == 0 and present:
+            total = present
+        # Skip members with neither roster coverage nor presence in-window.
+        if total == 0 and present == 0:
+            continue
+        rate = (present / total) if total else None
         by_member.append(
             {
                 "member_id": member_id_,
-                "name": name,
+                "name": member_names.get(member_id_) or f"member #{member_id_}",
                 "present": present,
-                "total": session_count,
+                "total": total,
                 "rate": rate,
                 "last_present_date": last_present,
                 # Streak is a per-athlete metric; not computed on the aggregate.
@@ -214,9 +249,15 @@ def attendance_stats(event_ids, events, member_names, expected_per_session, memb
     }
 
 
-def attendance_stats_member(event_ids, events, member_names, member_id):
-    """Per-athlete attendance: personal timeline + overall rate."""
+def attendance_stats_member(event_ids, events, member_names, covered_events, member_id):
+    """Per-athlete attendance: personal timeline + overall rate over the
+    sessions the athlete was rostered for (their coverage set)."""
     from attendance.models import Attendance
+
+    # Restrict to the sessions this member was rostered for; if coverage is
+    # unknown (no membership row found), fall back to all window events.
+    covered = covered_events.get(member_id)
+    scoped_events = [e for e in events if e["id"] in covered] if covered else events
 
     present_event_ids = set(
         Attendance.objects.filter(
@@ -229,7 +270,7 @@ def attendance_stats_member(event_ids, events, member_names, member_id):
     by_session = []
     total_present = 0
     last_present_date = None
-    for e in events:
+    for e in scoped_events:
         present = 1 if e["id"] in present_event_ids else 0
         total_present += present
         if present:
@@ -246,7 +287,7 @@ def attendance_stats_member(event_ids, events, member_names, member_id):
             }
         )
 
-    session_count = len(events)
+    session_count = len(scoped_events)
     team_rate = (total_present / session_count) if session_count else None
 
     # Current streak: consecutive present sessions counting back from the

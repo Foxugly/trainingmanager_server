@@ -64,19 +64,34 @@ def compute_team_recap(team, date_from, date_to):
             date__isnull=False,
             date__gte=date_from,
             date__lte=date_to,
-        ).values("id", "total")
+        ).values("id", "date", "total")
     )
     event_ids = [e["id"] for e in events]
     sessions = len(events)
     total_volume = sum(e["total"] for e in events)
 
-    active_member_count = team.memberships.filter(left_at__isnull=True).count()
+    # Per-session roster coverage (mirrors team.stats.assemble_stats): a member
+    # counts toward a session's expected head-count unless they had left before
+    # that date. Coverage keys off left_at only (joined_at is row-creation time;
+    # backfilled sessions must still count newly-added members). Without this a
+    # member who left between the recap week and the run inflates the rate >100%.
+    left_by_member: dict[int, datetime.date | None] = {}
+    for mid, left_at in team.memberships.values_list("member_id", "left_at"):
+        ld = left_at.date() if left_at else None
+        if mid not in left_by_member:
+            left_by_member[mid] = ld
+        elif left_by_member[mid] is not None and (ld is None or ld > left_by_member[mid]):
+            left_by_member[mid] = ld
 
-    if event_ids and active_member_count:
+    def _expected_for(d):
+        return sum(1 for ld in left_by_member.values() if ld is None or ld >= d)
+
+    expected = sum(_expected_for(e["date"]) for e in events)
+
+    if event_ids and expected:
         present = Attendance.objects.filter(
             event_id__in=event_ids, status__code="present"
         ).count()
-        expected = active_member_count * sessions
         attendance_rate = (present / expected) if expected else None
     else:
         attendance_rate = None
