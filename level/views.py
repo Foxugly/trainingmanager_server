@@ -1,6 +1,6 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from tools.mixins import SoftDeleteIncludeInactiveModelViewSet
+from tools.mixins import AdminFlavoredReferentialViewSet
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 from tools.permissions import AdminWriteAuthRead
 
@@ -49,7 +49,7 @@ from .serializers import LevelAdminSerializer, LevelSerializer
         description="Sets is_active=False; does not hard delete.",
     ),
 )
-class LevelViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class LevelViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on the Level referential.
 
     Read: any authenticated user (default queryset filters is_active=True).
@@ -57,6 +57,8 @@ class LevelViewSet(SoftDeleteIncludeInactiveModelViewSet):
     """
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = LevelSerializer
+    admin_serializer_class = LevelAdminSerializer
     filterset_fields = ["is_active"]
     search_fields = ["code", "name"]
     ordering_fields = ["order", "code"]
@@ -67,13 +69,3 @@ class LevelViewSet(SoftDeleteIncludeInactiveModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return Level.objects.none()
         return self._apply_include_inactive_filter(Level.objects.all())
-
-    def get_serializer_class(self):
-        user = self.request.user
-        if (
-            user.is_authenticated
-            and user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return LevelAdminSerializer
-        return LevelSerializer

@@ -15,7 +15,7 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthentic
 from rest_framework.response import Response
 
 from event.models import Event
-from tools.mixins import SoftDeleteIncludeInactiveModelViewSet
+from tools.mixins import AdminFlavoredReferentialViewSet
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 from tools.permissions import AdminWriteAuthRead
 
@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
         description="Sets is_active=False; does not hard delete.",
     ),
 )
-class AttendanceStatusViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class AttendanceStatusViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on the AttendanceStatus referential.
 
     Read: any authenticated user (default queryset filters is_active=True).
@@ -74,6 +74,8 @@ class AttendanceStatusViewSet(SoftDeleteIncludeInactiveModelViewSet):
     """
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = AttendanceStatusSerializer
+    admin_serializer_class = AttendanceStatusAdminSerializer
     filterset_fields = ["is_active", "is_default"]
     search_fields = ["code"]
     ordering_fields = ["order", "code"]
@@ -84,16 +86,6 @@ class AttendanceStatusViewSet(SoftDeleteIncludeInactiveModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return AttendanceStatus.objects.none()
         return self._apply_include_inactive_filter(AttendanceStatus.objects.all())
-
-    def get_serializer_class(self):
-        user = self.request.user
-        if (
-            user.is_authenticated
-            and user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return AttendanceStatusAdminSerializer
-        return AttendanceStatusSerializer
 
 
 class IsTeamCoachOrReadOwnAttendance(BasePermission):

@@ -61,3 +61,37 @@ class SoftDeleteIncludeInactiveModelViewSet(
     and is NOT a candidate for this base."""
 
     pass
+
+
+class AdminFlavorSerializerMixin:
+    """`get_serializer_class` that returns the admin-flavored serializer to staff
+    on write/retrieve actions, and the public flavor otherwise.
+
+    Set ``public_serializer_class`` + ``admin_serializer_class`` on the viewset.
+    The six staff-managed referential viewsets (Sport, Level, Modality,
+    EnergySystem, EnergySegment, AttendanceStatus) all shared this exact switch
+    verbatim.
+    """
+
+    public_serializer_class = None
+    admin_serializer_class = None
+    admin_flavor_actions = ("create", "update", "partial_update", "retrieve")
+
+    def get_serializer_class(self):
+        user = self.request.user
+        if (
+            user.is_authenticated
+            and user.is_staff
+            and self.action in self.admin_flavor_actions
+        ):
+            return self.admin_serializer_class
+        return self.public_serializer_class
+
+
+class AdminFlavoredReferentialViewSet(
+    SoftDeleteMixin, IncludeInactiveMixin, AdminFlavorSerializerMixin, viewsets.ModelViewSet
+):
+    """Soft-delete + include_inactive + staff/public serializer flavor — the
+    shape every staff-managed referential CRUD viewset follows."""
+
+    pass

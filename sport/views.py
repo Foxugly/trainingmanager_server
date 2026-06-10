@@ -1,6 +1,6 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from tools.mixins import SoftDeleteIncludeInactiveModelViewSet
+from tools.mixins import AdminFlavoredReferentialViewSet
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 from tools.permissions import AdminWriteAuthRead
 
@@ -48,7 +48,7 @@ from .serializers import SportAdminSerializer, SportSerializer
         description="Sets is_active=False; does not hard delete.",
     ),
 )
-class SportViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class SportViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on the Sport referential.
 
     Read: any authenticated user (default queryset filters is_active=True).
@@ -56,6 +56,8 @@ class SportViewSet(SoftDeleteIncludeInactiveModelViewSet):
     """
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = SportSerializer
+    admin_serializer_class = SportAdminSerializer
     filterset_fields = ["is_active"]
     search_fields = ["name", "slug"]
     ordering_fields = ["name", "created_at"]
@@ -66,12 +68,3 @@ class SportViewSet(SoftDeleteIncludeInactiveModelViewSet):
             return Sport.objects.none()
         qs = Sport.objects.all().prefetch_related("energy_systems")
         return self._apply_include_inactive_filter(qs)
-
-    def get_serializer_class(self):
-        if (
-            self.request.user.is_authenticated
-            and self.request.user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return SportAdminSerializer
-        return SportSerializer

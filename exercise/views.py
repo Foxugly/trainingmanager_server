@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from team.permissions import IsTrainer
 from team.utils import scope_by_sport_language
 from tools.exceptions import NotAuthorizedRoundDenied
-from tools.mixins import SoftDeleteIncludeInactiveModelViewSet
+from tools.mixins import AdminFlavoredReferentialViewSet
 from tools.openapi import INCLUDE_INACTIVE_PARAM
 from tools.permissions import AdminWriteAuthRead
 
@@ -53,10 +53,12 @@ from .serializers import (
     ),
     destroy=extend_schema(summary="Soft delete modality (staff only)"),
 )
-class ModalityViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class ModalityViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on Modality referential, scoped by sport when nested."""
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = ModalitySerializer
+    admin_serializer_class = ModalityAdminSerializer
     filterset_fields = ["is_active", "sport", "name"]
     search_fields = ["name"]
     ordering_fields = ["name", "id"]
@@ -70,15 +72,6 @@ class ModalityViewSet(SoftDeleteIncludeInactiveModelViewSet):
         if sport_pk:
             qs = qs.filter(sport_id=sport_pk)
         return self._apply_include_inactive_filter(qs)
-
-    def get_serializer_class(self):
-        if (
-            self.request.user.is_authenticated
-            and self.request.user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return ModalityAdminSerializer
-        return ModalitySerializer
 
 
 @extend_schema_view(
@@ -109,10 +102,12 @@ class ModalityViewSet(SoftDeleteIncludeInactiveModelViewSet):
     ),
     destroy=extend_schema(summary="Soft delete energy system (staff only)"),
 )
-class EnergySystemViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class EnergySystemViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on EnergySystem referential."""
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = EnergySystemSerializer
+    admin_serializer_class = EnergySystemAdminSerializer
     filterset_fields = ["is_active", "name"]
     search_fields = ["name"]
     ordering_fields = ["name", "id"]
@@ -122,15 +117,6 @@ class EnergySystemViewSet(SoftDeleteIncludeInactiveModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return EnergySystem.objects.none()
         return self._apply_include_inactive_filter(EnergySystem.objects.all())
-
-    def get_serializer_class(self):
-        if (
-            self.request.user.is_authenticated
-            and self.request.user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return EnergySystemAdminSerializer
-        return EnergySystemSerializer
 
 
 @extend_schema_view(
@@ -161,10 +147,12 @@ class EnergySystemViewSet(SoftDeleteIncludeInactiveModelViewSet):
     ),
     destroy=extend_schema(summary="Soft delete energy segment (staff only)"),
 )
-class EnergySegmentViewSet(SoftDeleteIncludeInactiveModelViewSet):
+class EnergySegmentViewSet(AdminFlavoredReferentialViewSet):
     """CRUD on EnergySegment referential."""
 
     permission_classes = [AdminWriteAuthRead]
+    public_serializer_class = EnergySegmentSerializer
+    admin_serializer_class = EnergySegmentAdminSerializer
     filterset_fields = ["is_active", "energysystem"]
     search_fields = ["abv", "description"]
     ordering_fields = ["abv", "id"]
@@ -176,15 +164,6 @@ class EnergySegmentViewSet(SoftDeleteIncludeInactiveModelViewSet):
         return self._apply_include_inactive_filter(
             EnergySegment.objects.select_related("energysystem")
         )
-
-    def get_serializer_class(self):
-        if (
-            self.request.user.is_authenticated
-            and self.request.user.is_staff
-            and self.action in ("create", "update", "partial_update", "retrieve")
-        ):
-            return EnergySegmentAdminSerializer
-        return EnergySegmentSerializer
 
 
 class ExerciseViewSet(viewsets.ModelViewSet):
