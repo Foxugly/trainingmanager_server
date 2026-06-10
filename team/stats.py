@@ -135,19 +135,35 @@ def assemble_stats(team, date_from, date_to, scope_member=None):
 
     member_id = scope_member["id"] if scope_member else None
 
+    # Resolve the "present" status id ONCE and filter the attendance queries by
+    # status_id below, instead of re-joining AttendanceStatus on the string code
+    # in each of the 5+ aggregation queries (the index is on (status, event)).
+    present_id = _present_status_id()
+
     return {
         "period": {"from": date_from, "to": date_to},
         "member": scope_member,
         "attendance": attendance_stats(
-            event_ids, events, member_names, expected_by_event, covered_events, member_id
+            event_ids, events, member_names, expected_by_event, covered_events, present_id, member_id
         ),
-        "volume": volume_stats(event_ids, events, member_names, member_id),
-        "intensity": intensity_stats(event_ids, member_id),
+        "volume": volume_stats(event_ids, events, member_names, present_id, member_id),
+        "intensity": intensity_stats(event_ids, present_id, member_id),
         "roti": roti_stats(event_ids, events, member_id),
     }
 
 
-def attendance_stats(event_ids, events, member_names, expected_by_event, covered_events, member_id=None):
+def _present_status_id():
+    """The id of the global 'present' AttendanceStatus, or None if absent."""
+    from attendance.models import AttendanceStatus
+
+    return (
+        AttendanceStatus.objects.filter(code="present").values_list("id", flat=True).first()
+    )
+
+
+def attendance_stats(
+    event_ids, events, member_names, expected_by_event, covered_events, present_id, member_id=None
+):
     """Attendance present-counts grouped per event and per member.
 
     "present" = Attendance rows whose status.code == 'present'.
@@ -168,11 +184,13 @@ def attendance_stats(event_ids, events, member_names, expected_by_event, covered
         return {"team_rate": None, "by_session": [], "by_member": []}
 
     if member_id is not None:
-        return attendance_stats_member(event_ids, events, member_names, covered_events, member_id)
+        return attendance_stats_member(
+            event_ids, events, member_names, covered_events, present_id, member_id
+        )
 
     # present count per event
     per_event = dict(
-        Attendance.objects.filter(event_id__in=event_ids, status__code="present")
+        Attendance.objects.filter(event_id__in=event_ids, status_id=present_id)
         .values_list("event_id")
         .annotate(n=Count("id"))
         .values_list("event_id", "n")
@@ -202,7 +220,7 @@ def attendance_stats(event_ids, events, member_names, expected_by_event, covered
 
     # per-member present count + last present date across the window
     present_rows = (
-        Attendance.objects.filter(event_id__in=event_ids, status__code="present")
+        Attendance.objects.filter(event_id__in=event_ids, status_id=present_id)
         .values("member_id")
         .annotate(
             present=Count("id"),
@@ -249,7 +267,7 @@ def attendance_stats(event_ids, events, member_names, expected_by_event, covered
     }
 
 
-def attendance_stats_member(event_ids, events, member_names, covered_events, member_id):
+def attendance_stats_member(event_ids, events, member_names, covered_events, present_id, member_id):
     """Per-athlete attendance: personal timeline + overall rate over the
     sessions the athlete was rostered for (their coverage set)."""
     from attendance.models import Attendance
@@ -262,7 +280,7 @@ def attendance_stats_member(event_ids, events, member_names, covered_events, mem
     present_event_ids = set(
         Attendance.objects.filter(
             event_id__in=event_ids,
-            status__code="present",
+            status_id=present_id,
             member_id=member_id,
         ).values_list("event_id", flat=True)
     )
@@ -348,7 +366,7 @@ def roti_stats(event_ids, events, member_id):
     return {"series": series, "average": average, "count": count}
 
 
-def volume_stats(event_ids, events, member_names, member_id=None):
+def volume_stats(event_ids, events, member_names, present_id, member_id=None):
     """Training volume = sum of Event.total over the window.
 
     Team aggregate (member_id is None): total_distance counts each
@@ -368,7 +386,7 @@ def volume_stats(event_ids, events, member_names, member_id=None):
         present_event_ids = set(
             Attendance.objects.filter(
                 event_id__in=event_ids,
-                status__code="present",
+                status_id=present_id,
                 member_id=member_id,
             ).values_list("event_id", flat=True)
         )
@@ -393,7 +411,7 @@ def volume_stats(event_ids, events, member_names, member_id=None):
     # by_member — attribute each present session's distance to the member.
     event_total = {e["id"]: e["total"] for e in events}
     present_links = Attendance.objects.filter(
-        event_id__in=event_ids, status__code="present"
+        event_id__in=event_ids, status_id=present_id
     ).values_list("member_id", "event_id")
 
     member_distance: dict[int, int] = {}
@@ -431,7 +449,7 @@ def bucket_by_week(events):
     ]
 
 
-def intensity_stats(event_ids, member_id=None):
+def intensity_stats(event_ids, present_id, member_id=None):
     """Distance per energy zone across the window's exercises.
 
     zone distance = sum(exercise.distance * exercise.repetition *
@@ -453,7 +471,7 @@ def intensity_stats(event_ids, member_id=None):
         event_ids = list(
             Attendance.objects.filter(
                 event_id__in=event_ids,
-                status__code="present",
+                status_id=present_id,
                 member_id=member_id,
             ).values_list("event_id", flat=True)
         )
@@ -528,7 +546,7 @@ def rsvp_reliability(team, date_from, date_to):
 
     present = set(
         Attendance.objects.filter(
-            event_id__in=event_ids, status__code="present"
+            event_id__in=event_ids, status_id=_present_status_id()
         ).values_list("member_id", "event_id")
     )
 

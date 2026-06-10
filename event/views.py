@@ -166,6 +166,14 @@ class EventViewSet(viewsets.ModelViewSet):
         if not managed_teams(self.request.user).filter(pk=program.team_id).exists():
             raise PermissionDenied(_("You do not manage the team of this program."))
 
+    def _require_event_manager(self, event):
+        """Raise 403 unless the caller owns/manages the event's team; return the
+        team. Shared by the manager-only event actions."""
+        team = event.team
+        if team is None or not team.is_managed_by(self.request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        return team
+
     def perform_create(self, serializer):
         program = serializer.validated_data.get("refer_program")
         self._check_program_write(program)
@@ -248,8 +256,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
         event = self.get_object()
 
-        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        self._require_event_manager(event)
 
         # Future-only: a scheduled session whose date is already in the past
         # (judged in the team's timezone) cannot be (re)generated. An
@@ -481,8 +488,7 @@ class EventViewSet(viewsets.ModelViewSet):
         """POST /api/v1/events/{id}/duplicate/ — copy a session, optional weekly repeat."""
         event = self.get_object()
 
-        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        self._require_event_manager(event)
 
         body_serializer = DuplicateEventRequestSerializer(data=request.data)
         body_serializer.is_valid(raise_exception=True)
@@ -541,8 +547,7 @@ class EventViewSet(viewsets.ModelViewSet):
         """POST /api/v1/events/{id}/share/ — toggle a public read-only share link."""
         event = self.get_object()
 
-        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        self._require_event_manager(event)
 
         body_serializer = EventShareRequestSerializer(data=request.data)
         body_serializer.is_valid(raise_exception=True)
@@ -615,9 +620,7 @@ class EventViewSet(viewsets.ModelViewSet):
         from rsvp.models import Rsvp, RsvpStatus
 
         event = self.get_object()
-        team = event.team
-        if team is None or not team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        team = self._require_event_manager(event)
 
         present = Attendance.objects.filter(event=event, status__code="present").count()
         absent = Attendance.objects.filter(event=event, status__code="absent").count()
@@ -691,8 +694,7 @@ class EventViewSet(viewsets.ModelViewSet):
     def explain(self, request, pk=None):
         """POST /events/{id}/explain/ — AI athlete-facing brief."""
         event = self.get_object()
-        if not event.refer_program or not event.refer_program.team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        self._require_event_manager(event)
 
         ai_result = ai_explain_session(
             event=event,
@@ -732,9 +734,7 @@ class EventViewSet(viewsets.ModelViewSet):
         from .models import EventTemplate
 
         event = self.get_object()
-        team = event.team
-        if team is None or not team.is_managed_by(request.user):
-            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+        team = self._require_event_manager(event)
 
         body = SaveAsTemplateRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)

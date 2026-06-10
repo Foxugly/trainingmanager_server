@@ -51,6 +51,26 @@ def _get_client() -> Anthropic:
     )
 
 
+def _create_message(client, **kwargs):
+    """Call ``client.messages.create`` and map the Anthropic exception ladder to
+    our AIConfigurationError (500) / AIServiceError (502). Shared by every
+    Claude entry point so the mapping stays in one place."""
+    try:
+        return client.messages.create(**kwargs)
+    except AuthenticationError as e:
+        logger.error("Anthropic authentication failed: %s", e)
+        raise AIConfigurationError(_("AI authentication failed. Check API key."))
+    except APITimeoutError as e:
+        logger.error("Anthropic API timeout: %s", e)
+        raise AIServiceError(_("AI request timed out."))
+    except APIError as e:
+        logger.error("Anthropic API error: %s", e)
+        raise AIServiceError(_("AI request failed."))
+    except Exception:
+        logger.exception("Unexpected error calling Anthropic")
+        raise AIServiceError(_("Unexpected AI error."))
+
+
 def call_claude(
     prompt: str,
     *,
@@ -75,20 +95,7 @@ def call_claude(
     if system:
         kwargs["system"] = system
 
-    try:
-        response = client.messages.create(**kwargs)
-    except AuthenticationError as e:
-        logger.error("Anthropic authentication failed: %s", e)
-        raise AIConfigurationError(_("AI authentication failed. Check API key."))
-    except APITimeoutError as e:
-        logger.error("Anthropic API timeout: %s", e)
-        raise AIServiceError(_("AI request timed out."))
-    except APIError as e:
-        logger.error("Anthropic API error: %s", e)
-        raise AIServiceError(_("AI request failed."))
-    except Exception:
-        logger.exception("Unexpected error calling Anthropic")
-        raise AIServiceError(_("Unexpected AI error."))
+    response = _create_message(client, **kwargs)
 
     if track_kwargs is not None:
         from tools.ai_tracking import track_ai_usage
@@ -167,20 +174,7 @@ def call_claude_with_tool(
         len(prompt),
     )
 
-    try:
-        response = client.messages.create(**kwargs)
-    except AuthenticationError as e:
-        logger.error("Anthropic authentication failed: %s", e)
-        raise AIConfigurationError(_("AI authentication failed. Check API key."))
-    except APITimeoutError as e:
-        logger.error("Anthropic API timeout: %s", e)
-        raise AIServiceError(_("AI request timed out."))
-    except APIError as e:
-        logger.error("Anthropic API error: %s", e)
-        raise AIServiceError(_("AI request failed."))
-    except Exception:
-        logger.exception("Unexpected error calling Anthropic")
-        raise AIServiceError(_("Unexpected AI error."))
+    response = _create_message(client, **kwargs)
 
     cache_creation = getattr(response.usage, "cache_creation_input_tokens", None)
     cache_read = getattr(response.usage, "cache_read_input_tokens", None)
