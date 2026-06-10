@@ -5659,6 +5659,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/RosterHistoryResponse'
           description: ''
+  /api/v1/teams/{id}/rsvp-reliability/:
+    get:
+      operationId: teams_rsvp_reliability_retrieve
+      description: 'Manager-only. Over the [from, to] window (same params as /stats/),
+        for each athlete who RSVP''d GOING: how many of those sessions they were actually
+        present at (shows), missed (no_shows), and the reliability rate (shows/going).
+        Sorted worst-reliability first. Athletes with no GOING RSVP in the window
+        are omitted.'
+      summary: Per-athlete RSVP reliability (going-but-absent)
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date
+        description: Window start (ISO).
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date
+        description: Window end (ISO).
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RsvpReliabilityResponse'
+          description: ''
   /api/v1/teams/{id}/stats/:
     get:
       operationId: teams_stats_retrieve
@@ -11840,6 +11879,48 @@ components:
       - maybe
       - no_response
       - not_going
+    RsvpReliabilityEntry:
+      type: object
+      description: One athlete's RSVP reliability over the window.
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        going:
+          type: integer
+          description: Events the athlete RSVP'd GOING to.
+        shows:
+          type: integer
+          description: Of those, where they were present.
+        no_shows:
+          type: integer
+          description: GOING but not present (absent / no record).
+        reliability:
+          type: number
+          format: double
+          nullable: true
+          description: shows / going (0..1).
+      required:
+      - going
+      - member_id
+      - name
+      - no_shows
+      - reliability
+      - shows
+    RsvpReliabilityResponse:
+      type: object
+      description: Wrapper object (keeps the schema non-paginated; see RosterHistory).
+      properties:
+        period:
+          $ref: '#/components/schemas/StatsPeriod'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/RsvpReliabilityEntry'
+      required:
+      - entries
+      - period
     RsvpStatusEnum:
       enum:
       - going

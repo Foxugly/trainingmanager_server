@@ -49,6 +49,7 @@ from .serializers import (
     ReviewBlockRequestSerializer,
     ReviewBlockResponseSerializer,
     RosterHistoryResponseSerializer,
+    RsvpReliabilityResponseSerializer,
     TeamInvitationSerializer,
     TeamJoinRequestMagicActionPostSerializer,
     TeamJoinRequestMagicActionResponseSerializer,
@@ -60,7 +61,7 @@ from .serializers import (
     TrainingTemplateSerializer,
     ValidateInvitationSerializer,
 )
-from .stats import assemble_stats, parse_window
+from .stats import assemble_stats, parse_window, rsvp_reliability
 
 logger = logging.getLogger(__name__)
 
@@ -407,6 +408,38 @@ class TeamViewSet(viewsets.ModelViewSet):
             for m in rows
         ]
         return Response(RosterHistoryResponseSerializer({"entries": entries}).data)
+
+    @extend_schema(
+        operation_id="teams_rsvp_reliability_retrieve",
+        summary="Per-athlete RSVP reliability (going-but-absent)",
+        description=(
+            "Manager-only. Over the [from, to] window (same params as /stats/), "
+            "for each athlete who RSVP'd GOING: how many of those sessions they "
+            "were actually present at (shows), missed (no_shows), and the "
+            "reliability rate (shows/going). Sorted worst-reliability first. "
+            "Athletes with no GOING RSVP in the window are omitted."
+        ),
+        parameters=[
+            OpenApiParameter("from", OpenApiTypes.DATE, description="Window start (ISO)."),
+            OpenApiParameter("to", OpenApiTypes.DATE, description="Window end (ISO)."),
+        ],
+        responses={200: RsvpReliabilityResponseSerializer},
+    )
+    @action(detail=True, methods=["get"], url_path="rsvp-reliability")
+    def rsvp_reliability(self, request, pk=None):
+        """GET /teams/{id}/rsvp-reliability/ — going-but-absent per athlete."""
+        team = self.get_object()
+        if not team.is_managed_by(request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can view RSVP reliability.")
+            )
+        date_from, date_to = parse_window(request)
+        entries = rsvp_reliability(team, date_from, date_to)
+        return Response(
+            RsvpReliabilityResponseSerializer(
+                {"period": {"from": date_from, "to": date_to}, "entries": entries}
+            ).data
+        )
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.

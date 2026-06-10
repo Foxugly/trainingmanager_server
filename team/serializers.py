@@ -1016,3 +1016,26 @@ class RosterHistoryResponseSerializer(serializers.Serializer):
     wrapping in ``{entries: [...]}`` keeps the schema honest (single object)."""
 
     entries = RosterHistoryEntrySerializer(many=True)
+
+
+# ---------------------------------------------------------------------
+# RSVP reliability — GET /api/v1/teams/{id}/rsvp-reliability/
+# ---------------------------------------------------------------------
+
+
+class RsvpReliabilityEntrySerializer(serializers.Serializer):
+    """One athlete's RSVP reliability over the window."""
+
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    going = serializers.IntegerField(help_text="Events the athlete RSVP'd GOING to.")
+    shows = serializers.IntegerField(help_text="Of those, where they were present.")
+    no_shows = serializers.IntegerField(help_text="GOING but not present (absent / no record).")
+    reliability = serializers.FloatField(allow_null=True, help_text="shows / going (0..1).")
+
+
+class RsvpReliabilityResponseSerializer(serializers.Serializer):
+    """Wrapper object (keeps the schema non-paginated; see RosterHistory)."""
+
+    period = StatsPeriodSerializer()
+    entries = RsvpReliabilityEntrySerializer(many=True)

@@ -454,3 +454,66 @@ def intensity_stats(event_ids, member_id=None):
     ]
     by_segment.sort(key=lambda s: s["abv"])
     return {"by_segment": by_segment}
+
+
+def rsvp_reliability(team, date_from, date_to):
+    """Per-athlete RSVP reliability over [date_from, date_to].
+
+    For each member who RSVP'd GOING to events in the window, how often did they
+    actually show up? ``shows`` = GOING + a 'present' attendance for the same
+    event; ``no_shows`` = GOING but not present (absent or no record);
+    ``reliability`` = shows / going. Sorted worst-reliability first (most
+    no-shows surface to the coach), then by name. Members with no GOING RSVP in
+    the window are omitted. Returns a list of dicts.
+    """
+    from attendance.models import Attendance
+    from event.models import Event
+    from rsvp.models import Rsvp, RsvpStatus
+
+    event_ids = list(
+        Event.objects.filter(
+            refer_program__team=team,
+            date__isnull=False,
+            date__gte=date_from,
+            date__lte=date_to,
+        ).values_list("id", flat=True)
+    )
+    if not event_ids:
+        return []
+
+    going_rows = Rsvp.objects.filter(
+        event_id__in=event_ids, status=RsvpStatus.GOING
+    ).values_list("member_id", "event_id", "member__firstname", "member__lastname")
+
+    present = set(
+        Attendance.objects.filter(
+            event_id__in=event_ids, status__code="present"
+        ).values_list("member_id", "event_id")
+    )
+
+    per_member: dict[int, dict] = {}
+    for member_id, event_id, firstname, lastname in going_rows:
+        entry = per_member.setdefault(
+            member_id,
+            {
+                "member_id": member_id,
+                "name": f"{firstname} {lastname}".strip() or f"member #{member_id}",
+                "going": 0,
+                "shows": 0,
+            },
+        )
+        entry["going"] += 1
+        if (member_id, event_id) in present:
+            entry["shows"] += 1
+
+    entries = []
+    for entry in per_member.values():
+        going = entry["going"]
+        shows = entry["shows"]
+        entry["no_shows"] = going - shows
+        entry["reliability"] = (shows / going) if going else None
+        entries.append(entry)
+
+    # Worst reliability first (the coach's actionable list), then name.
+    entries.sort(key=lambda e: (e["reliability"] if e["reliability"] is not None else 1.0, e["name"].lower()))
+    return entries
