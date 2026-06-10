@@ -13173,6 +13173,7 @@ components:
       - message_new_topic
       - message_new_reply
       - performance_logged
+      - pb_beaten
       - plan_generated
       - session_reminder
       type: string
@@ -13182,6 +13183,7 @@ components:
         * `message_new_topic` - A new topic was created in your team
         * `message_new_reply` - A new message was posted in a topic
         * `performance_logged` - A performance was logged for you
+        * `pb_beaten` - You beat a personal best
         * `plan_generated` - A new training plan was scheduled
         * `session_reminder` - You have a session tomorrow
     UnitEnum:

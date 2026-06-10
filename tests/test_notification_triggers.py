@@ -115,6 +115,76 @@ def test_coach_logging_for_member_without_user_does_not_crash(
 
 
 # ---------------------------------------------------------------------------
+# B.2b — personal-best beaten (F2)
+# ---------------------------------------------------------------------------
+
+
+def test_first_record_does_not_notify_pb(api_client, coach_user, coach_team, athlete_member):
+    api_client.force_authenticate(user=coach_user)
+    resp = api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="65.000"), format="json"
+    )
+    assert resp.status_code == 201, resp.json()
+    assert not Notification.objects.filter(type=NotificationType.PB_BEATEN).exists()
+
+
+def test_beating_prior_best_notifies_athlete_pb(
+    api_client, coach_user, coach_team, athlete_member, athlete_user
+):
+    api_client.force_authenticate(user=coach_user)
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="65.000"), format="json"
+    )
+    # Seconds = lower is better: a faster time beats the prior best.
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="62.000"), format="json"
+    )
+    pb = Notification.objects.filter(recipient=athlete_user, type=NotificationType.PB_BEATEN)
+    assert pb.count() == 1
+    assert "100m freestyle" in pb.first().body
+
+
+def test_slower_time_does_not_notify_pb(api_client, coach_user, coach_team, athlete_member):
+    api_client.force_authenticate(user=coach_user)
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="60.000"), format="json"
+    )
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="61.000"), format="json"
+    )
+    assert not Notification.objects.filter(type=NotificationType.PB_BEATEN).exists()
+
+
+def test_higher_is_better_pb(api_client, coach_user, coach_team, athlete_member, athlete_user):
+    api_client.force_authenticate(user=coach_user)
+    base = dict(label="long jump", unit="m")
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="5.000", **base), format="json"
+    )
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="5.500", **base), format="json"
+    )
+    assert Notification.objects.filter(
+        recipient=athlete_user, type=NotificationType.PB_BEATEN
+    ).count() == 1
+
+
+def test_self_logged_pb_still_notifies(api_client, coach_team, athlete_member, athlete_user):
+    """Unlike PERFORMANCE_LOGGED (skipped on self-log), a PB is a milestone the
+    athlete is congratulated on even when they logged it themselves."""
+    api_client.force_authenticate(user=athlete_user)
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="65.000"), format="json"
+    )
+    api_client.post(
+        PERF_URL, _perf_payload(coach_team, athlete_member, value="61.000"), format="json"
+    )
+    assert Notification.objects.filter(
+        recipient=athlete_user, type=NotificationType.PB_BEATEN
+    ).count() == 1
+
+
+# ---------------------------------------------------------------------------
 # B.3 — plan generated
 # ---------------------------------------------------------------------------
 

@@ -123,6 +123,7 @@ class PerformanceViewSet(viewsets.ModelViewSet):
 
         performance = serializer.save(created_by=user)
         self._notify_athlete_on_create(performance, member, is_athlete)
+        self._notify_pb_beaten(performance, member)
 
     def _notify_athlete_on_create(self, performance, member, is_athlete):
         """Notify the athlete when a COACH logged a performance for them.
@@ -161,6 +162,54 @@ class PerformanceViewSet(viewsets.ModelViewSet):
             logging.getLogger(__name__).exception(
                 "Failed to send performance-logged notification"
             )
+
+    def _notify_pb_beaten(self, performance, member):
+        """Notify the athlete when this performance beats their prior best for the
+        same (label, unit).
+
+        Sent to the athlete with ``actor=None`` so they are congratulated even
+        when they logged it themselves (a milestone, not a "someone-did-X" event).
+        Skipped when there is no prior record (first entry — nothing to beat) or
+        the value doesn't strictly improve on the best so far. Best-effort:
+        never breaks the create.
+        """
+        if member.user_id is None:
+            return
+        from django.db.models import Max, Min
+
+        prior = Performance.objects.filter(
+            member=member, label=performance.label, unit=performance.unit
+        ).exclude(pk=performance.pk)
+        if performance.is_lower_better:
+            best_prior = prior.aggregate(b=Min("value"))["b"]
+            beaten = best_prior is not None and performance.value < best_prior
+        else:
+            best_prior = prior.aggregate(b=Max("value"))["b"]
+            beaten = best_prior is not None and performance.value > best_prior
+        if not beaten:
+            return
+        try:
+            from notifications.models import NotificationType
+            from notifications.services import notify
+
+            notify(
+                member.user,
+                NotificationType.PB_BEATEN,
+                title=_("New personal best!"),
+                body=_("You beat your %(label)s best: %(value)s%(unit)s (was %(prev)s%(unit)s)")
+                % {
+                    "label": performance.label,
+                    "value": performance.value,
+                    "unit": performance.unit,
+                    "prev": best_prior,
+                },
+                url=f"/teams/{performance.team_id}/members/{member.id}",
+                actor=None,
+            )
+        except Exception:  # pragma: no cover - defensive: never break the create
+            import logging
+
+            logging.getLogger(__name__).exception("Failed to send PB-beaten notification")
 
     def _check_object_write(self, obj):
         user = self.request.user
