@@ -8,45 +8,39 @@ cannot silently set a status.
 """
 
 from django.conf import settings
-from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+
+# SignatureExpired is re-exported for callers that import it from this module
+# (rsvp.magic_views catches it to render a distinct "expired" page).
+from django.core.signing import SignatureExpired  # noqa: F401
 
 from rsvp.models import RsvpStatus
+from tools.signed_token import SignedToken, one_of
 
 SIGNER_SALT = "rsvp.one_click"
 TOKEN_MAX_AGE_SECONDS = 72 * 3600  # 3 days — tolerate a late click on a "tomorrow" reminder
 ALLOWED_STATUSES = set(RsvpStatus.values)
 
-
-def _signer() -> TimestampSigner:
-    return TimestampSigner(salt=SIGNER_SALT)
+# "<event>:<member>:<status>". raise_expired so the view can show a distinct
+# "expired" page; the status is enum-validated on parse.
+_TOKEN = SignedToken(
+    salt=SIGNER_SALT,
+    max_age=TOKEN_MAX_AGE_SECONDS,
+    converters=[int, int, one_of(ALLOWED_STATUSES)],
+    raise_expired=True,
+)
 
 
 def make_token(event_id: int, member_id: int, status: str) -> str:
     if status not in ALLOWED_STATUSES:
         raise ValueError(f"invalid RSVP status {status!r}")
-    return _signer().sign(f"{int(event_id)}:{int(member_id)}:{status}")
+    return _TOKEN.sign(int(event_id), int(member_id), status)
 
 
 def parse_token(token: str) -> tuple[int, int, str] | None:
     """``(event_id, member_id, status)`` for a valid token, or ``None`` on a bad
     signature / malformed payload. Propagates :class:`SignatureExpired` so the
     view can distinguish an expired link."""
-    try:
-        raw = _signer().unsign(token, max_age=TOKEN_MAX_AGE_SECONDS)
-    except SignatureExpired:
-        raise
-    except BadSignature:
-        return None
-    try:
-        ev, mem, status = raw.split(":", 2)
-    except ValueError:
-        return None
-    if status not in ALLOWED_STATUSES:
-        return None
-    try:
-        return int(ev), int(mem), status
-    except (ValueError, TypeError):
-        return None
+    return _TOKEN.parse(token)
 
 
 def _backend_base_url() -> str:

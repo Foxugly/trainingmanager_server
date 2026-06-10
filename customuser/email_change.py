@@ -11,42 +11,36 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.utils import translation
 from django.utils.translation import gettext as _
+
+from tools.signed_token import SignedToken, nonempty_str
 
 logger = logging.getLogger(__name__)
 
 SIGNER_SALT = "auth.email-change"
 TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24  # 24 hours
 
-
-def _signer() -> TimestampSigner:
-    return TimestampSigner(salt=SIGNER_SALT)
+# "<user_pk>:<new_email>". raise_expired so the confirm view can show a distinct
+# "link expired" (410) page vs an invalid (400) one.
+_TOKEN = SignedToken(
+    salt=SIGNER_SALT,
+    max_age=TOKEN_MAX_AGE_SECONDS,
+    converters=[int, nonempty_str],
+    raise_expired=True,
+)
 
 
 def make_email_change_token(user_id: int, new_email: str) -> str:
     """HMAC-signed token encoding ``user_id`` + the requested ``new_email``."""
-    return _signer().sign(f"{int(user_id)}:{new_email}")
+    return _TOKEN.sign(int(user_id), new_email)
 
 
 def parse_email_change_token(token: str) -> tuple[int, str] | None:
     """Return ``(user_id, new_email)`` for a still-valid token, or ``None`` on a
     bad signature / malformed payload. Propagates :class:`SignatureExpired` so
     the caller can map a 410 (expired) distinctly from a 400 (invalid)."""
-    try:
-        raw = _signer().unsign(token, max_age=TOKEN_MAX_AGE_SECONDS)
-    except SignatureExpired:
-        raise
-    except BadSignature:
-        return None
-    user_id_str, sep, new_email = raw.partition(":")
-    if not sep or not new_email:
-        return None
-    try:
-        return int(user_id_str), new_email
-    except (ValueError, TypeError):
-        return None
+    return _TOKEN.parse(token)
 
 
 def send_email_change_email(user, new_email: str) -> None:

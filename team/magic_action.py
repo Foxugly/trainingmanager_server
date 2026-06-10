@@ -12,15 +12,20 @@ can't accidentally trigger the action:
 """
 
 from django.conf import settings
-from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+
+from tools.signed_token import SignedToken, one_of
 
 ALLOWED_ACTIONS = ("accept", "reject")
 TOKEN_MAX_AGE_SECONDS = 48 * 3600  # 48 hours
 SIGNER_SALT = "team.join_request.magic_action"
 
-
-def _signer() -> TimestampSigner:
-    return TimestampSigner(salt=SIGNER_SALT)
+# "<join_request_id>:<action>". Expired is treated like invalid (-> None): a
+# manager who clicks an old link just gets a generic "invalid or expired" result.
+_TOKEN = SignedToken(
+    salt=SIGNER_SALT,
+    max_age=TOKEN_MAX_AGE_SECONDS,
+    converters=[int, one_of(ALLOWED_ACTIONS)],
+)
 
 
 def make_token(join_request_id: int, action: str) -> str:
@@ -29,24 +34,13 @@ def make_token(join_request_id: int, action: str) -> str:
     `action` must be in ALLOWED_ACTIONS. Tokens expire 48 hours after issue."""
     if action not in ALLOWED_ACTIONS:
         raise ValueError(f"action must be one of {ALLOWED_ACTIONS}, got {action!r}")
-    return _signer().sign(f"{join_request_id}:{action}")
+    return _TOKEN.sign(int(join_request_id), action)
 
 
 def parse_token(token: str) -> tuple[int, str] | None:
     """Reverse of make_token. Returns (join_request_id, action) or None on
     any failure (bad signature, expired, malformed payload)."""
-    try:
-        raw = _signer().unsign(token, max_age=TOKEN_MAX_AGE_SECONDS)
-    except (SignatureExpired, BadSignature):
-        return None
-    try:
-        jr_id_str, action = raw.split(":", 1)
-        jr_id = int(jr_id_str)
-    except (ValueError, AttributeError):
-        return None
-    if action not in ALLOWED_ACTIONS:
-        return None
-    return jr_id, action
+    return _TOKEN.parse(token)
 
 
 def magic_link(join_request_id: int, action: str) -> str:

@@ -82,7 +82,7 @@ def test_parse_token_bad_signature_returns_none():
 def test_parse_token_tampered_status_returns_none():
     # A correctly-signed payload whose status is not a real RsvpStatus must be
     # rejected (make_token itself refuses to mint one, so sign it directly).
-    forged = magic_rsvp._signer().sign("1:2:bogus")
+    forged = magic_rsvp._TOKEN._signer().sign("1:2:bogus")
     assert parse_token(forged) is None
 
 
@@ -93,7 +93,7 @@ def test_make_token_rejects_bad_status():
 
 def test_parse_token_expired_raises(monkeypatch):
     token = make_token(1, 2, "going")
-    monkeypatch.setattr(magic_rsvp, "TOKEN_MAX_AGE_SECONDS", -1)
+    monkeypatch.setattr(magic_rsvp._TOKEN, "max_age", -1)
     with pytest.raises(magic_rsvp.SignatureExpired):
         parse_token(token)
 
@@ -161,7 +161,7 @@ def test_invalid_token_returns_400(client):
 
 def test_expired_token_returns_410(client, event, member, monkeypatch):
     token = make_token(event.pk, member.pk, "going")
-    monkeypatch.setattr(magic_rsvp, "TOKEN_MAX_AGE_SECONDS", -1)
+    monkeypatch.setattr(magic_rsvp._TOKEN, "max_age", -1)
     response = client.get(_url(token))
     assert response.status_code == 410
     assert not Rsvp.objects.filter(event=event, member=member).exists()

@@ -17,7 +17,7 @@ Design notes:
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
 from django.utils import translation
 
 from .models import Notification, NotificationPreference, NotificationType
@@ -179,16 +179,37 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
     if to_create:
         created = Notification.objects.bulk_create(to_create)
 
-    for recipient in email_recipients:
-        extra = email_extra_for(recipient) if email_extra_for is not None else ""
-        _send_email(recipient, title, body, url, email_extra=extra)
+    if email_recipients:
+        # Reuse ONE SMTP connection for the whole batch instead of opening a
+        # fresh TCP/TLS handshake per recipient (send_mail's default). On a large
+        # team this turns N sequential connections into one. Best-effort: a
+        # connection failure is logged, not raised.
+        connection = None
+        try:
+            connection = get_connection(fail_silently=False)
+            connection.open()
+        except Exception:
+            logger.exception("Failed to open the notification email connection")
+            connection = None
+        try:
+            for recipient in email_recipients:
+                extra = email_extra_for(recipient) if email_extra_for is not None else ""
+                _send_email(recipient, title, body, url, email_extra=extra, connection=connection)
+        finally:
+            if connection is not None:
+                try:
+                    connection.close()
+                except Exception:
+                    logger.exception("Failed to close the notification email connection")
 
     return created
 
 
-def _send_email(recipient, title, body, url, email_extra=""):
+def _send_email(recipient, title, body, url, email_extra="", connection=None):
     """Send the localized notification email. Logs and swallows any error so
-    a mail failure never breaks the triggering request."""
+    a mail failure never breaks the triggering request. ``connection`` lets a
+    batch caller (notify_many) reuse a single SMTP connection across recipients;
+    when None, send_mail opens its own."""
     lang = getattr(recipient, "language", None) or "en"
     deep_link = ""
     if url:
@@ -212,6 +233,7 @@ def _send_email(recipient, title, body, url, email_extra=""):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[recipient.email],
                 fail_silently=False,
+                connection=connection,
             )
     except Exception:
         logger.exception("Failed to send notification email to %s", recipient.email)

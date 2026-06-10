@@ -88,7 +88,7 @@ def test_confirm_expired_token_returns_410(api_client, user, monkeypatch):
     import customuser.email_change as ec
 
     token = make_email_change_token(user.pk, "later@local.test")
-    monkeypatch.setattr(ec, "TOKEN_MAX_AGE_SECONDS", -1)
+    monkeypatch.setattr(ec._TOKEN, "max_age", -1)
     resp = api_client.post(CONFIRM_URL, {"token": token}, format="json")
     assert resp.status_code == 410
     assert resp.json()["code"] == "token_expired"
