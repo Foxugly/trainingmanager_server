@@ -251,8 +251,7 @@ class EventViewSet(viewsets.ModelViewSet):
     )
     def generate_training(self, request, pk=None):
         """POST /api/v1/events/{id}/generate-training/ — Claude-generated rounds."""
-        from exercise.models import EnergySegment, Exercise, Modality
-        from round.models import Round
+        from .services import apply_generated_training
 
         event = self.get_object()
 
@@ -324,77 +323,25 @@ class EventViewSet(viewsets.ModelViewSet):
             additional_prompt=additional_prompt,
         )
 
-        created_rounds = 0
-        created_exercises = 0
-        reused_exercises = 0
-
         # Stamp Rounds with the SESSION's sport — the same sport the generator
         # was scoped to (event/ai.py) — not the team's default. On a multi-sport
         # team an event whose sport is a non-default sport would otherwise get
         # rounds mis-attributed to the default sport.
         team_sport = event.sport or event.refer_program.team.default_sport
         team_language = event.refer_program.team.language
-        with transaction.atomic():
-            for r_idx, r_data in enumerate(ai_result["rounds"], start=1):
-                round_obj = Round.objects.create(
-                    sport=team_sport,
-                    language=team_language,
-                    count=r_data.get("count", 1),
-                    t_start=r_data.get("t_start", "00:00"),
-                    t_break=r_data.get("t_break", "00:00"),
-                    order=r_idx,
-                )
-                created_rounds += 1
 
-                for ex_idx, ex_data in enumerate(r_data.get("exercises", []), start=1):
-                    modality = Modality.objects.get(pk=ex_data["modality_id"])
-                    segment = EnergySegment.objects.get(pk=ex_data["energysegment_id"])
-
-                    exercise, created = Exercise.objects.get_or_create(
-                        modality=modality,
-                        energysegment=segment,
-                        distance=ex_data["distance"],
-                        repetition=ex_data["repetition"],
-                        t_start=ex_data.get("t_start", "00:00"),
-                        t_break=ex_data.get("t_break", "00:00"),
-                        notes=ex_data.get("notes", ""),
-                        language=team_language,
-                        defaults={"order": ex_idx},
-                    )
-                    if created:
-                        created_exercises += 1
-                    else:
-                        reused_exercises += 1
-
-                    round_obj.exercises.add(exercise)
-
-                event.rounds.add(round_obj)
-
-            # Attach the equipment the AI reported (matched against the team's
-            # enabled set by localized name) and sync the canonical free-text
-            # field to the joined names, so the event records what it needs.
-            used_names = {n for n in (ai_result.get("equipment_used") or [])}
-            if used_names:
-                items = [
-                    e
-                    for e in event.refer_program.team.equipment.filter(is_active=True)
-                    if e.name in used_names
-                ]
-                if items:
-                    event.equipment_items.add(*items)
-                    event.equipment = ", ".join(sorted(i.name for i in items))
-
-            event.generated_by_ai = True
-            event.ai_prompt = ai_result["prompt_sent"]
-            event.ai_response = ai_result["rationale"]
-            event.ai_generated_at = timezone.now()
-            event.save()
+        counts = apply_generated_training(
+            event,
+            ai_result,
+            team_sport=team_sport,
+            team_language=team_language,
+        )
 
         return Response(
             {
-                "rounds_created": created_rounds,
-                "exercises_created": created_exercises,
-                "exercises_reused": reused_exercises,
+                "rounds_created": counts["created_rounds"],
+                "exercises_created": counts["created_exercises"],
+                "exercises_reused": counts["reused_exercises"],
                 "rationale": ai_result["rationale"],
                 "model": ai_result["model"],
                 "tokens_used": {
