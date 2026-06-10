@@ -61,7 +61,10 @@ def parse_window(request):
             code="invalid_range",
         )
 
-    # Clamp the span to a sane maximum by pulling `from` forward.
+    # Clamp the span to a sane maximum by pulling `from` forward. The window is
+    # inclusive on both ends, so STATS_MAX_SPAN_DAYS (731) days of difference is
+    # 732 calendar days — i.e. ~2 years; the +1 inclusive day is intentional and
+    # not worth special-casing.
     if (date_to - date_from).days > STATS_MAX_SPAN_DAYS:
         date_from = date_to - datetime.timedelta(days=STATS_MAX_SPAN_DAYS)
 

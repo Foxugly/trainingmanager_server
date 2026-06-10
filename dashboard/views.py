@@ -11,7 +11,8 @@ Date windows mirror the old client logic. "today" is taken from the
 previous per-user behaviour) and falls back to the server's local date.
 """
 
-from datetime import date as date_cls, timedelta
+from datetime import date as date_cls
+from datetime import timedelta
 
 from django.db.models import Count
 from drf_spectacular.utils import OpenApiParameter, extend_schema

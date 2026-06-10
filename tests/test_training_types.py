@@ -1,4 +1,11 @@
+from unittest.mock import patch
+
 import pytest
+
+from event.models import VisibilityMode
+from program.models import Program
+from team.models import TeamSport
+from tests.factories import EventFactory, SportFactory, TeamFactory
 from tools.choices import TrainingType
 
 pytestmark = pytest.mark.django_db
@@ -10,7 +17,6 @@ def test_training_type_values():
     assert set(TrainingType.values) == {"structured", "freeform"}
 
 
-from tests.factories import SportFactory
 
 
 def test_sport_default_training_type_defaults_structured():
@@ -18,8 +24,6 @@ def test_sport_default_training_type_defaults_structured():
     assert sport.default_training_type == TrainingType.STRUCTURED
 
 
-from team.models import TeamSport
-from tests.factories import TeamFactory
 
 
 def test_teamsport_training_type_nullable_default_none():
@@ -29,7 +33,6 @@ def test_teamsport_training_type_nullable_default_none():
     assert ts.training_type is None
 
 
-from tests.factories import EventFactory
 
 
 def test_event_training_fields_defaults():
@@ -38,9 +41,6 @@ def test_event_training_fields_defaults():
     assert event.training_richtext == ""
 
 
-from program.models import Program
-from team.models import TeamSport
-from tests.factories import TeamFactory, EventFactory, SportFactory
 
 
 def _event_for(team, sport):
@@ -126,7 +126,7 @@ def test_switch_to_structured_clears_richtext(auth_client_trainer, trainer_user,
 
 
 def test_sport_admin_can_set_default_training_type(api_client):
-    from tests.factories import UserFactory, SportFactory
+    from tests.factories import SportFactory, UserFactory
     staff = UserFactory(is_staff=True)
     api_client.force_authenticate(user=staff)
     sport = SportFactory()
@@ -138,7 +138,6 @@ def test_sport_admin_can_set_default_training_type(api_client):
     assert sport.default_training_type == "freeform"
 
 
-from team.models import TeamSport
 
 
 def test_team_sports_read_includes_training_type(auth_client_trainer, trainer_user, trainer_sport):
@@ -165,13 +164,10 @@ def test_team_can_set_per_sport_training_type(auth_client_trainer, trainer_user,
     assert ts.training_type == "freeform"
 
 
-from unittest.mock import patch
 
 
 def test_generate_freeform_training_returns_html(trainer_user, trainer_sport):
     from event.ai import generate_freeform_training
-    from program.models import Program
-    from tests.factories import EventFactory
     team = trainer_user.owned_teams.first()
     program = Program.objects.create(name="P", team=team)
     event = EventFactory(refer_program=program, sport=trainer_sport, training_type=TrainingType.FREEFORM)
@@ -185,9 +181,8 @@ def test_generate_freeform_training_returns_html(trainer_user, trainer_sport):
 
 
 def test_generate_training_freeform_writes_richtext(auth_client_trainer, trainer_user, trainer_sport):
-    from program.models import Program
-    from tests.factories import EventFactory
     from datetime import date, timedelta
+
     team = trainer_user.owned_teams.first()
     program = Program.objects.create(name="P", team=team)
     event = EventFactory(refer_program=program, sport=trainer_sport,
@@ -203,13 +198,11 @@ def test_generate_training_freeform_writes_richtext(auth_client_trainer, trainer
     assert event.generated_by_ai is True
 
 
-from event.models import VisibilityMode
 
 
 def test_freeform_richtext_redacted_for_non_manager_when_vis_never(api_client, trainer_user, trainer_sport):
-    from program.models import Program
-    from tests.factories import EventFactory, UserFactory, MemberFactory
     from team.models import TeamMembership
+    from tests.factories import EventFactory, MemberFactory, UserFactory
     team = trainer_user.owned_teams.first()
     program = Program.objects.create(name="P", team=team)
     event = EventFactory(
@@ -227,9 +220,8 @@ def test_freeform_richtext_redacted_for_non_manager_when_vis_never(api_client, t
 
 
 def test_duplicate_freeform_event_preserves_content(auth_client_trainer, trainer_user, trainer_sport):
-    from program.models import Program
-    from tests.factories import EventFactory
     from datetime import date, timedelta
+
     team = trainer_user.owned_teams.first()
     program = Program.objects.create(name="P", team=team)
     event = EventFactory(refer_program=program, sport=trainer_sport,
