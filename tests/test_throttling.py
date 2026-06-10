@@ -258,7 +258,7 @@ def test_register_throttle_returns_429_after_limit(api_client, monkeypatch, set_
     fit the test budget."""
     set_throttle_rate("auth_register", "2/min")
     monkeypatch.setattr(
-        "customuser.views.verify_turnstile_token", lambda token, remote_ip=None: True
+        "customuser.views.registration.verify_turnstile_token", lambda token, remote_ip=None: True
     )
 
     r1 = api_client.post("/api/v1/auth/register/", _register_payload("a"), format="json")

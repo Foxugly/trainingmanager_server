@@ -44,7 +44,7 @@ def turnstile_pass(monkeypatch):
     """Default: Turnstile verification succeeds. Override per-test by
     patching tools.turnstile.verify_turnstile_token directly."""
     monkeypatch.setattr(
-        "customuser.views.verify_turnstile_token", lambda token, remote_ip=None: True
+        "customuser.views.registration.verify_turnstile_token", lambda token, remote_ip=None: True
     )
 
 
@@ -161,7 +161,7 @@ def test_register_turnstile_invalid_returns_400_no_user_created(api_client, monk
     """Fail-closed: a rejected Turnstile token blocks registration before
     any DB write."""
     monkeypatch.setattr(
-        "customuser.views.verify_turnstile_token", lambda token, remote_ip=None: False
+        "customuser.views.registration.verify_turnstile_token", lambda token, remote_ip=None: False
     )
     mail.outbox = []
     response = api_client.post(REGISTER_URL, _valid_payload(), format="json")

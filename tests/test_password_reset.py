@@ -31,7 +31,7 @@ def turnstile_pass(monkeypatch):
     """Default: Turnstile succeeds. Tests that need failure flip this
     inline."""
     monkeypatch.setattr(
-        "customuser.views.verify_turnstile_token", lambda token, remote_ip=None: True
+        "customuser.views.password_reset.verify_turnstile_token", lambda token, remote_ip=None: True
     )
 
 
@@ -89,7 +89,7 @@ def test_reset_request_unknown_email_returns_200_no_mail(api_client):
 
 def test_reset_request_invalid_turnstile_returns_400(api_client, monkeypatch):
     monkeypatch.setattr(
-        "customuser.views.verify_turnstile_token", lambda token, remote_ip=None: False
+        "customuser.views.password_reset.verify_turnstile_token", lambda token, remote_ip=None: False
     )
     user = _user()
     mail.outbox = []
