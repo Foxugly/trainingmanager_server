@@ -164,6 +164,20 @@ def test_team_patch_invalid_logo_not_data_url_returns_400(auth_client_trainer, t
     assert "logo" in body.get("fields", {})
 
 
+def test_team_patch_svg_logo_rejected(auth_client_trainer, trainer_user):
+    """SVG logos are refused: the logo endpoint is public and serves the stored
+    MIME, so an SVG could carry inline <script> (stored XSS)."""
+    team = trainer_user.owned_teams.first()
+    svg = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+    response = auth_client_trainer.patch(
+        f"/api/v1/teams/{team.pk}/",
+        {"logo": svg},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert "logo" in response.json().get("fields", {})
+
+
 def test_team_patch_oversized_logo_returns_400(auth_client_trainer, trainer_user):
     team = trainer_user.owned_teams.first()
     oversized = "data:image/png;base64," + ("A" * 500001)

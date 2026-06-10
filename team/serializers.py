@@ -28,7 +28,10 @@ from .models import (
 )
 
 # Accepted data-URL prefixes for the team logo and the max total length.
-LOGO_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp|svg\+xml);base64,")
+# SVG is intentionally excluded: it can embed inline <script>, and the logo
+# endpoint is public/unauthenticated and served with the stored MIME, so an SVG
+# logo would be a stored-XSS vector. Only raster formats are accepted.
+LOGO_DATA_URL_RE = re.compile(r"^data:image/(png|jpeg|jpg|webp);base64,")
 LOGO_MAX_LENGTH = 500000  # ~375 KB once base64 is decoded
 
 
@@ -436,7 +439,7 @@ class TeamSerializer(serializers.ModelSerializer):
             )
         if not LOGO_DATA_URL_RE.match(value):
             raise serializers.ValidationError(
-                _("Logo must be a base64 data-URL of an image (png, jpeg, jpg, webp or svg+xml)."),
+                _("Logo must be a base64 data-URL of an image (png, jpeg, jpg or webp)."),
                 code="logo_invalid_format",
             )
         return value

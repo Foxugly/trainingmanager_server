@@ -38,6 +38,11 @@ CSRF_COOKIE_SAMESITE = "Lax"
 
 X_FRAME_OPTIONS = "DENY"
 
+# Send X-Content-Type-Options: nosniff on every response so browsers never
+# MIME-sniff a payload into an executable type (defence in depth for the
+# public logo endpoint and any binary the API serves).
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
 # Explicit Referrer-Policy: don't depend on Django's evolving default.
 # 'same-origin' = the Referer header is sent on same-origin requests
 # (so server-side analytics & logs keep their context) but stripped on

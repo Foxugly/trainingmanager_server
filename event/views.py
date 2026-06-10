@@ -141,12 +141,22 @@ class EventViewSet(viewsets.ModelViewSet):
         # On retrieve the serializer embeds rounds + their exercises
         # (rounds_detail) so the client loads a session in one request instead
         # of N round/exercise fetches — deep-prefetch only there to keep lists
-        # light.
+        # light. The exercises are annotated with _usage_count so the
+        # ExerciseSerializer reads it from the prefetch instead of issuing one
+        # COUNT(round) per exercise (N+1 on a full session).
         if self.action == "retrieve":
+            from django.db.models import Count, Prefetch
+
+            from exercise.models import Exercise
+
             qs = qs.prefetch_related(
                 "rounds__sport",
-                "rounds__exercises__modality__sport",
-                "rounds__exercises__energysegment__energysystem",
+                Prefetch(
+                    "rounds__exercises",
+                    queryset=Exercise.objects.annotate(_usage_count=Count("round")).select_related(
+                        "modality__sport", "energysegment__energysystem"
+                    ),
+                ),
             )
         return qs
 

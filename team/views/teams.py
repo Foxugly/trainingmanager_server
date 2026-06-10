@@ -61,7 +61,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Team.objects.none()
-        return (
+        qs = (
             user_visible_teams(self.request.user)
             .select_related("owner", "default_place")
             .prefetch_related(
@@ -72,6 +72,12 @@ class TeamViewSet(viewsets.ModelViewSet):
                 "team_sports__sport",
             )
         )
+        # The base64 logo (up to ~375 KB) is nulled out of the list payload
+        # (served via logo_url instead); don't drag it out of Postgres for
+        # every row on the list. Detail/update still need it.
+        if self.action == "list":
+            qs = qs.defer("logo")
+        return qs
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -116,6 +122,10 @@ class TeamViewSet(viewsets.ModelViewSet):
             raise Http404("Malformed logo.") from exc
         response = HttpResponse(raw, content_type=mime)
         response["Cache-Control"] = "public, max-age=300"
+        # Defence in depth on a public, attacker-influenced payload: forbid MIME
+        # sniffing and force inline (never treat the bytes as an active doc).
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Content-Disposition"] = "inline"
         return response
 
     @extend_schema(
