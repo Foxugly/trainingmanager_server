@@ -243,4 +243,13 @@ class PasswordResetConfirmView(APIView):
         for token in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=token)
 
+        # ACCEPTABLE COMPROMISE (intentional, out of scope to fix here): this
+        # reset revokes outstanding refresh JWTs (above) but does NOT invalidate
+        # stateless HMAC magic-links already emitted for this user. Those links
+        # are self-contained signed tokens with a short ~15-minute TTL, so a
+        # link minted just before the reset stays usable until it expires.
+        # Closing that window would require a server-side nonce / per-user
+        # secret-version stamped into the link and checked on use — deliberately
+        # not implemented here. The short TTL bounds the exposure and the reset
+        # already neutralises the higher-value refresh tokens.
         return Response({**_jwt_pair(user), "user": _user_payload(user)})

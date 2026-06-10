@@ -14,7 +14,7 @@ previous per-user behaviour) and falls back to the server's local date.
 from datetime import date as date_cls
 from datetime import timedelta
 
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -212,17 +212,26 @@ class DashboardSummaryView(APIView):
 
     @staticmethod
     def _coach_pending(team_ids, today):
+        # "To audit" = a past event of an active program that has a roster
+        # (>=1 member) but no attendance recorded yet. Use two independent
+        # EXISTS subqueries instead of a single annotate(Count(members),
+        # Count(attendances)): joining both to-many relations in one query
+        # produces a cartesian product (members x attendances), which both
+        # inflates the row count and forces COUNT(DISTINCT) over the cross
+        # join. Separate semi-joins are correct and far cheaper.
+        has_member = Exists(
+            Event.members.through.objects.filter(event_id=OuterRef("pk"))
+        )
+        has_attendance = Exists(
+            Attendance.objects.filter(event_id=OuterRef("pk"))
+        )
         events = (
             Event.objects.filter(
                 refer_program__team_id__in=team_ids,
                 refer_program__is_active=True,
                 date__lt=today,
             )
-            .annotate(
-                n_members=Count("members", distinct=True),
-                n_att=Count("attendances", distinct=True),
-            )
-            .filter(n_members__gt=0, n_att=0)
+            .filter(has_member, ~has_attendance)
             .select_related("refer_program__team", "place")
             .order_by("-date")
         )

@@ -101,18 +101,25 @@ class RsvpViewSet(viewsets.ViewSet):
         )
         status_by_member = {r.member_id: r.status for r in rsvps}
 
+        active_members = list(team.active_members)
+        total_members = len(active_members)
+        active_member_ids = {m.pk for m in active_members}
+
         counts = {
             "going": 0,
             "maybe": 0,
             "not_going": 0,
             "no_response": 0,
         }
+        # Only count RSVPs of members still ACTIVE on the roster: an RSVP left
+        # behind by someone who has since LEFT must not inflate the category
+        # totals (a departed member's RSVP is not balanced by a no_response,
+        # which only counts actives), otherwise the categories could sum to
+        # more than total_members.
         for r in rsvps:
-            if r.status in counts:
+            if r.member_id in active_member_ids and r.status in counts:
                 counts[r.status] += 1
 
-        active_members = list(team.active_members)
-        total_members = len(active_members)
         responded_member_ids = set(status_by_member.keys())
         no_response = sum(
             1 for m in active_members if m.pk not in responded_member_ids

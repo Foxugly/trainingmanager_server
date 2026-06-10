@@ -195,6 +195,12 @@ class InvitationLookupView(APIView):
                 description="Invalid token state, username taken, or weak password"
             ),
             404: OpenApiResponse(description="Token not found"),
+            409: OpenApiResponse(
+                description=(
+                    "An account already exists for the invitation email "
+                    "(code=email_taken)."
+                )
+            ),
         },
         description="Finalize invitation: create the user, link Member, return JWT.",
     )
@@ -219,6 +225,29 @@ class InvitationLookupView(APIView):
         serializer.is_valid(raise_exception=True)
 
         User = get_user_model()
+
+        # Re-validate that the invitation email is not already claimed before
+        # create_user — otherwise the unique email / allauth EmailAddress
+        # constraints raise IntegrityError and surface as a 500. Return a clean
+        # 409 (code=email_taken) instead. This can legitimately happen if a
+        # user registered with this email between the invitation being sent and
+        # finalized (the create-invitation path only refuses existing emails at
+        # send time).
+        if (
+            User.objects.filter(email__iexact=invitation.email).exists()
+            or EmailAddress.objects.filter(email__iexact=invitation.email).exists()
+        ):
+            return Response(
+                {
+                    "code": "email_taken",
+                    "detail": _(
+                        "An account already exists for this email address. "
+                        "Please log in instead."
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
         with transaction.atomic():
             user = User.objects.create_user(
                 username=serializer.validated_data["username"],

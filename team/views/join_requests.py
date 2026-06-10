@@ -56,11 +56,16 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
 
         # Auto-accept policy: short-circuit the manual flow.
         if instance.team.join_request_policy == Team.JoinRequestPolicy.AUTO:
-            instance.status = "accepted"
-            instance.responded_at = timezone.now()
-            instance.responded_by = None  # accepted by policy, not by a person
-            instance.save(update_fields=["status", "responded_at", "responded_by"])
-            self._handle_acceptance(instance)
+            # Status flip + membership creation must commit together (mirrors
+            # the magic-link execute path). If _handle_acceptance fails, roll
+            # back the 'accepted' status too — never leave status=accepted with
+            # no membership.
+            with transaction.atomic():
+                instance.status = "accepted"
+                instance.responded_at = timezone.now()
+                instance.responded_by = None  # accepted by policy, not by a person
+                instance.save(update_fields=["status", "responded_at", "responded_by"])
+                self._handle_acceptance(instance)
             return
 
         # Manual policy + opt-in notification: send email with magic links.

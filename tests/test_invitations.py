@@ -295,6 +295,58 @@ def test_POST_complete_invitation_weak_password_returns_400(api_client, trainer_
     assert response.status_code == 400
 
 
+def test_POST_complete_invitation_username_taken_case_insensitive_returns_400(
+    api_client, trainer_user
+):
+    """Regression: username uniqueness must be case-insensitive (consistent with
+    RegisterSerializer). A bare filter(username=...) would let "Taken" through
+    even though "taken" exists, risking a near-duplicate / a 500 on a DB-level
+    case-insensitive unique constraint."""
+    UserFactory(username="taken")
+    team = trainer_user.owned_teams.first()
+    member = Member.objects.create(firstname="F", lastname="L", email="ci@local.test")
+    TeamMembership.objects.create(team=team, member=member)
+    inv = TeamInvitation.objects.create(team=team, member=member, email="ci@local.test")
+
+    response = api_client.post(
+        f"/api/v1/invitations/lookup/{inv.token}/",
+        {"username": "Taken", "password": "StrongPass!2026"},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert response.json().get("username", [{}])
+    # The would-be user was never created.
+    from django.contrib.auth import get_user_model
+
+    assert get_user_model().objects.filter(username__iexact="taken").count() == 1
+
+
+def test_POST_complete_invitation_email_already_taken_returns_409(api_client, trainer_user):
+    """Regression: if the invitation email got claimed (User/EmailAddress)
+    between sending and finalisation, completing must return a clean 409
+    (code=email_taken) instead of a 500 from create_user's IntegrityError."""
+    team = trainer_user.owned_teams.first()
+    member = Member.objects.create(firstname="F", lastname="L", email="claimed@local.test")
+    TeamMembership.objects.create(team=team, member=member)
+    inv = TeamInvitation.objects.create(team=team, member=member, email="claimed@local.test")
+    # Someone registers with the invitation email after the invite was sent
+    # (case-insensitive match).
+    UserFactory(email="Claimed@local.test", username="already")
+
+    response = api_client.post(
+        f"/api/v1/invitations/lookup/{inv.token}/",
+        {"username": "freshname", "password": "StrongPass!2026"},
+        format="json",
+    )
+    assert response.status_code == 409, response.json()
+    assert response.json().get("code") == "email_taken"
+    # The invitation is untouched and no second user/member link was created.
+    inv.refresh_from_db()
+    assert inv.status == "pending"
+    member.refresh_from_db()
+    assert member.user is None
+
+
 def test_POST_complete_invitation_already_used_returns_400(api_client, trainer_user):
     team = trainer_user.owned_teams.first()
     member = Member.objects.create(firstname="F", lastname="L", email="used@local.test")

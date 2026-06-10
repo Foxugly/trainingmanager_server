@@ -289,6 +289,16 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 ).values_list("date", flat=True)
             )
 
+        # PERF NOTE (intentional, not a bug): each Event.objects.create() below
+        # fires the post_save signal auto_attach_active_members_on_event_create
+        # (event/signals.py), which runs 1 membership SELECT + 1 M2M INSERT per
+        # event — i.e. O(n) extra queries for an n-event plan. A bulk refactor
+        # (bulk_create + manual through-table insert) would have to bypass the
+        # signal and re-implement its roster logic + logging, which is fragile
+        # and easy to desync from the signal. AI plans create a small number of
+        # events per call (a few weeks of sessions), so the per-event cost is
+        # negligible in practice; we keep create() to preserve the signal
+        # contract rather than optimise a non-hot path.
         created_count = 0
         for ev_data in new_events_data:
             ev_date = _date.fromisoformat(ev_data["date"])

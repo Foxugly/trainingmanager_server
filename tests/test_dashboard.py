@@ -105,6 +105,34 @@ def test_pending_excludes_events_with_attendance(auth_client, authenticated_user
     assert data["coach_attendance_pending"] == []
 
 
+def test_pending_with_many_members_and_partial_attendance(auth_client, authenticated_user):
+    """A past event with several rostered members but only ONE attendance row
+    is NOT pending (any attendance counts). Guards the EXISTS-based query that
+    replaced the cartesian Count(members) x Count(attendances): the cross join
+    used to multiply rows, here we assert the semantics stay exact."""
+    team = TeamFactory(owner=authenticated_user)
+    program = Program.objects.create(name="P", team=team, is_active=True)
+    status, _ = AttendanceStatus.objects.get_or_create(
+        code="present", defaults={"label": "Present"}
+    )
+
+    # Event A: 3 members, exactly 1 attendance -> already (partially) audited.
+    ev_a = _event(program, TODAY - timedelta(days=3), name="A")
+    m1 = Member.objects.create(firstname="A", lastname="One")
+    m2 = Member.objects.create(firstname="B", lastname="Two")
+    m3 = Member.objects.create(firstname="C", lastname="Three")
+    ev_a.members.add(m1, m2, m3)
+    Attendance.objects.create(event=ev_a, member=m1, status=status)
+
+    # Event B: 2 members, zero attendance -> genuinely pending.
+    ev_b = _event(program, TODAY - timedelta(days=2), name="B")
+    ev_b.members.add(m1, m2)
+
+    data = auth_client.get(URL).json()
+    pending_ids = [item["event"]["id"] for item in data["coach_attendance_pending"]]
+    assert pending_ids == [ev_b.id]
+
+
 def test_member_history_and_my_member_id(auth_client, authenticated_user):
     # The caller is an athlete-member of a team owned by someone else.
     team = TeamFactory()

@@ -418,22 +418,24 @@ def volume_stats(event_ids, events, member_names, present_id, member_id=None):
     by_week = bucket_by_week(events)
 
     # by_member — attribute each present session's distance to the member.
-    event_total = {e["id"]: e["total"] for e in events}
-    present_links = Attendance.objects.filter(
-        event_id__in=event_ids, status_id=present_id
-    ).values_list("member_id", "event_id")
-
-    member_distance: dict[int, int] = {}
-    for m_id, event_id in present_links:
-        member_distance[m_id] = member_distance.get(m_id, 0) + event_total.get(event_id, 0)
+    # Single Postgres GROUP BY (SUM of Event.total over the member's present
+    # rows) instead of materialising every present link and folding in Python.
+    # event_ids == [e["id"] for e in events], so summing event__total in the DB
+    # matches the previous event_total.get(event_id, 0) map exactly (only
+    # members with >=1 present row appear, like before).
+    member_distance = (
+        Attendance.objects.filter(event_id__in=event_ids, status_id=present_id)
+        .values("member_id")
+        .annotate(distance=Sum("event__total"))
+    )
 
     by_member = [
         {
-            "member_id": m_id,
-            "name": member_names.get(m_id) or f"member #{m_id}",
-            "distance": dist,
+            "member_id": row["member_id"],
+            "name": member_names.get(row["member_id"]) or f"member #{row['member_id']}",
+            "distance": row["distance"],
         }
-        for m_id, dist in member_distance.items()
+        for row in member_distance
     ]
     by_member.sort(key=lambda m: (-m["distance"], m["name"].lower()))
 

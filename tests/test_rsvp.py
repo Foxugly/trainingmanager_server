@@ -207,6 +207,35 @@ def test_summary_empty(coach_client, future_event, athlete_member):
     assert body["my_status"] is None
 
 
+def test_summary_excludes_departed_members_rsvp_from_counts(
+    coach_client, future_event, coach_team, athlete_member
+):
+    """Regression: an RSVP left behind by a member who has since LEFT must not
+    be counted in going/maybe/not_going. Otherwise the categories (which used
+    to count ALL rsvps) could sum to more than total_members (no_response only
+    counts actives)."""
+    # Active member -> going.
+    Rsvp.objects.create(event=future_event, member=athlete_member, status="going")
+    # A member who RSVP'd 'maybe' then left the team.
+    gone = Member.objects.create(
+        firstname="Gone", lastname="X", email=f"gone{future_event.pk}@local.test"
+    )
+    TeamMembership.objects.create(team=coach_team, member=gone)
+    Rsvp.objects.create(event=future_event, member=gone, status="maybe")
+    TeamMembership.objects.filter(
+        team=coach_team, member=gone, left_at__isnull=True
+    ).update(left_at=timezone.now())
+
+    response = coach_client.get(_url(future_event.pk))
+    assert response.status_code == 200
+    body = response.json()
+    # The departed member's 'maybe' is excluded; only the active 'going' counts.
+    assert body["counts"] == {"going": 1, "maybe": 0, "not_going": 0, "no_response": 0}
+    assert body["total_members"] == 1
+    # The categories never exceed total_members.
+    assert sum(body["counts"].values()) == body["total_members"]
+
+
 # =====================================================================
 # apply_to_attendance (managers only)
 # =====================================================================

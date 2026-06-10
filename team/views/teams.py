@@ -37,6 +37,13 @@ from ..serializers import (
 )
 from ..stats import assemble_stats, parse_window, roti_drift, rsvp_reliability
 
+# Raster MIME types the public logo endpoint is allowed to serve. Kept in sync
+# with team.serializers.core.LOGO_DATA_URL_RE (png|jpeg|jpg|webp), which gates
+# what may be stored on write.
+_LOGO_ALLOWED_MIME = frozenset(
+    {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+)
+
 
 class TeamPoolsResponseSerializer(drf_serializers.Serializer):
     """Response of GET /teams/{id}/pools/.
@@ -116,6 +123,13 @@ class TeamViewSet(viewsets.ModelViewSet):
         if not match:
             raise Http404("This team has no logo.")
         mime, b64 = match.group(1), match.group(2)
+        # Re-validate the STORED MIME against the raster allow-list at read
+        # time (mirrors LOGO_DATA_URL_RE on write). Defence in depth: never
+        # serve an arbitrary/active content-type (e.g. image/svg+xml) from a
+        # public, attacker-influenced payload even if a non-conforming value
+        # somehow reached the DB.
+        if mime.lower() not in _LOGO_ALLOWED_MIME:
+            raise Http404("Unsupported logo type.")
         try:
             raw = base64.b64decode(b64, validate=True)
         except (binascii.Error, ValueError) as exc:

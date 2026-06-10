@@ -66,6 +66,36 @@ def test_POST_join_request_with_auto_policy_is_accepted_immediately(
     assert mail.outbox == []  # auto-accept never emails managers
 
 
+def test_POST_join_request_auto_policy_rolls_back_status_if_acceptance_fails(
+    auth_client, authenticated_user
+):
+    """Regression: in the auto-accept branch the status flip + _handle_acceptance
+    must commit together. If acceptance fails, the 'accepted' status must roll
+    back too — never persist status=accepted with no membership."""
+    from unittest import mock
+
+    team = TeamFactory(
+        is_active=True,
+        is_public=True,
+        join_request_policy=Team.JoinRequestPolicy.AUTO,
+    )
+    with mock.patch(
+        "team.views.join_requests.TeamJoinRequestViewSet._handle_acceptance",
+        side_effect=RuntimeError("boom"),
+    ):
+        with pytest.raises(RuntimeError):
+            auth_client.post("/api/v1/join-requests/", {"team": team.pk}, format="json")
+
+    jr = TeamJoinRequest.objects.filter(user=authenticated_user, team=team).first()
+    # The status flip was rolled back with the failed acceptance: the row is
+    # either absent or still 'pending' — never a dangling 'accepted'.
+    if jr is not None:
+        assert jr.status == "pending"
+    assert not TeamMembership.objects.filter(
+        team=team, member__user=authenticated_user
+    ).exists()
+
+
 def test_POST_join_request_with_notify_disabled_sends_no_email(auth_client):
     owner = UserFactory(email="owner_silent@local.test")
     team = TeamFactory(

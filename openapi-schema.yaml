@@ -3049,6 +3049,8 @@ paths:
           description: Invalid token state, username taken, or weak password
         '404':
           description: Token not found
+        '409':
+          description: An account already exists for the invitation email (code=email_taken).
   /api/v1/join-magic/:
     post:
       operationId: join_magic_create

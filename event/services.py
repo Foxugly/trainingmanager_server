@@ -21,6 +21,24 @@ def apply_generated_training(event, ai_result, *, team_sport, team_language) -> 
     created_exercises = 0
     reused_exercises = 0
 
+    # Pre-load both catalogues once instead of one query per exercise (N+1).
+    # in_bulk() returns {pk: instance}; a missing id is simply absent from the
+    # map, so the [] lookup below raises KeyError exactly like the previous
+    # per-exercise Modality/EnergySegment.get(pk=...) DoesNotExist-equivalent
+    # contract (an unknown id is a hard error, same as before).
+    modality_ids = {
+        ex_data["modality_id"]
+        for r_data in ai_result["rounds"]
+        for ex_data in r_data.get("exercises", [])
+    }
+    segment_ids = {
+        ex_data["energysegment_id"]
+        for r_data in ai_result["rounds"]
+        for ex_data in r_data.get("exercises", [])
+    }
+    modalities = Modality.objects.in_bulk(modality_ids)
+    segments = EnergySegment.objects.in_bulk(segment_ids)
+
     with transaction.atomic():
         for r_idx, r_data in enumerate(ai_result["rounds"], start=1):
             round_obj = Round.objects.create(
@@ -34,9 +52,14 @@ def apply_generated_training(event, ai_result, *, team_sport, team_language) -> 
             created_rounds += 1
 
             for ex_idx, ex_data in enumerate(r_data.get("exercises", []), start=1):
-                modality = Modality.objects.get(pk=ex_data["modality_id"])
-                segment = EnergySegment.objects.get(pk=ex_data["energysegment_id"])
+                modality = modalities[ex_data["modality_id"]]
+                segment = segments[ex_data["energysegment_id"]]
 
+                # NOTE: ``order`` (defaults below) is NOT significant for these
+                # library exercises: get_or_create shares rows of the SHARED
+                # library across teams (an existing identical row is reused as-is
+                # and keeps its original order), so this value only ever applies
+                # the first time a given exercise tuple is created anywhere.
                 exercise, created = Exercise.objects.get_or_create(
                     modality=modality,
                     energysegment=segment,
@@ -60,7 +83,7 @@ def apply_generated_training(event, ai_result, *, team_sport, team_language) -> 
         # Attach the equipment the AI reported (matched against the team's
         # enabled set by localized name) and sync the canonical free-text
         # field to the joined names, so the event records what it needs.
-        used_names = {n for n in (ai_result.get("equipment_used") or [])}
+        used_names = set(ai_result.get("equipment_used") or [])
         if used_names:
             items = [
                 e

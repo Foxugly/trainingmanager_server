@@ -241,7 +241,10 @@ class CompleteInvitationSerializer(serializers.Serializer):
 
     def validate_username(self, username):
         User = get_user_model()
-        if User.objects.filter(username=username).exists():
+        # Case-insensitive uniqueness, consistent with RegisterSerializer.
+        # A case-sensitive check would let "Bob"/"bob" both register and risks
+        # a 500 on the DB-level case-insensitive unique constraint at create.
+        if User.objects.filter(username__iexact=username).exists():
             raise serializers.ValidationError(
                 _("This username is already taken."),
                 code="username_taken",
