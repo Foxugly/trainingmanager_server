@@ -1583,6 +1583,10 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: team
+        schema:
+          type: integer
       tags:
       - event-templates
       security:

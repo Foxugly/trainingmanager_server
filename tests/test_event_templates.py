@@ -107,6 +107,8 @@ def test_instantiate_creates_event_with_cloned_rounds(
     assert new_event.rounds.count() == 1
     # The instantiated round is a fresh row, not the template's.
     assert new_event.rounds.first().pk != tpl_round_pk
+    # Templates capture rounds -> the instantiated session is structured.
+    assert new_event.training_type == "structured"
 
 
 def test_instantiate_rejects_foreign_program(api_client, owner, team):

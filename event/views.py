@@ -754,20 +754,24 @@ class EventTemplateViewSet(viewsets.ModelViewSet):
 
     serializer_class = EventTemplateSerializer
     http_method_names = ["get", "delete", "post", "head", "options"]
+    # Declared so drf-spectacular exposes ?team to the generated client (the
+    # frontend filters its team's templates with it).
+    filterset_fields = ["team"]
     ordering = ["name"]
 
     def get_queryset(self):
+        from django.db.models import Count
+
         from .models import EventTemplate
 
         if getattr(self, "swagger_fake_view", False):
             return EventTemplate.objects.none()
-        qs = EventTemplate.objects.filter(
-            team__in=managed_teams(self.request.user)
-        ).select_related("sport", "team")
-        team_id = self.request.query_params.get("team")
-        if team_id:
-            qs = qs.filter(team_id=team_id)
-        return qs
+        # Annotate the rounds count so the list serializer avoids one COUNT/row.
+        return (
+            EventTemplate.objects.filter(team__in=managed_teams(self.request.user))
+            .select_related("sport", "team")
+            .annotate(_rounds_count=Count("rounds"))
+        )
 
     @extend_schema(
         request=InstantiateTemplateRequestSerializer,
@@ -784,6 +788,7 @@ class EventTemplateViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def instantiate(self, request, pk=None):
         from program.models import Program
+        from tools.choices import TrainingType
 
         template = self.get_object()  # already scoped to managed teams
         body = InstantiateTemplateRequestSerializer(data=request.data)
@@ -805,6 +810,10 @@ class EventTemplateViewSet(viewsets.ModelViewSet):
                 total=template.total,
                 sport=template.sport or program.team.default_sport,
                 date=body.validated_data["date"],
+                # Templates capture rounds, so the instantiated session is
+                # structured (the create() above bypasses the serializer's
+                # training-type seeding, so set it explicitly).
+                training_type=TrainingType.STRUCTURED,
                 vis_distance=program.team.vis_distance,
                 vis_goal=program.team.vis_goal,
                 vis_rounds=program.team.vis_rounds,

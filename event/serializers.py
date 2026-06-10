@@ -383,6 +383,11 @@ class EventSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if self._requester_is_manager(instance):
             return data
+        # debrief is the coach's private post-session notes (manager-only, like
+        # the dedicated /debrief/ endpoint). Never expose it to athletes via the
+        # ordinary event read.
+        if "debrief" in data:
+            data["debrief"] = ""
         if not instance.aspect_visible_to_athlete("distance"):
             data["total"] = None
         if not instance.aspect_visible_to_athlete("goal"):
@@ -454,7 +459,10 @@ class EventTemplateSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.IntegerField())
     def get_rounds_count(self, obj) -> int:
-        return obj.rounds.count()
+        # Prefer the queryset annotation (one grouped COUNT for the whole list);
+        # fall back to the property for a freshly-created single template.
+        annotated = getattr(obj, "_rounds_count", None)
+        return annotated if annotated is not None else obj.rounds.count()
 
 
 class SaveAsTemplateRequestSerializer(serializers.Serializer):

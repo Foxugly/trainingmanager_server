@@ -85,6 +85,24 @@ def test_manager_gets_consolidated_debrief(api_client, owner, team, event, prese
     assert body["debrief"] == ""
 
 
+def test_debrief_not_exposed_to_athlete_via_event_get(api_client, owner, team, event):
+    """B-P1-a: the coach debrief must NOT leak through the ordinary event read."""
+    event.debrief = "secret coach notes"
+    event.save(update_fields=["debrief"])
+    athlete = User.objects.create_user(username="db_ath2", email="db_a2@x.test", password="p")
+    m = Member.objects.create(firstname="Ath", lastname="L", user=athlete)
+    TeamMembership.objects.create(team=team, member=m)
+
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.get(f"/api/v1/events/{event.pk}/")
+    assert resp.status_code == 200, resp.json()
+    assert resp.json()["debrief"] == ""
+
+    # The manager still sees it.
+    api_client.force_authenticate(user=owner)
+    assert api_client.get(f"/api/v1/events/{event.pk}/").json()["debrief"] == "secret coach notes"
+
+
 def test_debrief_field_editable_via_patch(api_client, owner, team, event):
     api_client.force_authenticate(user=owner)
     resp = api_client.patch(
