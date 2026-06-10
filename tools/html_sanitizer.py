@@ -8,6 +8,7 @@ are stripped on save.
 import html
 
 import bleach
+from bleach.html5lib_shim import Filter
 
 ALLOWED_TAGS = [
     "p",
@@ -40,20 +41,47 @@ ALLOWED_ATTRIBUTES = {
 ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
 
+class _ForceNoopenerFilter(Filter):
+    """Force ``rel="noopener noreferrer"`` on any ``<a>`` that carries a
+    ``target`` attribute.
+
+    bleach allows ``target`` (so links can open a new tab) but does not inject
+    ``rel`` — a ``target="_blank"`` link without it lets the opened page reach
+    back via ``window.opener`` (reverse tabnabbing). This post-sanitize filter
+    closes that on every anchor that opens a new context.
+    """
+
+    def __iter__(self):
+        for token in super().__iter__():
+            if token.get("type") in ("StartTag", "EmptyTag") and token.get("name") == "a":
+                data = token.get("data") or {}
+                if any(name == "target" for _ns, name in data):
+                    rel_key = next(
+                        (k for k in data if k[1] == "rel"), (None, "rel")
+                    )
+                    data[rel_key] = "noopener noreferrer"
+                    token["data"] = data
+            yield token
+
+
+_CLEANER = bleach.sanitizer.Cleaner(
+    tags=ALLOWED_TAGS,
+    attributes=ALLOWED_ATTRIBUTES,
+    protocols=ALLOWED_PROTOCOLS,
+    strip=True,
+    filters=[_ForceNoopenerFilter],
+)
+
+
 def sanitize_html(html):
     """Sanitize HTML coming from a rich text editor.
 
-    Returns the cleaned HTML, or '' for None / empty input.
+    Returns the cleaned HTML, or '' for None / empty input. Any ``<a target>``
+    is forced to ``rel="noopener noreferrer"`` (anti reverse-tabnabbing).
     """
     if not html:
         return ""
-    return bleach.clean(
-        html,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        protocols=ALLOWED_PROTOCOLS,
-        strip=True,
-    )
+    return _CLEANER.clean(html)
 
 
 def strip_html(value):

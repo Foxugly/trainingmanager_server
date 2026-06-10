@@ -79,6 +79,17 @@ class Exercise(models.Model):
         max_length=2,
         choices=django_settings.LANGUAGES,
     )
+    # Who created the exercise (set on POST / standalone clone). Lets a *library*
+    # exercise (one attached to no round, hence to no team) be edited/deleted only
+    # by its author or staff — otherwise any same-(sport, language) trainer could
+    # mutate it. Mirrors Round.author.
+    author = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

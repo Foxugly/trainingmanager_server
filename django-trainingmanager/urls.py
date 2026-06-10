@@ -52,10 +52,19 @@ urlpatterns = [
         PublicEventView.as_view(),
         name="public_event",
     ),
-    # OpenAPI schema + Swagger UI
-    path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 ]
 
+# OpenAPI schema + Swagger UI: DEBUG-only. In prod these would publicly enumerate
+# the whole API surface (info disclosure) and nothing needs them there — the typed
+# frontend client is generated from the committed openapi-schema.yaml via the
+# `manage.py spectacular` management command in CI, not from this live endpoint.
 if settings.DEBUG:
-    urlpatterns += [path("__debug__/", include("debug_toolbar.urls"))]
+    urlpatterns += [
+        path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path(
+            "api/v1/docs/",
+            SpectacularSwaggerView.as_view(url_name="schema"),
+            name="swagger-ui",
+        ),
+        path("__debug__/", include("debug_toolbar.urls")),
+    ]

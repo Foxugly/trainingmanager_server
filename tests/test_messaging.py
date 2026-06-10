@@ -111,6 +111,21 @@ def test_coach_creates_team_topic(api_client, coach, team, member):
     assert body["message_count"] == 0
 
 
+def test_topic_title_is_html_stripped(api_client, coach, team):
+    """A title is plain text — any HTML payload is stripped on save (no
+    stored XSS), consistent with how message bodies are sanitized."""
+    api_client.force_authenticate(user=coach)
+    resp = api_client.post(
+        _topics_url(team.pk),
+        {"title": "<script>alert(1)</script>Plan", "audience": "team"},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.json()
+    title = resp.json()["title"]
+    assert "<script>" not in title
+    assert "Plan" in title
+
+
 def test_coach_creates_coaches_topic(api_client, coach, team):
     api_client.force_authenticate(user=coach)
     resp = api_client.post(

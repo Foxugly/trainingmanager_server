@@ -7,6 +7,7 @@ from tests.factories import (
     ProgramFactory,
     RoundFactory,
     TeamFactory,
+    UserFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -246,3 +247,105 @@ def test_PATCH_round_of_unmanaged_team_event_returns_403(
         format="json",
     )
     assert response.status_code == 403
+
+
+# --------- EXERCISE object-level authorization (IDOR + author) -------
+
+
+def test_PATCH_exercise_of_unmanaged_team_event_returns_403(auth_client_trainer, trainer_sport):
+    """IDOR: a trainer in the sport scope cannot edit an exercise attached to a
+    round linked to another team's event."""
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    r = RoundFactory(sport=trainer_sport, exercises=[ex])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=TeamFactory(sport=trainer_sport)))
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/", {"notes": "hijack"}, format="json"
+    )
+    assert response.status_code == 403
+
+
+def test_DELETE_exercise_of_unmanaged_team_event_returns_403(auth_client_trainer, trainer_sport):
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    r = RoundFactory(sport=trainer_sport, exercises=[ex])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=TeamFactory(sport=trainer_sport)))
+    response = auth_client_trainer.delete(f"/api/v1/exercises/{ex.pk}/")
+    assert response.status_code == 403
+    ex.refresh_from_db()  # still there
+
+
+def test_PATCH_exercise_of_managed_team_event_returns_200(
+    auth_client_trainer, trainer_user, trainer_sport
+):
+    team = trainer_user.owned_teams.first()
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    r = RoundFactory(sport=trainer_sport, exercises=[ex])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=team))
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/", {"notes": "ok"}, format="json"
+    )
+    assert response.status_code == 200, response.json()
+
+
+def test_DELETE_exercise_of_managed_team_event_returns_204(
+    auth_client_trainer, trainer_user, trainer_sport
+):
+    team = trainer_user.owned_teams.first()
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    r = RoundFactory(sport=trainer_sport, exercises=[ex])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=team))
+    response = auth_client_trainer.delete(f"/api/v1/exercises/{ex.pk}/")
+    assert response.status_code == 204
+
+
+def test_clone_event_linked_exercise_of_unmanaged_team_is_forbidden(
+    auth_client_trainer, trainer_sport
+):
+    """IDOR: cloning reads the source exercise's content — block it for an
+    exercise tied to another team's event."""
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality)
+    r = RoundFactory(sport=trainer_sport, exercises=[ex])
+    EventFactory(rounds=[r], refer_program=ProgramFactory(team=TeamFactory(sport=trainer_sport)))
+    response = auth_client_trainer.post(f"/api/v1/exercises/{ex.pk}/clone/", {}, format="json")
+    assert response.status_code == 403
+
+
+def test_PATCH_library_exercise_of_another_author_returns_403(auth_client_trainer, trainer_sport):
+    """A library exercise (no event) authored by someone else is theirs to edit,
+    not any same-scope trainer's."""
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality, author=UserFactory())
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/", {"notes": "x"}, format="json"
+    )
+    assert response.status_code == 403
+
+
+def test_PATCH_own_library_exercise_returns_200(
+    auth_client_trainer, trainer_user, trainer_sport
+):
+    modality = ModalityFactory(sport=trainer_sport)
+    ex = ExerciseFactory(modality=modality, author=trainer_user)
+    response = auth_client_trainer.patch(
+        f"/api/v1/exercises/{ex.pk}/", {"notes": "mine"}, format="json"
+    )
+    assert response.status_code == 200
+
+
+def test_POST_create_exercise_stamps_author(auth_client_trainer, trainer_sport):
+    """A freshly created (library) exercise is attributed to its creator, so they
+    — and not other trainers — can later edit it."""
+    modality = ModalityFactory(sport=trainer_sport)
+    response = auth_client_trainer.post(
+        "/api/v1/exercises/",
+        {"modality_id": modality.pk, "distance": 100, "repetition": 1, "language": "fr"},
+        format="json",
+    )
+    assert response.status_code == 201, response.json()
+    from exercise.models import Exercise
+
+    assert Exercise.objects.get(pk=response.json()["id"]).author_id is not None

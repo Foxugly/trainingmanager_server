@@ -59,8 +59,10 @@ class MeView(RetrieveUpdateAPIView):
     unspecified writable fields (first_name, last_name, language) to their
     defaults. Use PATCH for any update.
 
-    `email` is read-only here; changing the email requires admin intervention
-    in v1 (a verified change-email flow is deferred to v2).
+    `email` is read-only here: it is changed through the dedicated verified
+    change-email flow (EmailChangeRequestView → EmailChangeConfirmView), which
+    re-verifies the new address before swapping the primary EmailAddress — it is
+    never mutated directly via this endpoint.
     """
 
     serializer_class = MeSerializer

@@ -3,7 +3,7 @@ from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
 from customuser.serializers import CustomUserPublicSerializer
-from tools.html_sanitizer import sanitize_html
+from tools.html_sanitizer import sanitize_html, strip_html
 
 from .models import Message, Topic
 
@@ -79,12 +79,16 @@ class TopicSerializer(serializers.ModelSerializer):
         return obj.messages.count()
 
     def validate_title(self, value):
-        if not value or not value.strip():
+        # A title is plain text: strip any HTML (a title is never rendered as
+        # markup) so it can't carry a stored-XSS payload — consistent with how
+        # message bodies are sanitized.
+        cleaned = strip_html(value or "").strip()
+        if not cleaned:
             raise serializers.ValidationError(
                 _("Title cannot be empty."),
                 code="empty_title",
             )
-        return value.strip()
+        return cleaned
 
 
 class UnreadTopicSerializer(serializers.Serializer):

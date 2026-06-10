@@ -47,3 +47,24 @@ def test_utf8_content_is_preserved():
     out = sanitize_html("<p>Salut, écoute le café résumé naïveté</p>")
     assert "écoute" in out
     assert "café" in out
+
+
+def test_target_blank_link_gets_rel_noopener():
+    """A link opening a new tab must carry rel=noopener noreferrer
+    (anti reverse-tabnabbing) even when the author didn't supply it."""
+    out = sanitize_html('<a href="https://x.com" target="_blank">link</a>')
+    assert 'target="_blank"' in out
+    assert "noopener" in out
+    assert "noreferrer" in out
+
+
+def test_target_blank_link_rel_is_overwritten():
+    """An author-supplied rel on a target link is replaced, not trusted."""
+    out = sanitize_html('<a href="https://x.com" target="_blank" rel="opener">link</a>')
+    assert "noopener noreferrer" in out
+    assert ">opener<" not in out  # the bare 'opener' rel value is gone
+
+
+def test_link_without_target_is_left_alone():
+    out = sanitize_html('<a href="https://x.com">link</a>')
+    assert "noopener" not in out

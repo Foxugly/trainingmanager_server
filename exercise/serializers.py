@@ -255,6 +255,10 @@ class ExerciseSerializer(serializers.ModelSerializer):
                 field: validated_data.get(field, getattr(instance, field))
                 for field in self._FORK_FIELDS
             }
+            # Attribute the fork to the caller, so if it lands on a library round
+            # (no event) it stays editable by them and not by any same-scope trainer.
+            request = self.context.get("request")
+            clone_kwargs["author"] = getattr(request, "user", None)
             with transaction.atomic():
                 clone = Exercise.objects.create(**clone_kwargs)
                 target_round.exercises.remove(instance)

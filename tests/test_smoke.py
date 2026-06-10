@@ -331,16 +331,20 @@ def test_POST_members_with_owned_team_returns_201(auth_client, user_team):
 
 
 # ----------------------- schema and docs ----------------------------
+# The schema + Swagger UI are DEBUG-only (registered in urls.py under
+# `if settings.DEBUG`). pytest-django runs with DEBUG=False (prod-like), so the
+# routes are absent here — exactly the prod behavior we want: the full API
+# surface is NOT publicly enumerable. The typed frontend client is generated
+# from the committed openapi-schema.yaml via the `spectacular` management
+# command, not this endpoint.
 
 
-def test_GET_schema_unauthenticated_returns_200(api_client):
-    response = api_client.get("/api/v1/schema/")
-    assert response.status_code == 200
+def test_GET_schema_not_exposed_in_prod(api_client):
+    assert api_client.get("/api/v1/schema/").status_code == 404
 
 
-def test_GET_docs_unauthenticated_returns_200(api_client):
-    response = api_client.get("/api/v1/docs/")
-    assert response.status_code == 200
+def test_GET_docs_not_exposed_in_prod(api_client):
+    assert api_client.get("/api/v1/docs/").status_code == 404
 
 
 # ------------------ filtering / search / ordering -------------------
