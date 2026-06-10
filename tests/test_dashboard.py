@@ -65,6 +65,32 @@ def test_coach_counts_upcoming_and_pending(auth_client, authenticated_user):
     assert pending_ids == [past.id]
 
 
+def test_dashboard_does_not_leak_other_coaches_teams(auth_client, authenticated_user):
+    """Security: the summary aggregates only teams the caller owns/manages or
+    belongs to — a stranger's team with upcoming events + pending attendance
+    must not appear in coach_teams / coach_upcoming / coach_attendance_pending."""
+    # The caller's own team (with one upcoming event).
+    mine = TeamFactory(owner=authenticated_user)
+    my_prog = Program.objects.create(name="Mine", team=mine, is_active=True)
+    _event(my_prog, TODAY + timedelta(days=1), name="Mine soon")
+
+    # A foreign team the caller has nothing to do with.
+    stranger = TeamFactory()  # different owner
+    foreign_prog = Program.objects.create(name="Foreign", team=stranger, is_active=True)
+    _event(foreign_prog, TODAY + timedelta(days=1), name="Foreign soon")
+    foreign_past = _event(foreign_prog, TODAY - timedelta(days=2), name="Foreign past")
+    foreign_past.members.add(Member.objects.create(firstname="F", lastname="Z"))
+
+    data = auth_client.get(URL).json()
+
+    coach_team_ids = {c["team_id"] for c in data["coach_teams"]}
+    assert coach_team_ids == {mine.id}
+    upcoming_names = [i["event"]["name"] for i in data["coach_upcoming"]]
+    assert "Foreign soon" not in upcoming_names
+    pending_names = [i["event"]["name"] for i in data["coach_attendance_pending"]]
+    assert "Foreign past" not in pending_names
+
+
 def test_pending_excludes_events_with_attendance(auth_client, authenticated_user):
     team = TeamFactory(owner=authenticated_user)
     program = Program.objects.create(name="P", team=team, is_active=True)
