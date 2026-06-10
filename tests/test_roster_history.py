@@ -48,7 +48,7 @@ def test_owner_gets_active_and_past_periods(api_client, owner, team):
 
     resp = api_client.get(_url(team.pk))
     assert resp.status_code == 200, resp.json()
-    rows = resp.json()
+    rows = resp.json()["entries"]
     assert len(rows) == 2
     by_name = {r["name"]: r for r in rows}
     assert by_name["Anna Active"]["active"] is True
@@ -74,7 +74,7 @@ def test_rejoin_shows_two_rows(api_client, owner, team):
     TeamMembership.objects.create(team=team, member=m)  # active again
     api_client.force_authenticate(user=owner)
 
-    rows = api_client.get(_url(team.pk)).json()
+    rows = api_client.get(_url(team.pk)).json()["entries"]
     join_rows = [r for r in rows if r["name"] == "Re Join"]
     assert len(join_rows) == 2
     assert {r["active"] for r in join_rows} == {True, False}

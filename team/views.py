@@ -48,7 +48,7 @@ from .serializers import (
     JoinMagicErrorSerializer,
     ReviewBlockRequestSerializer,
     ReviewBlockResponseSerializer,
-    RosterHistoryEntrySerializer,
+    RosterHistoryResponseSerializer,
     TeamInvitationSerializer,
     TeamJoinRequestMagicActionPostSerializer,
     TeamJoinRequestMagicActionResponseSerializer,
@@ -383,7 +383,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             "analysis (TeamMembership keeps full join/leave history). Ordered by "
             "member name then join date."
         ),
-        responses={200: RosterHistoryEntrySerializer(many=True)},
+        responses={200: RosterHistoryResponseSerializer},
     )
     @action(detail=True, methods=["get"], url_path="roster-history")
     def roster_history(self, request, pk=None):
@@ -396,7 +396,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         rows = team.memberships.select_related("member").order_by(
             "member__lastname", "member__firstname", "joined_at"
         )
-        data = [
+        entries = [
             {
                 "member_id": m.member_id,
                 "name": f"{m.member.firstname} {m.member.lastname}".strip(),
@@ -406,7 +406,7 @@ class TeamViewSet(viewsets.ModelViewSet):
             }
             for m in rows
         ]
-        return Response(RosterHistoryEntrySerializer(data, many=True).data)
+        return Response(RosterHistoryResponseSerializer({"entries": entries}).data)
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.

@@ -1006,3 +1006,13 @@ class RosterHistoryEntrySerializer(serializers.Serializer):
     joined_at = serializers.DateTimeField()
     left_at = serializers.DateTimeField(allow_null=True)
     active = serializers.BooleanField()
+
+
+class RosterHistoryResponseSerializer(serializers.Serializer):
+    """Object wrapper for the roster-history list.
+
+    A plain ``many=True`` response on this (paginated) ViewSet would make
+    drf-spectacular emit a paginated envelope the view does not actually return;
+    wrapping in ``{entries: [...]}`` keeps the schema honest (single object)."""
+
+    entries = RosterHistoryEntrySerializer(many=True)

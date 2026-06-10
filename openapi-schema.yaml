@@ -5648,54 +5648,6 @@ paths:
           type: integer
         description: A unique integer value identifying this team.
         required: true
-      - in: query
-        name: is_active
-        schema:
-          type: boolean
-      - in: query
-        name: is_public
-        schema:
-          type: boolean
-      - in: query
-        name: language
-        schema:
-          type: string
-          enum:
-          - en
-          - es
-          - fr
-          - it
-          - nl
-        description: |-
-          * `fr` - Français
-          * `nl` - Nederlands
-          * `en` - English
-          * `it` - Italiano
-          * `es` - Español
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      - name: page
-        required: false
-        in: query
-        description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: page_size
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - name: search
-        required: false
-        in: query
-        description: A search term.
-        schema:
-          type: string
       tags:
       - teams
       security:
@@ -5705,7 +5657,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedRosterHistoryEntryList'
+                $ref: '#/components/schemas/RosterHistoryResponse'
           description: ''
   /api/v1/teams/{id}/stats/:
     get:
@@ -10049,29 +10001,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Program'
-    PaginatedRosterHistoryEntryList:
-      type: object
-      required:
-      - count
-      - results
-      properties:
-        count:
-          type: integer
-          example: 123
-        next:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=4
-        previous:
-          type: string
-          nullable: true
-          format: uri
-          example: http://api.example.org/accounts/?page=2
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/RosterHistoryEntry'
     PaginatedRoundList:
       type: object
       required:
@@ -11716,6 +11645,21 @@ components:
       - left_at
       - member_id
       - name
+    RosterHistoryResponse:
+      type: object
+      description: |-
+        Object wrapper for the roster-history list.
+
+        A plain ``many=True`` response on this (paginated) ViewSet would make
+        drf-spectacular emit a paginated envelope the view does not actually return;
+        wrapping in ``{entries: [...]}`` keeps the schema honest (single object).
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/RosterHistoryEntry'
+      required:
+      - entries
     RotiSummary:
       type: object
       description: |-
