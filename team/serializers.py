@@ -991,3 +991,18 @@ class ReviewBlockResponseSerializer(serializers.Serializer):
     confidence = serializers.CharField(help_text="One of: low, medium, high.")
     model = serializers.CharField()
     tokens_used = ReviewTokensUsedSerializer()
+
+
+# ---------------------------------------------------------------------
+# Roster history — GET /api/v1/teams/{id}/roster-history/
+# ---------------------------------------------------------------------
+
+
+class RosterHistoryEntrySerializer(serializers.Serializer):
+    """One membership period (active or past) for the roster-history timeline."""
+
+    member_id = serializers.IntegerField()
+    name = serializers.CharField()
+    joined_at = serializers.DateTimeField()
+    left_at = serializers.DateTimeField(allow_null=True)
+    active = serializers.BooleanField()

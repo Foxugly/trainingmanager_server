@@ -5634,6 +5634,79 @@ paths:
           description: AI configuration error
         '502':
           description: AI service error
+  /api/v1/teams/{id}/roster-history/:
+    get:
+      operationId: teams_roster_history_retrieve
+      description: Manager-only. Every membership row — active AND past — with the
+        member's name and joined_at/left_at, for season-review / churn analysis (TeamMembership
+        keeps full join/leave history). Ordered by member name then join date.
+      summary: Team roster history (membership periods)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: is_public
+        schema:
+          type: boolean
+      - in: query
+        name: language
+        schema:
+          type: string
+          enum:
+          - en
+          - es
+          - fr
+          - it
+          - nl
+        description: |-
+          * `fr` - Français
+          * `nl` - Nederlands
+          * `en` - English
+          * `it` - Italiano
+          * `es` - Español
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - teams
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRosterHistoryEntryList'
+          description: ''
   /api/v1/teams/{id}/stats/:
     get:
       operationId: teams_stats_retrieve
@@ -9388,7 +9461,7 @@ components:
       description: |-
         Serializer for Note. team/member/author are derived from the URL
         and the request user; they are read-only here. The 'content' field
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         id:
           type: integer
@@ -9410,7 +9483,7 @@ components:
           readOnly: true
         content:
           type: string
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
         visible_to_athlete:
           type: boolean
           default: false
@@ -9443,12 +9516,12 @@ components:
       description: |-
         Serializer for Note. team/member/author are derived from the URL
         and the request user; they are read-only here. The 'content' field
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         content:
           type: string
           minLength: 1
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
         visible_to_athlete:
           type: boolean
           default: false
@@ -9976,6 +10049,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Program'
+    PaginatedRosterHistoryEntryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RosterHistoryEntry'
     PaginatedRoundList:
       type: object
       required:
@@ -10669,12 +10765,12 @@ components:
       description: |-
         Serializer for Note. team/member/author are derived from the URL
         and the request user; they are read-only here. The 'content' field
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         content:
           type: string
           minLength: 1
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
         visible_to_athlete:
           type: boolean
           default: false
@@ -11025,12 +11121,12 @@ components:
       type: object
       description: |-
         A single message. ``author`` is the nested public user; ``content``
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         content:
           type: string
           minLength: 1
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
     PatchedTrainingSlotRequest:
       type: object
       description: |-
@@ -11597,6 +11693,29 @@ components:
       required:
       - input
       - output
+    RosterHistoryEntry:
+      type: object
+      description: One membership period (active or past) for the roster-history timeline.
+      properties:
+        member_id:
+          type: integer
+        name:
+          type: string
+        joined_at:
+          type: string
+          format: date-time
+        left_at:
+          type: string
+          format: date-time
+          nullable: true
+        active:
+          type: boolean
+      required:
+      - active
+      - joined_at
+      - left_at
+      - member_id
+      - name
     RotiSummary:
       type: object
       description: |-
@@ -12974,14 +13093,14 @@ components:
       type: object
       description: |-
         A single message. ``author`` is the nested public user; ``content``
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         id:
           type: integer
           readOnly: true
         content:
           type: string
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
         author:
           allOf:
           - $ref: '#/components/schemas/CustomUserPublic'
@@ -13006,12 +13125,12 @@ components:
       type: object
       description: |-
         A single message. ``author`` is the nested public user; ``content``
-        is sanitized via bleach on every write.
+        is sanitized via nh3 on every write.
       properties:
         content:
           type: string
           minLength: 1
-          description: Rich HTML content (sanitized via bleach on save).
+          description: Rich HTML content (sanitized via nh3 on save).
       required:
       - content
     TopicRequest:

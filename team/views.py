@@ -48,6 +48,7 @@ from .serializers import (
     JoinMagicErrorSerializer,
     ReviewBlockRequestSerializer,
     ReviewBlockResponseSerializer,
+    RosterHistoryEntrySerializer,
     TeamInvitationSerializer,
     TeamJoinRequestMagicActionPostSerializer,
     TeamJoinRequestMagicActionResponseSerializer,
@@ -372,6 +373,40 @@ class TeamViewSet(viewsets.ModelViewSet):
         if not user_member_teams(request.user).filter(pk=team.pk).exists():
             raise NotFound()
         return Response(TrainingTemplateSerializer(self._template_payload(team)).data)
+
+    @extend_schema(
+        operation_id="teams_roster_history_retrieve",
+        summary="Team roster history (membership periods)",
+        description=(
+            "Manager-only. Every membership row — active AND past — with the "
+            "member's name and joined_at/left_at, for season-review / churn "
+            "analysis (TeamMembership keeps full join/leave history). Ordered by "
+            "member name then join date."
+        ),
+        responses={200: RosterHistoryEntrySerializer(many=True)},
+    )
+    @action(detail=True, methods=["get"], url_path="roster-history")
+    def roster_history(self, request, pk=None):
+        """GET /teams/{id}/roster-history/ — membership periods (managers only)."""
+        team = self.get_object()
+        if not team.is_managed_by(request.user):
+            raise PermissionDenied(
+                _("Only the team owner or managers can view the roster history.")
+            )
+        rows = team.memberships.select_related("member").order_by(
+            "member__lastname", "member__firstname", "joined_at"
+        )
+        data = [
+            {
+                "member_id": m.member_id,
+                "name": f"{m.member.firstname} {m.member.lastname}".strip(),
+                "joined_at": m.joined_at,
+                "left_at": m.left_at,
+                "active": m.left_at is None,
+            }
+            for m in rows
+        ]
+        return Response(RosterHistoryEntrySerializer(data, many=True).data)
 
     def _resolve_member_scope(self, request, team, is_manager):
         """Resolve the optional ?member=<id> scope and enforce permissions.
