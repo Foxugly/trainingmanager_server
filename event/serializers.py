@@ -438,3 +438,29 @@ class EventDebriefSerializer(serializers.Serializer):
     roti = _DebriefRotiSerializer()
     rsvp = _DebriefRsvpSerializer()
     attachments_count = serializers.IntegerField()
+
+
+class EventTemplateSerializer(serializers.ModelSerializer):
+    """A reusable session template (read)."""
+
+    rounds_count = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import EventTemplate
+
+        model = EventTemplate
+        fields = ["id", "name", "goal", "total", "sport", "team", "rounds_count", "created_at"]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_rounds_count(self, obj) -> int:
+        return obj.rounds.count()
+
+
+class SaveAsTemplateRequestSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+
+
+class InstantiateTemplateRequestSerializer(serializers.Serializer):
+    refer_program = serializers.IntegerField(help_text="Target program id for the new event.")
+    date = serializers.DateField()

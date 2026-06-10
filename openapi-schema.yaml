@@ -1548,6 +1548,162 @@ paths:
               schema:
                 $ref: '#/components/schemas/Equipment'
           description: ''
+  /api/v1/event-templates/:
+    get:
+      operationId: event_templates_list
+      description: |-
+        Reusable session templates, scoped to teams the caller manages.
+
+        URL: /api/v1/event-templates/
+        - GET (list, optional ?team=): the caller's managed teams' templates.
+        - DELETE /{id}/: remove a template (manager of its team).
+        - POST /{id}/instantiate/ {refer_program, date}: create an Event from it.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - event-templates
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventTemplateList'
+          description: ''
+    post:
+      operationId: event_templates_create
+      description: |-
+        Reusable session templates, scoped to teams the caller manages.
+
+        URL: /api/v1/event-templates/
+        - GET (list, optional ?team=): the caller's managed teams' templates.
+        - DELETE /{id}/: remove a template (manager of its team).
+        - POST /{id}/instantiate/ {refer_program, date}: create an Event from it.
+      tags:
+      - event-templates
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTemplate'
+          description: ''
+  /api/v1/event-templates/{id}/:
+    get:
+      operationId: event_templates_retrieve
+      description: |-
+        Reusable session templates, scoped to teams the caller manages.
+
+        URL: /api/v1/event-templates/
+        - GET (list, optional ?team=): the caller's managed teams' templates.
+        - DELETE /{id}/: remove a template (manager of its team).
+        - POST /{id}/instantiate/ {refer_program, date}: create an Event from it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event template.
+        required: true
+      tags:
+      - event-templates
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTemplate'
+          description: ''
+    delete:
+      operationId: event_templates_destroy
+      description: |-
+        Reusable session templates, scoped to teams the caller manages.
+
+        URL: /api/v1/event-templates/
+        - GET (list, optional ?team=): the caller's managed teams' templates.
+        - DELETE /{id}/: remove a template (manager of its team).
+        - POST /{id}/instantiate/ {refer_program, date}: create an Event from it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event template.
+        required: true
+      tags:
+      - event-templates
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/event-templates/{id}/instantiate/:
+    post:
+      operationId: event_templates_instantiate_create
+      description: Create a new Event from this template onto the given program +
+        date (manager of the template's team only). Deep-copies the template's rounds.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event template.
+        required: true
+      tags:
+      - event-templates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstantiateTemplateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InstantiateTemplateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InstantiateTemplateRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+        '400':
+          description: Invalid program/date or program not in template team
+        '403':
+          description: Not a manager of the template's team
   /api/v1/events/:
     get:
       operationId: events_list
@@ -2375,6 +2531,44 @@ paths:
             `scope_mismatch`, `incomplete_reorder`.'
         '403':
           description: Not a manager of this event team
+  /api/v1/events/{id}/save-as-template/:
+    post:
+      operationId: events_save_as_template_create
+      description: Save this session as a reusable team template (managers only).
+        Copies goal/total/sport and deep-copies the rounds; the template is independent
+        of later edits to this event.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAsTemplateRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SaveAsTemplateRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SaveAsTemplateRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTemplate'
+          description: ''
+        '403':
+          description: Not a manager of this event's team
   /api/v1/events/{id}/share/:
     post:
       operationId: events_share_create
@@ -8773,6 +8967,45 @@ components:
       - is_public
       - public_token
       - public_url_path
+    EventTemplate:
+      type: object
+      description: A reusable session template (read).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        goal:
+          type: string
+          readOnly: true
+        total:
+          type: integer
+          readOnly: true
+        sport:
+          type: integer
+          readOnly: true
+          nullable: true
+        team:
+          type: integer
+          readOnly: true
+        rounds_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - goal
+      - id
+      - name
+      - rounds_count
+      - sport
+      - team
+      - total
     Exercise:
       type: object
       properties:
@@ -9023,6 +9256,18 @@ components:
       required:
       - database
       - status
+    InstantiateTemplateRequestRequest:
+      type: object
+      properties:
+        refer_program:
+          type: integer
+          description: Target program id for the new event.
+        date:
+          type: string
+          format: date
+      required:
+      - date
+      - refer_program
     InvitationStatusEnum:
       enum:
       - pending
@@ -9987,6 +10232,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Event'
+    PaginatedEventTemplateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTemplate'
     PaginatedExerciseList:
       type: object
       required:
@@ -12171,6 +12439,15 @@ components:
           $ref: '#/components/schemas/RsvpStatusEnum'
       required:
       - status
+    SaveAsTemplateRequestRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required:
+      - name
     Sport:
       type: object
       description: |-

@@ -291,3 +291,37 @@ class Event(models.Model):
     def get_public_token(self):
         """Read the current public_token (None if the session was never shared)."""
         return self.public_token
+
+
+class EventTemplate(models.Model):
+    """A reusable session blueprint a coach can instantiate onto any date.
+
+    Captures a session's structure (rounds + their exercises) independently of
+    any dated Event: rounds are DEEP-COPIED in (re-linking the shared exercise
+    library) so later edits to the source event don't mutate the template, and
+    instantiation deep-copies them out onto a fresh Event the same way.
+    """
+
+    from django.conf import settings as _settings
+
+    team = models.ForeignKey(
+        "team.Team", on_delete=models.CASCADE, related_name="event_templates"
+    )
+    name = models.CharField(max_length=100, verbose_name=_("name"))
+    goal = models.TextField(blank=True, default="")
+    total = models.PositiveIntegerField(default=0)
+    sport = models.ForeignKey(
+        "sport.Sport", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    rounds = models.ManyToManyField(Round, related_name="+", blank=True)
+    created_by = models.ForeignKey(
+        _settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [models.Index(fields=["team", "name"])]
+
+    def __str__(self):
+        return f"{self.name} ({self.team_id})"

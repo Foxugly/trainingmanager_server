@@ -24,8 +24,11 @@ from .serializers import (
     EventDebriefSerializer,
     EventSerializer,
     EventShareRequestSerializer,
+    EventTemplateSerializer,
     GenerateTrainingRequestSerializer,
+    InstantiateTemplateRequestSerializer,
     ReorderRoundsRequestSerializer,
+    SaveAsTemplateRequestSerializer,
 )
 
 # Fields copied verbatim from the source Event onto each duplicate. Excludes
@@ -94,6 +97,26 @@ def _duplicate_event(source, target_date):
         new_event.rounds.add(new_round)
 
     return new_event
+
+
+def _clone_rounds(source_rounds):
+    """Deep-copy a sequence of Rounds into brand-new Round rows (re-linking the
+    SAME shared Exercise library, like _duplicate_event). Returns the new list.
+    Used by save-as-template (event→template) and instantiate (template→event)
+    so neither side mutates the other's rounds."""
+    cloned = []
+    for src in source_rounds:
+        new_round = Round.objects.create(
+            order=src.order,
+            count=src.count,
+            t_start=src.t_start,
+            t_break=src.t_break,
+            sport=src.sport,
+            language=src.language,
+        )
+        new_round.exercises.set(src.exercises.all())
+        cloned.append(new_round)
+    return cloned
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -679,4 +702,117 @@ class EventViewSet(viewsets.ModelViewSet):
                 },
             },
             status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=SaveAsTemplateRequestSerializer,
+        responses={
+            201: EventTemplateSerializer,
+            403: OpenApiResponse(description="Not a manager of this event's team"),
+        },
+        description=(
+            "Save this session as a reusable team template (managers only). Copies "
+            "goal/total/sport and deep-copies the rounds; the template is independent "
+            "of later edits to this event."
+        ),
+    )
+    @action(detail=True, methods=["post"], url_path="save-as-template")
+    def save_as_template(self, request, pk=None):
+        """POST /events/{id}/save-as-template/ {name} — create an EventTemplate."""
+        from .models import EventTemplate
+
+        event = self.get_object()
+        team = event.team
+        if team is None or not team.is_managed_by(request.user):
+            raise NotAManagerDenied(_("You must be owner or manager of this event's team."))
+
+        body = SaveAsTemplateRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            template = EventTemplate.objects.create(
+                team=team,
+                name=body.validated_data["name"],
+                goal=event.goal or "",
+                total=event.total,
+                sport=event.sport,
+                created_by=request.user if request.user.is_authenticated else None,
+            )
+            template.rounds.set(_clone_rounds(event.rounds.all()))
+
+        return Response(EventTemplateSerializer(template).data, status=status.HTTP_201_CREATED)
+
+
+class EventTemplateViewSet(viewsets.ModelViewSet):
+    """Reusable session templates, scoped to teams the caller manages.
+
+    URL: /api/v1/event-templates/
+    - GET (list, optional ?team=): the caller's managed teams' templates.
+    - DELETE /{id}/: remove a template (manager of its team).
+    - POST /{id}/instantiate/ {refer_program, date}: create an Event from it.
+    """
+
+    serializer_class = EventTemplateSerializer
+    http_method_names = ["get", "delete", "post", "head", "options"]
+    ordering = ["name"]
+
+    def get_queryset(self):
+        from .models import EventTemplate
+
+        if getattr(self, "swagger_fake_view", False):
+            return EventTemplate.objects.none()
+        qs = EventTemplate.objects.filter(
+            team__in=managed_teams(self.request.user)
+        ).select_related("sport", "team")
+        team_id = self.request.query_params.get("team")
+        if team_id:
+            qs = qs.filter(team_id=team_id)
+        return qs
+
+    @extend_schema(
+        request=InstantiateTemplateRequestSerializer,
+        responses={
+            201: EventSerializer,
+            400: OpenApiResponse(description="Invalid program/date or program not in template team"),
+            403: OpenApiResponse(description="Not a manager of the template's team"),
+        },
+        description=(
+            "Create a new Event from this template onto the given program + date "
+            "(manager of the template's team only). Deep-copies the template's rounds."
+        ),
+    )
+    @action(detail=True, methods=["post"])
+    def instantiate(self, request, pk=None):
+        from program.models import Program
+
+        template = self.get_object()  # already scoped to managed teams
+        body = InstantiateTemplateRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        program = (
+            Program.objects.filter(pk=body.validated_data["refer_program"])
+            .select_related("team")
+            .first()
+        )
+        if program is None or program.team_id != template.team_id:
+            raise PermissionDenied(_("The program must belong to the template's team."))
+
+        with transaction.atomic():
+            event = Event.objects.create(
+                refer_program=program,
+                name=template.name,
+                goal=template.goal,
+                total=template.total,
+                sport=template.sport or program.team.default_sport,
+                date=body.validated_data["date"],
+                vis_distance=program.team.vis_distance,
+                vis_goal=program.team.vis_goal,
+                vis_rounds=program.team.vis_rounds,
+            )
+            for r in _clone_rounds(template.rounds.all()):
+                event.rounds.add(r)
+
+        return Response(
+            EventSerializer(event, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
         )
