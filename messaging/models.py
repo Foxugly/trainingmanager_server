@@ -95,7 +95,7 @@ class Message(models.Model):
         help_text=_("Author of the message. SET_NULL on user deletion."),
     )
     content = models.TextField(
-        help_text=_("Rich HTML content (sanitized via bleach on save)."),
+        help_text=_("Rich HTML content (sanitized via nh3 on save)."),
     )
     edited_at = models.DateTimeField(
         null=True,

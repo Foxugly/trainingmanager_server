@@ -1,16 +1,16 @@
-"""HTML sanitization for Note.content via bleach.
+"""HTML sanitization for rich-text fields (Note.content, messages, AI HTML).
 
-Whitelist tags suitable for the rich text editor used on the
-frontend (PrimeNG / Quill style). All disallowed tags and attributes
-are stripped on save.
+Backed by nh3 (Rust/ammonia) — a maintained, fast, safe-by-default sanitizer.
+Whitelist tags suit the frontend rich-text editor (PrimeNG / Quill style); all
+disallowed tags/attributes are stripped on save. Every ``<a>`` is forced to
+``rel="noopener noreferrer"`` (nh3 ``link_rel``) — anti reverse-tabnabbing.
 """
 
 import html
 
-import bleach
-from bleach.html5lib_shim import Filter
+import nh3
 
-ALLOWED_TAGS = [
+ALLOWED_TAGS = {
     "p",
     "br",
     "strong",
@@ -31,67 +31,43 @@ ALLOWED_TAGS = [
     "h4",
     "a",
     "span",
-]
-
-ALLOWED_ATTRIBUTES = {
-    "a": ["href", "title", "target", "rel"],
-    "span": ["class"],
 }
 
-ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
+# nh3 manages <a rel> via link_rel below, so 'rel' is intentionally NOT here:
+# any author-supplied rel is dropped and replaced with noopener noreferrer.
+ALLOWED_ATTRIBUTES = {
+    "a": {"href", "title", "target"},
+    "span": {"class"},
+}
+
+ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
 
 
-class _ForceNoopenerFilter(Filter):
-    """Force ``rel="noopener noreferrer"`` on any ``<a>`` that carries a
-    ``target`` attribute.
-
-    bleach allows ``target`` (so links can open a new tab) but does not inject
-    ``rel`` — a ``target="_blank"`` link without it lets the opened page reach
-    back via ``window.opener`` (reverse tabnabbing). This post-sanitize filter
-    closes that on every anchor that opens a new context.
-    """
-
-    def __iter__(self):
-        for token in super().__iter__():
-            if token.get("type") in ("StartTag", "EmptyTag") and token.get("name") == "a":
-                data = token.get("data") or {}
-                if any(name == "target" for _ns, name in data):
-                    rel_key = next(
-                        (k for k in data if k[1] == "rel"), (None, "rel")
-                    )
-                    data[rel_key] = "noopener noreferrer"
-                    token["data"] = data
-            yield token
-
-
-_CLEANER = bleach.sanitizer.Cleaner(
-    tags=ALLOWED_TAGS,
-    attributes=ALLOWED_ATTRIBUTES,
-    protocols=ALLOWED_PROTOCOLS,
-    strip=True,
-    filters=[_ForceNoopenerFilter],
-)
-
-
-def sanitize_html(html):
+def sanitize_html(value):
     """Sanitize HTML coming from a rich text editor.
 
-    Returns the cleaned HTML, or '' for None / empty input. Any ``<a target>``
-    is forced to ``rel="noopener noreferrer"`` (anti reverse-tabnabbing).
+    Returns the cleaned HTML, or '' for None / empty input. Every ``<a>`` is
+    forced to ``rel="noopener noreferrer"`` (anti reverse-tabnabbing).
     """
-    if not html:
+    if not value:
         return ""
-    return _CLEANER.clean(html)
+    return nh3.clean(
+        value,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        url_schemes=ALLOWED_URL_SCHEMES,
+        link_rel="noopener noreferrer",
+    )
 
 
 def strip_html(value):
     """Return the plain-text of an HTML string (all tags removed).
 
-    Strips every tag (``bleach.clean`` with no allowed tags) and then
+    Strips every tag (``nh3.clean`` with an empty tag allow-list) and then
     unescapes HTML entities so the result is human-readable plain text.
-    Suitable for plain-text contexts (iCal DESCRIPTION, AI prompts) where
-    the rich-text HTML must not leak as markup. None / '' -> ''.
+    Suitable for plain-text contexts (iCal DESCRIPTION, AI prompts, titles)
+    where the rich-text HTML must not leak as markup. None / '' -> ''.
     """
     if not value:
         return ""
-    return html.unescape(bleach.clean(value, tags=[], strip=True))
+    return html.unescape(nh3.clean(value, tags=set()))

@@ -11,7 +11,7 @@ from .models import Message, Topic
 @extend_schema_serializer(component_name="TopicMessage")
 class MessageSerializer(serializers.ModelSerializer):
     """A single message. ``author`` is the nested public user; ``content``
-    is sanitized via bleach on every write."""
+    is sanitized via nh3 on every write."""
 
     author = CustomUserPublicSerializer(read_only=True)
 

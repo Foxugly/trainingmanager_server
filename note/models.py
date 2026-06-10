@@ -31,7 +31,7 @@ class Note(models.Model):
         help_text=_("The coach who wrote this note. SET_NULL if the author account is deleted."),
     )
     content = models.TextField(
-        help_text=_("Rich HTML content (sanitized via bleach on save)."),
+        help_text=_("Rich HTML content (sanitized via nh3 on save)."),
     )
     visible_to_athlete = models.BooleanField(
         default=False,

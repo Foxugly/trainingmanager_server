@@ -1,4 +1,4 @@
-"""Unit tests for the bleach-based HTML sanitizer used on Note.content."""
+"""Unit tests for the nh3-based HTML sanitizer used on rich-text fields."""
 
 from tools.html_sanitizer import sanitize_html
 
@@ -65,6 +65,8 @@ def test_target_blank_link_rel_is_overwritten():
     assert ">opener<" not in out  # the bare 'opener' rel value is gone
 
 
-def test_link_without_target_is_left_alone():
+def test_every_link_gets_rel_noopener():
+    # nh3 link_rel applies to all links with href (not only target=_blank),
+    # which is strictly safer.
     out = sanitize_html('<a href="https://x.com">link</a>')
-    assert "noopener" not in out
+    assert 'rel="noopener noreferrer"' in out

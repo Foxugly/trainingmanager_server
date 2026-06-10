@@ -32,7 +32,7 @@ def test_patch_goal_sanitizes_html(auth_client_trainer, trainer_event):
     trainer_event.refresh_from_db()
     stored = trainer_event.goal
     # The <script> element is stripped (no executable markup) while safe
-    # tags are preserved. bleach keeps the (now-inert) text content.
+    # tags are preserved; the sanitizer keeps the (now-inert) text content.
     assert "<script" not in stored.lower()
     assert "</script>" not in stored.lower()
     assert "<b>x</b>" in stored

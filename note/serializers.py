@@ -8,7 +8,7 @@ from .models import Note
 class NoteSerializer(serializers.ModelSerializer):
     """Serializer for Note. team/member/author are derived from the URL
     and the request user; they are read-only here. The 'content' field
-    is sanitized via bleach on every write."""
+    is sanitized via nh3 on every write."""
 
     author_username = serializers.CharField(
         source="author.username",
