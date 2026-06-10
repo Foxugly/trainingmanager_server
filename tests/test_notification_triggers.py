@@ -318,23 +318,17 @@ def test_no_reminders_for_other_days():
     ).exists()
 
 
-def test_reminder_deduped_per_user_event():
-    """Two active membership rows for the same (team, member) must yield ONE
-    reminder per (user, event)."""
+def test_duplicate_active_membership_rejected():
+    """Reminders can't be duplicated by redundant membership rows because the
+    partial unique constraint forbids a second ACTIVE (team, member) row.
+    (Previously the reminder command deduped this at runtime; it's now a DB
+    invariant.)"""
+    from django.db import IntegrityError, transaction
+
     team, user, member, program = _team_with_athlete()
-    # A second active membership row for the same member in the same team.
-    TeamMembership.objects.create(team=team, member=member)
-    tomorrow = timezone.localdate() + datetime.timedelta(days=1)
-    EventFactory(refer_program=program, date=tomorrow, name="Dup")
-
-    call_command("send_session_reminders", stdout=StringIO())
-
-    assert (
-        Notification.objects.filter(
-            recipient=user, type=NotificationType.SESSION_REMINDER
-        ).count()
-        == 1
-    )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            TeamMembership.objects.create(team=team, member=member)
 
 
 def test_reminder_skips_member_without_user():

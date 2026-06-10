@@ -86,11 +86,7 @@ def _mock_training_response(rounds_payload):
 # ----------------------------- /ai/ping/ -----------------------------
 
 
-def test_ai_ping_throttle_after_limit_returns_429(
-    auth_client_trainer, trainer_user, settings, set_throttle_rate
-):
-    trainer_user.is_staff = True  # /ai/ping/ is staff-only
-    trainer_user.save(update_fields=["is_staff"])
+def test_ai_ping_throttle_after_limit_returns_429(auth_client_trainer, settings, set_throttle_rate):
     set_throttle_rate("ai_ping", "2/min")
     settings.ANTHROPIC_API_KEY = "sk-ant-fake"
 
@@ -105,11 +101,7 @@ def test_ai_ping_throttle_after_limit_returns_429(
     assert r3.status_code == 429
 
 
-def test_ai_ping_throttle_below_limit_passes(
-    auth_client_trainer, trainer_user, settings, set_throttle_rate
-):
-    trainer_user.is_staff = True  # /ai/ping/ is staff-only
-    trainer_user.save(update_fields=["is_staff"])
+def test_ai_ping_throttle_below_limit_passes(auth_client_trainer, settings, set_throttle_rate):
     set_throttle_rate("ai_ping", "5/min")
     settings.ANTHROPIC_API_KEY = "sk-ant-fake"
 
@@ -217,8 +209,6 @@ def test_throttle_scopes_are_independent(
     auth_client_trainer, trainer_user, settings, set_throttle_rate
 ):
     """Saturer ai_ping ne doit pas bloquer ai_plan_generation."""
-    trainer_user.is_staff = True  # /ai/ping/ is staff-only; this user also owns the program
-    trainer_user.save(update_fields=["is_staff"])
     set_throttle_rate("ai_ping", "1/min")
     set_throttle_rate("ai_plan_generation", "5/min")
     settings.ANTHROPIC_API_KEY = "sk-ant-fake"

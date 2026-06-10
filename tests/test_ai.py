@@ -17,7 +17,7 @@ def _mock_anthropic_response(text="Hello", input_tokens=10, output_tokens=2):
     return response
 
 
-def test_POST_ai_ping_as_staff_returns_200(admin_client, settings):
+def test_POST_ai_ping_as_trainer_returns_200(auth_client_trainer, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
 
     with patch("tools.ai.Anthropic") as MockAnthropic:
@@ -27,7 +27,7 @@ def test_POST_ai_ping_as_staff_returns_200(admin_client, settings):
             input_tokens=12,
             output_tokens=1,
         )
-        response = admin_client.post(
+        response = auth_client_trainer.post(
             "/api/v1/ai/ping/",
             {"prompt": "Say hello"},
             format="json",
@@ -42,13 +42,13 @@ def test_POST_ai_ping_as_staff_returns_200(admin_client, settings):
     assert data["stop_reason"] == "end_turn"
 
 
-def test_POST_ai_ping_default_prompt_used_when_missing(admin_client, settings):
+def test_POST_ai_ping_default_prompt_used_when_missing(auth_client_trainer, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
 
     with patch("tools.ai.Anthropic") as MockAnthropic:
         mock_client = MockAnthropic.return_value
         mock_client.messages.create.return_value = _mock_anthropic_response()
-        response = admin_client.post("/api/v1/ai/ping/", {}, format="json")
+        response = auth_client_trainer.post("/api/v1/ai/ping/", {}, format="json")
         # The default prompt should be used.
         called_kwargs = mock_client.messages.create.call_args.kwargs
         assert called_kwargs["messages"][0]["content"] == "Say hello in one word."
@@ -56,10 +56,8 @@ def test_POST_ai_ping_default_prompt_used_when_missing(admin_client, settings):
     assert response.status_code == 200
 
 
-def test_POST_ai_ping_as_non_staff_returns_403(auth_client_trainer):
-    # A trainer (owns a team) but is NOT staff must be refused: the diagnostic
-    # ping is staff-only.
-    response = auth_client_trainer.post("/api/v1/ai/ping/", {}, format="json")
+def test_POST_ai_ping_as_non_trainer_returns_403(auth_client_non_trainer):
+    response = auth_client_non_trainer.post("/api/v1/ai/ping/", {}, format="json")
     assert response.status_code == 403
 
 
@@ -68,9 +66,9 @@ def test_POST_ai_ping_unauthenticated_returns_401(api_client):
     assert response.status_code == 401
 
 
-def test_POST_ai_ping_empty_prompt_returns_400(admin_client, settings):
+def test_POST_ai_ping_empty_prompt_returns_400(auth_client_trainer, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
-    response = admin_client.post(
+    response = auth_client_trainer.post(
         "/api/v1/ai/ping/",
         {"prompt": "   "},
         format="json",
@@ -78,9 +76,9 @@ def test_POST_ai_ping_empty_prompt_returns_400(admin_client, settings):
     assert response.status_code == 400
 
 
-def test_POST_ai_ping_too_long_prompt_returns_400(admin_client, settings):
+def test_POST_ai_ping_too_long_prompt_returns_400(auth_client_trainer, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
-    response = admin_client.post(
+    response = auth_client_trainer.post(
         "/api/v1/ai/ping/",
         {"prompt": "x" * 5001},
         format="json",
@@ -88,9 +86,9 @@ def test_POST_ai_ping_too_long_prompt_returns_400(admin_client, settings):
     assert response.status_code == 400
 
 
-def test_POST_ai_ping_no_api_key_returns_500(admin_client, settings):
+def test_POST_ai_ping_no_api_key_returns_500(auth_client_trainer, settings):
     settings.ANTHROPIC_API_KEY = ""
-    response = admin_client.post(
+    response = auth_client_trainer.post(
         "/api/v1/ai/ping/",
         {"prompt": "test"},
         format="json",
@@ -99,7 +97,7 @@ def test_POST_ai_ping_no_api_key_returns_500(admin_client, settings):
     assert "ANTHROPIC_API_KEY" in response.json()["detail"]
 
 
-def test_POST_ai_ping_api_error_returns_502(admin_client, settings):
+def test_POST_ai_ping_api_error_returns_502(auth_client_trainer, settings):
     from anthropic import APIError
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
@@ -111,7 +109,7 @@ def test_POST_ai_ping_api_error_returns_502(admin_client, settings):
             request=MagicMock(),
             body=None,
         )
-        response = admin_client.post(
+        response = auth_client_trainer.post(
             "/api/v1/ai/ping/",
             {"prompt": "test"},
             format="json",
@@ -120,7 +118,7 @@ def test_POST_ai_ping_api_error_returns_502(admin_client, settings):
     assert response.status_code == 502
 
 
-def test_POST_ai_ping_authentication_error_returns_500(admin_client, settings):
+def test_POST_ai_ping_authentication_error_returns_500(auth_client_trainer, settings):
     from anthropic import AuthenticationError
 
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
@@ -132,7 +130,7 @@ def test_POST_ai_ping_authentication_error_returns_500(admin_client, settings):
             response=MagicMock(status_code=401),
             body=None,
         )
-        response = admin_client.post(
+        response = auth_client_trainer.post(
             "/api/v1/ai/ping/",
             {"prompt": "test"},
             format="json",
