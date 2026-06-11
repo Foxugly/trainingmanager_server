@@ -6,6 +6,8 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from rest_framework.fields import SkipField
+from rest_framework.relations import PKOnlyObject
 
 from customuser.serializers import CustomUserPublicSerializer
 from equipment.models import Equipment
@@ -206,22 +208,53 @@ class TeamSerializer(serializers.ModelSerializer):
         """Absolute URL of the public logo endpoint, or null when there is no
         logo. Lets list/detail consumers render the logo via <img src> instead
         of shipping the base64 data-URL inline (the list drops it — see
-        to_representation)."""
-        if not obj.logo:
+        get_fields).
+
+        On the list action ``logo`` is deferred (the base64 is never fetched);
+        the view annotates a cheap ``_has_logo`` boolean so we can decide
+        presence without touching the deferred column (which would re-issue one
+        SELECT per row, an N+1). On detail ``logo`` is loaded, so fall back to
+        reading it directly."""
+        has_logo = getattr(obj, "_has_logo", None)
+        if has_logo is None:
+            has_logo = bool(obj.logo)
+        if not has_logo:
             return None
         path = reverse("team-logo", kwargs={"pk": obj.pk})
         request = self.context.get("request")
         return request.build_absolute_uri(path) if request is not None else path
 
+    # Fields skipped when rendering the LIST action: the base64 ``logo`` (served
+    # via logo_url; the column is deferred by the view, so reading it here would
+    # re-issue one SELECT per row — an N+1) and the heavy nested M2M no list
+    # consumer uses. NB: we skip them at render time only — the declared field
+    # set is unchanged, so the OpenAPI ``Team`` component (used by detail/create/
+    # update, which DO return these) stays accurate.
+    _LIST_SKIPPED_FIELDS = frozenset(
+        {"logo", "places", "equipment", "attendance_statuses", "default_place"}
+    )
+
     def to_representation(self, instance):
-        data = super().to_representation(instance)
         view = self.context.get("view")
-        if getattr(view, "action", None) == "list":
-            # Keep the list payload light: the base64 logo (served via logo_url)
-            # and the heavy nested M2M are not used by any list consumer.
-            data["logo"] = None
-            for field in ("places", "equipment", "attendance_statuses", "default_place"):
-                data.pop(field, None)
+        if getattr(view, "action", None) != "list":
+            return super().to_representation(instance)
+
+        # Mirror DRF's ModelSerializer.to_representation but skip the heavy
+        # fields without touching their (possibly deferred / un-prefetched)
+        # attributes, then re-add ``logo`` as null for a stable response shape.
+        data = {}
+        for field in self._readable_fields:
+            if field.field_name in self._LIST_SKIPPED_FIELDS:
+                continue
+            try:
+                attribute = field.get_attribute(instance)
+            except SkipField:
+                continue
+            check_for_none = attribute.pk if isinstance(attribute, PKOnlyObject) else attribute
+            data[field.field_name] = (
+                None if check_for_none is None else field.to_representation(attribute)
+            )
+        data["logo"] = None
         return data
 
     def _apply_default_sport(self, team, sport):

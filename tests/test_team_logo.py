@@ -70,3 +70,37 @@ def test_detail_keeps_base64_logo(auth_client, authenticated_user):
     assert res.status_code == 200
     assert res.json()["logo"] == PNG_DATA_URL
     assert res.json()["logo_url"].endswith(f"/teams/{team.pk}/logo/")
+
+
+def _count_list_queries(client, capture):
+    with capture() as ctx:
+        res = client.get("/api/v1/teams/")
+    assert res.status_code == 200
+    return len(ctx.captured_queries), res
+
+
+def test_list_query_count_does_not_grow_with_team_count(auth_client, authenticated_user):
+    """Regression guard for the logo_url N+1: reading logo_url must NOT touch the
+    deferred ``logo`` column per row (which would issue one SELECT per team).
+    The query count must be FLAT — identical whether the user owns 1 team or
+    many — which is the true signal that no per-row query slipped back in."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    def capture():
+        return CaptureQueriesContext(connection)
+
+    TeamFactory(owner=authenticated_user, logo=PNG_DATA_URL)
+    one_count, _ = _count_list_queries(auth_client, capture)
+
+    for _ in range(5):
+        TeamFactory(owner=authenticated_user, logo=PNG_DATA_URL)
+    many_count, res = _count_list_queries(auth_client, capture)
+
+    assert many_count == one_count, (
+        f"team-list query count grew with N (1 team: {one_count}, "
+        f"6 teams: {many_count}) — a per-row N+1 regressed"
+    )
+    rows = [t for t in res.json()["results"] if t["logo_url"]]
+    assert len(rows) >= 6  # every team exposes a logo_url, none ships base64
+    assert all(r["logo"] is None for r in rows)

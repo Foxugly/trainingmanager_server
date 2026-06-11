@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from exercise.models import Exercise
 from exercise.serializers import ExerciseSerializer
 from team.permissions import IsTrainer
-from team.queries import user_member_teams
+from team.queries import managed_teams, user_member_teams
 from team.utils import scope_by_sport_language
 from tools.exceptions import NotAuthorizedRoundDenied
 from tools.validators import validate_reorder_ids
@@ -219,6 +219,11 @@ def _gate_rounds_by_event_visibility(qs, user):
     if not candidate_round_ids:
         return qs
 
+    # Resolve the user's managed team ids ONCE (a single DISTINCT query) instead
+    # of calling team.is_managed_by(user) per event in the loop below, which
+    # would issue one managers-M2M `.exists()` query per event (an N+1).
+    managed_team_ids = set(managed_teams(user).values_list("id", flat=True))
+
     events = (
         Event.objects.filter(rounds__in=candidate_round_ids)
         .filter(refer_program__team__in=user_member_teams(user))
@@ -233,7 +238,7 @@ def _gate_rounds_by_event_visibility(qs, user):
     hidden = set()
     for event in events:
         team = event.team
-        is_manager = team is not None and team.is_managed_by(user)
+        is_manager = team is not None and team.id in managed_team_ids
         visible = is_manager or event.aspect_visible_to_athlete("rounds")
         linked_ids = [r.id for r in event.rounds.all() if r.id in candidate_round_ids]
         if visible:

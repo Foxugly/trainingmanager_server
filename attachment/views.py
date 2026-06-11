@@ -328,7 +328,7 @@ class AttachmentViewSet(viewsets.GenericViewSet):
                 object_id=target.pk,
                 status=Attachment.READY,
             )
-            .select_related("uploaded_by")
+            .select_related("uploaded_by", "content_type")
             .order_by("-created_at")
         )
 

@@ -2,6 +2,7 @@ import base64
 import binascii
 import re
 
+from django.db.models import BooleanField, Case, Q, Value, When
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import translation
@@ -68,22 +69,32 @@ class TeamViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return Team.objects.none()
-        qs = (
-            user_visible_teams(self.request.user)
-            .select_related("owner", "default_place")
-            .prefetch_related(
+        qs = user_visible_teams(self.request.user).select_related("owner", "level")
+        if self.action == "list":
+            # The list serializer drops logo + the nested M2M + default_place
+            # (see TeamSerializer.get_fields), so don't fetch them. The base64
+            # logo (up to ~375 KB) is deferred; a cheap _has_logo annotation
+            # lets logo_url decide presence without touching the deferred column
+            # (which would re-issue one SELECT per row — an N+1).
+            qs = (
+                qs.defer("logo")
+                .annotate(
+                    _has_logo=Case(
+                        When(Q(logo__isnull=True) | Q(logo=""), then=Value(False)),
+                        default=Value(True),
+                        output_field=BooleanField(),
+                    )
+                )
+                .prefetch_related("managers", "team_sports__sport__energy_systems")
+            )
+        else:
+            qs = qs.select_related("default_place").prefetch_related(
                 "managers",
                 "places",
                 "equipment",
                 "attendance_statuses",
-                "team_sports__sport",
+                "team_sports__sport__energy_systems",
             )
-        )
-        # The base64 logo (up to ~375 KB) is nulled out of the list payload
-        # (served via logo_url instead); don't drag it out of Postgres for
-        # every row on the list. Detail/update still need it.
-        if self.action == "list":
-            qs = qs.defer("logo")
         return qs
 
     def perform_create(self, serializer):

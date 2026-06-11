@@ -47,9 +47,16 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return TeamJoinRequest.objects.none()
         user = self.request.user
-        return TeamJoinRequest.objects.filter(
-            Q(user=user) | Q(team__in=managed_teams(user))
-        ).distinct()
+        # select_related the two FKs the serializer dereferences per row
+        # (user.username/first_name/last_name + responded_by.username) to avoid
+        # an N+1 across the manager's join-request list.
+        return (
+            TeamJoinRequest.objects.filter(
+                Q(user=user) | Q(team__in=managed_teams(user))
+            )
+            .select_related("user", "responded_by")
+            .distinct()
+        )
 
     def perform_create(self, serializer):
         instance = serializer.save(user=self.request.user)

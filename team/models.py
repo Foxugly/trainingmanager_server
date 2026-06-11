@@ -252,9 +252,15 @@ class Team(models.Model):
 
     @property
     def default_sport(self):
-        """The team's default sport (the TeamSport flagged is_default), or None."""
-        ts = self.team_sports.filter(is_default=True).select_related("sport").first()
-        return ts.sport if ts is not None else None
+        """The team's default sport (the TeamSport flagged is_default), or None.
+
+        Iterates ``team_sports.all()`` so a ``prefetch_related('team_sports__sport')``
+        on the queryset is honoured (no per-row query in list/detail). Falls back
+        to loading the small per-team set when not prefetched."""
+        for ts in self.team_sports.all():
+            if ts.is_default:
+                return ts.sport
+        return None
 
     @property
     def sport(self):

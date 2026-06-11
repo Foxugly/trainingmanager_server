@@ -51,8 +51,15 @@ class AuditLogListView(generics.ListAPIView):
 
         team_id = self.request.query_params.get("team")
         if team_id:
-            if not user.is_superuser and not managed_teams(user).filter(pk=team_id).exists():
+            try:
+                team_pk = int(team_id)
+            except (TypeError, ValueError):
                 raise PermissionDenied("You do not manage this team.")
-            qs = qs.filter(team_id=team_id)
+            # Reuse the managed_ids set already resolved above instead of a 2nd
+            # managed_teams() DISTINCT query. (Short-circuits for superusers,
+            # for whom managed_ids is never computed.)
+            if not user.is_superuser and team_pk not in managed_ids:
+                raise PermissionDenied("You do not manage this team.")
+            qs = qs.filter(team_id=team_pk)
 
         return qs.order_by("-created_at")
