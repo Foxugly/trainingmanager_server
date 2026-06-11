@@ -53,16 +53,24 @@ def test_GET_me_member_id_returns_linked_member(auth_client, authenticated_user)
     assert response.json()["member_id"] == member.id
 
 
-def test_GET_me_exposes_is_staff_readonly_but_not_is_superuser(auth_client):
-    """is_staff is exposed READ-ONLY so the SPA can gate its admin back-office;
-    is_superuser is never exposed. Server-side permissions still enforce every
-    admin endpoint regardless of this flag."""
+def test_GET_me_exposes_is_staff_and_is_superuser_readonly(auth_client, authenticated_user):
+    """is_staff and is_superuser are exposed READ-ONLY so the SPA can gate UI
+    affordances (the admin link is superuser-only). They must NOT be writable via
+    PATCH — server-side permissions still enforce every admin endpoint regardless."""
     response = auth_client.get("/api/v1/me/")
     assert response.status_code == 200
     body = response.json()
-    assert "is_staff" in body
     assert body["is_staff"] is False
-    assert "is_superuser" not in body
+    assert body["is_superuser"] is False
+
+    # Privilege-escalation guard: PATCHing the flags must be ignored.
+    patched = auth_client.patch(
+        "/api/v1/me/", {"is_staff": True, "is_superuser": True}, format="json"
+    )
+    assert patched.status_code == 200
+    authenticated_user.refresh_from_db()
+    assert authenticated_user.is_staff is False
+    assert authenticated_user.is_superuser is False
 
 
 def test_PATCH_me_cannot_promote_to_staff(auth_client, authenticated_user):
@@ -77,11 +85,10 @@ def test_PATCH_me_cannot_promote_to_staff(auth_client, authenticated_user):
     )
     assert response.status_code == 200
     body = response.json()
-    # is_staff is exposed but READ-ONLY: the attempted promotion is silently
-    # ignored and the response still reports the original (non-staff) value.
+    # is_staff / is_superuser are exposed but READ-ONLY: the attempted promotion
+    # is silently ignored and the response still reports the original values.
     assert body["is_staff"] is False
-    # is_superuser is never serialized.
-    assert "is_superuser" not in body
+    assert body["is_superuser"] is False
     # first_name update should still go through (proves PATCH wasn't blocked
     # entirely; only the privileged fields were silently ignored).
     assert body["first_name"] == "Hacker"
