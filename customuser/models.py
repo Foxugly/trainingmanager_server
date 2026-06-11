@@ -97,6 +97,18 @@ class CustomUser(AbstractUser):
             "(otherwise anonymous) feed. Rotate it to revoke an old URL."
         ),
     )
+    magic_link_nonce = models.CharField(
+        max_length=32,
+        null=True,
+        blank=True,
+        default=None,
+        help_text=_(
+            "Single-use nonce for the current passwordless magic-login link. "
+            "Set when a link is requested, baked into the signed token, and "
+            "cleared (consumed) on exchange — so a link works at most once and "
+            "a new request invalidates the previous one. NULL = no link pending."
+        ),
+    )
     objects = CustomUserManager()
 
     USERNAME_FIELD = "username"

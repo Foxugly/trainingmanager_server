@@ -15,6 +15,7 @@ EmailAddress exists, the ``verified`` flag is authoritative.
 """
 
 import logging
+import uuid
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -60,7 +61,12 @@ def send_magic_link_email(user) -> None:
     raised (so the request endpoint stays constant-time / non-leaky)."""
     if not getattr(user, "email", ""):
         return
-    token = make_magic_link_token(user.id)
+    # Mint + persist a fresh single-use nonce: this also invalidates any
+    # previously-issued (still-unexpired) link for this user.
+    nonce = uuid.uuid4().hex
+    user.magic_link_nonce = nonce
+    user.save(update_fields=["magic_link_nonce"])
+    token = make_magic_link_token(user.id, nonce)
     link = _magic_link_url(token)
     with translation.override(user.language or "en"):
         subject = f"[TrainingManager] {_('Your sign-in link')}"
@@ -100,15 +106,28 @@ def request_magic_link(email: str) -> None:
     send_magic_link_email(user)
 
 
-def exchange_magic_link(user_id: int):
-    """Resolve the user id baked in a magic-link token and return the user
-    iff it would normally be allowed to log in (still active +
-    email-confirmed). Returns ``None`` for any refusal so the view can map
-    a single response shape and never leak the cause.
+def exchange_magic_link(user_id: int, nonce: str):
+    """Resolve the user id + nonce baked in a magic-link token and return the
+    user iff it would normally be allowed to log in (still active +
+    email-confirmed) AND the single-use nonce is still valid. Returns ``None``
+    for any refusal so the view can map a single response shape and never leak
+    the cause.
+
+    The nonce is CONSUMED atomically (a conditional UPDATE that only the first
+    exchange wins), so a token works at most once even under a concurrent
+    double-submit, and a replay after the first use returns ``None``.
     """
     user = User.objects.filter(pk=user_id).first()
     if user is None:
         return None
     if not user.is_active or not _is_email_confirmed(user):
+        return None
+    if not nonce:
+        return None
+    consumed = User.objects.filter(pk=user_id, magic_link_nonce=nonce).update(
+        magic_link_nonce=None
+    )
+    if consumed != 1:
+        # Already used, or the nonce was rotated by a newer request.
         return None
     return user

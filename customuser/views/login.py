@@ -178,14 +178,21 @@ class MagicLinkExchangeView(APIView):
                 {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Payload is "<user_id>:<nonce>" (cf. magic_link_token).
+        user_id_str, sep, nonce = raw.partition(":")
         try:
-            user_id = int(raw)
+            user_id = int(user_id_str)
         except (ValueError, TypeError):
             return Response(
                 {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
             )
+        if not sep or not nonce:
+            return Response(
+                {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        user = exchange_magic_link(user_id)
+        # exchange consumes the single-use nonce — a replay returns None (400).
+        user = exchange_magic_link(user_id, nonce)
         if user is None:
             return Response(
                 {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
