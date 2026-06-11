@@ -125,7 +125,9 @@ class EventViewSet(viewsets.ModelViewSet):
 
     serializer_class = EventSerializer
     filterset_fields = {
-        "refer_program": ["exact"],
+        # "in" lets the calendar fetch all selected programs' events in ONE
+        # request (?refer_program__in=1,2,3) instead of one request per program.
+        "refer_program": ["exact", "in"],
         "date": ["exact", "gte", "lte"],
         "color": ["exact"],
     }

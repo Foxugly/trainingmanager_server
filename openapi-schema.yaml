@@ -1754,6 +1754,15 @@ paths:
         name: refer_program
         schema:
           type: integer
+      - in: query
+        name: refer_program__in
+        schema:
+          type: array
+          items:
+            type: integer
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - name: search
         required: false
         in: query
@@ -4585,6 +4594,15 @@ paths:
         name: team
         schema:
           type: integer
+      - in: query
+        name: team__in
+        schema:
+          type: array
+          items:
+            type: integer
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       tags:
       - programs
       security:
@@ -8613,6 +8631,9 @@ components:
           allOf:
           - $ref: '#/components/schemas/ProgramMinimal'
           readOnly: true
+        team_id:
+          type: integer
+          readOnly: true
         sport:
           allOf:
           - $ref: '#/components/schemas/Sport'
@@ -8710,6 +8731,7 @@ components:
       - rounds
       - rounds_detail
       - sport
+      - team_id
       - updated_at
     EventDebrief:
       type: object

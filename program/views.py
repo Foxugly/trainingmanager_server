@@ -62,7 +62,16 @@ class ProgramViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProgramSerializer
-    filterset_fields = ["name", "date_start", "date_end", "team", "is_active"]
+    # dict form keeps the existing exact-match params and adds team__in, so the
+    # calendar/event-form can fetch all of several teams' programs in ONE request
+    # (?team__in=1,2,3) instead of one request per team.
+    filterset_fields = {
+        "name": ["exact"],
+        "date_start": ["exact"],
+        "date_end": ["exact"],
+        "team": ["exact", "in"],
+        "is_active": ["exact"],
+    }
     search_fields = ["name"]
     ordering_fields = ["name", "date_start", "date_end"]
     ordering = ["name"]

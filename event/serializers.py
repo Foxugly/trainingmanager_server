@@ -160,6 +160,12 @@ class EventSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    # The owning team's id (resolved via refer_program, already select_related —
+    # no extra query). refer_program is only a ProgramMinimal {id,name}, so the
+    # detail view would otherwise fetch the program just to learn the team id and
+    # then fetch the team — exposing team_id here lets it fetch the team directly
+    # (one fewer round-trip on the most-opened screen).
+    team_id = serializers.IntegerField(source="refer_program.team_id", read_only=True)
 
     class Meta:
         model = Event
@@ -182,6 +188,7 @@ class EventSerializer(serializers.ModelSerializer):
             "total",
             "refer_program",
             "refer_program_id",
+            "team_id",
             "sport",
             "sport_id",
             "rounds",
