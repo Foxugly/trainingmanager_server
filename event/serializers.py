@@ -216,8 +216,11 @@ class EventSerializer(serializers.ModelSerializer):
             "generated_by_ai",
             "ai_response",
             "ai_generated_at",
-            # ai_athlete_brief is written ONLY via /events/{id}/explain/.
-            "ai_athlete_brief",
+            # ai_athlete_brief is *generated* via /events/{id}/explain/ but is also
+            # editable by managers through the normal update path (writable here):
+            # the explain action seeds it, the coach can then tweak the wording.
+            # Plain text, rendered athlete-side via text interpolation (no HTML),
+            # so no sanitization needed — same as `debrief`.
             "created_at",
             "updated_at",
         ]

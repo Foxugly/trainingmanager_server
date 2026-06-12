@@ -86,3 +86,32 @@ def test_not_configured_returns_500(api_client, owner, event, settings):
     api_client.force_authenticate(user=owner)
     resp = api_client.post(_url(event.pk), {}, format="json")
     assert resp.status_code == 500
+
+
+def test_manager_can_edit_brief_via_patch(api_client, owner, event):
+    """The AI seeds ai_athlete_brief, but a manager can also tweak its wording
+    through the ordinary event update path (the field is writable, not read-only)."""
+    api_client.force_authenticate(user=owner)
+    resp = api_client.patch(
+        f"/api/v1/events/{event.pk}/",
+        {"ai_athlete_brief": "Échauffez-vous bien, on vise l'aérobie aujourd'hui."},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.json()
+    event.refresh_from_db()
+    assert event.ai_athlete_brief == "Échauffez-vous bien, on vise l'aérobie aujourd'hui."
+
+
+def test_athlete_cannot_edit_brief_via_patch(api_client, team, event):
+    """An athlete (non-manager) cannot write the brief — the event update path is
+    manager-gated, so making the field writable does not expose it to athletes."""
+    athlete = User.objects.create_user(email="ex_a3@x.test", password="p")
+    m = Member.objects.create(firstname="A", lastname="T", user=athlete)
+    TeamMembership.objects.create(team=team, member=m)
+    api_client.force_authenticate(user=athlete)
+    resp = api_client.patch(
+        f"/api/v1/events/{event.pk}/", {"ai_athlete_brief": "hacked"}, format="json"
+    )
+    assert resp.status_code in (403, 404)
+    event.refresh_from_db()
+    assert event.ai_athlete_brief == ""
