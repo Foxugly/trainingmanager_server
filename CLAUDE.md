@@ -20,7 +20,7 @@ Beyond that core, the project has grown a number of apps — keep this list in m
 - **audit** — audit log. **level** — team skill levels referential.
 - Team config also carries weekly **training slots** (`TrainingSlot`, per-slot CRUD under `teams/{id}/training-slots/`) and a read-only **`dashboard/summary/`** aggregate endpoint.
 
-Auth uses a custom user model `customuser.CustomUser` with `language` + `is_staff` and a few `is_*_admin` fields. JWT (simplejwt) for the API; allauth (headless) for signup/email confirmation/password reset.
+Auth uses a custom user model `customuser.CustomUser` with `language` + `is_staff` and a few `is_*_admin` fields. JWT (simplejwt) for the API; allauth (headless) for signup/email confirmation/password reset. The team-join **magic-link** (`/api/v1/join-magic/{token}/`) is **single-use AND 15-min expiring** (consumed on first use, rejected past TTL). `/me/` intentionally exposes **read-only `is_staff` + `is_superuser`** so the SPA can gate the admin area / admin link (superuser-gated) without a second call — do not re-hide them.
 
 ## Common commands
 
