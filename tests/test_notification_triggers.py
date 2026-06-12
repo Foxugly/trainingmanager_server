@@ -36,7 +36,7 @@ PERF_URL = "/api/v1/performances/"
 @pytest.fixture
 def coach_user():
     return User.objects.create_user(
-        username="nt_coach", email="nt_coach@local.test", password="pass"
+        email="nt_coach@local.test", password="pass"
     )
 
 
@@ -48,7 +48,7 @@ def coach_team(coach_user):
 @pytest.fixture
 def athlete_user():
     return User.objects.create_user(
-        username="nt_athlete", email="nt_athlete@local.test", password="pass"
+        email="nt_athlete@local.test", password="pass"
     )
 
 
@@ -222,7 +222,7 @@ def test_plan_generated_notifies_active_athletes(
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     # A second active athlete with a linked user.
     other_user = User.objects.create_user(
-        username="nt_other", email="nt_other@local.test", password="pass"
+        email="nt_other@local.test", password="pass"
     )
     other_member = Member.objects.create(
         firstname="Oth", lastname="Er", user=other_user
@@ -232,7 +232,7 @@ def test_plan_generated_notifies_active_athletes(
     nouser = Member.objects.create(firstname="No", lastname="User")
     TeamMembership.objects.create(team=coach_team, member=nouser)
     # An athlete who LEFT — must be skipped.
-    left_user = User.objects.create_user(username="nt_left", email="l@local.test", password="p")
+    left_user = User.objects.create_user(email="l@local.test", password="p")
     left_member = Member.objects.create(firstname="Le", lastname="Ft", user=left_user)
     TeamMembership.objects.create(
         team=coach_team, member=left_member, left_at=timezone.now()
@@ -278,9 +278,9 @@ def test_plan_generated_notifies_active_athletes(
 
 
 def _team_with_athlete():
-    coach = User.objects.create_user(username="sr_coach", email="src@local.test", password="p")
+    coach = User.objects.create_user(email="src@local.test", password="p")
     team = TeamFactory(owner=coach, is_active=True)
-    user = User.objects.create_user(username="sr_ath", email="sra@local.test", password="p")
+    user = User.objects.create_user(email="sra@local.test", password="p")
     member = Member.objects.create(firstname="Se", lastname="Ssion", user=user)
     TeamMembership.objects.create(team=team, member=member)
     program = ProgramFactory(team=team)
@@ -332,7 +332,7 @@ def test_duplicate_active_membership_rejected():
 
 
 def test_reminder_skips_member_without_user():
-    coach = User.objects.create_user(username="sr_c2", email="c2@local.test", password="p")
+    coach = User.objects.create_user(email="c2@local.test", password="p")
     team = TeamFactory(owner=coach, is_active=True)
     member = Member.objects.create(firstname="No", lastname="User")
     TeamMembership.objects.create(team=team, member=member)

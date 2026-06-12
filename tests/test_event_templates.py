@@ -24,7 +24,7 @@ User = get_user_model()
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="tpl_owner", email="tpl_o@x.test", password="p")
+    return User.objects.create_user(email="tpl_o@x.test", password="p")
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_save_as_template_clones_rounds(api_client, owner, team, event_with_roun
 
 
 def test_save_as_template_requires_manager(api_client, team, event_with_round):
-    athlete = User.objects.create_user(username="tpl_ath", email="tpl_a@x.test", password="p")
+    athlete = User.objects.create_user(email="tpl_a@x.test", password="p")
     api_client.force_authenticate(user=athlete)
     resp = api_client.post(
         f"/api/v1/events/{event_with_round.pk}/save-as-template/", {"name": "x"}, format="json"

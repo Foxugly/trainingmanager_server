@@ -19,7 +19,6 @@ User = get_user_model()
 
 def _user(digest, **kw):
     return User.objects.create_user(
-        username=kw.get("username", "d_user"),
         email=kw.get("email", "d@local.test"),
         password="p",
         digest_email=digest,
@@ -35,7 +34,7 @@ def test_digest_user_gets_no_immediate_email():
 
 
 def test_non_digest_user_gets_immediate_email():
-    user = _user(False, username="n_user", email="n@local.test")
+    user = _user(False, email="n@local.test")
     notify(user, NotificationType.PERFORMANCE_LOGGED, title="X", body="b", url="/x")
     assert len(mail.outbox) == 1
 
@@ -60,7 +59,7 @@ def test_send_digests_batches_and_advances_marker():
 
 
 def test_send_digests_skips_non_digest_users():
-    user = _user(False, username="n2", email="n2@local.test")
+    user = _user(False, email="n2@local.test")
     Notification.objects.create(recipient=user, type=NotificationType.PERFORMANCE_LOGGED, title="X")
     call_command("send_digests", stdout=StringIO())
     assert mail.outbox == []

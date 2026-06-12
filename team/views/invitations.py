@@ -115,7 +115,8 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
             subject = f"[TrainingManager] {_('You are invited to')} {invitation.team.name}"
             body = (
                 f"{_('Hello')} {invitation.member.firstname},\n\n"
-                f"{invitation.invited_by.username} {_('has invited you to join the team')} "
+                f"{invitation.invited_by.get_full_name() or invitation.invited_by.email} "
+                f"{_('has invited you to join the team')} "
                 f'"{invitation.team.name}".\n\n'
                 f"{_('To finalize your registration, click the link below:')}\n"
                 f"{link}\n\n"
@@ -184,7 +185,7 @@ class InvitationLookupView(APIView):
                     name="CompleteInvitationResponse",
                     fields={
                         "detail": drf_serializers.CharField(),
-                        "username": drf_serializers.CharField(),
+                        "email": drf_serializers.EmailField(),
                         "access": drf_serializers.CharField(),
                         "refresh": drf_serializers.CharField(),
                     },
@@ -205,7 +206,6 @@ class InvitationLookupView(APIView):
         description="Finalize invitation: create the user, link Member, return JWT.",
     )
     def post(self, request, token):
-        from allauth.account.models import EmailAddress
         from django.db import IntegrityError
         from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -227,16 +227,13 @@ class InvitationLookupView(APIView):
         User = get_user_model()
 
         # Re-validate that the invitation email is not already claimed before
-        # create_user — otherwise the unique email / allauth EmailAddress
-        # constraints raise IntegrityError and surface as a 500. Return a clean
-        # 409 (code=email_taken) instead. This can legitimately happen if a
-        # user registered with this email between the invitation being sent and
+        # create_user — otherwise the unique-email constraint raises
+        # IntegrityError and surfaces as a 500. Return a clean 409
+        # (code=email_taken) instead. This can legitimately happen if a user
+        # registered with this email between the invitation being sent and
         # finalized (the create-invitation path only refuses existing emails at
         # send time).
-        if (
-            User.objects.filter(email__iexact=invitation.email).exists()
-            or EmailAddress.objects.filter(email__iexact=invitation.email).exists()
-        ):
+        if User.objects.filter(email__iexact=invitation.email).exists():
             return Response(
                 {
                     "code": "email_taken",
@@ -249,19 +246,16 @@ class InvitationLookupView(APIView):
             )
 
         with transaction.atomic():
+            # email_confirmed=True: the invitee proved control of this mailbox
+            # by following the tokenized invitation link sent to it (the same
+            # ownership proof allauth's verified EmailAddress used to encode).
             user = User.objects.create_user(
-                username=serializer.validated_data["username"],
                 email=invitation.email,
                 password=serializer.validated_data["password"],
                 first_name=invitation.member.firstname,
                 last_name=invitation.member.lastname,
                 is_active=True,
-            )
-            EmailAddress.objects.create(
-                user=user,
-                email=invitation.email,
-                verified=True,
-                primary=True,
+                email_confirmed=True,
             )
             invitation.member.user = user
             invitation.member.save()
@@ -290,7 +284,7 @@ class InvitationLookupView(APIView):
         return Response(
             {
                 "detail": _("Account created and invitation finalized."),
-                "username": user.username,
+                "email": user.email,
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
             },

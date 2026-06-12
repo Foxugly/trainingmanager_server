@@ -37,9 +37,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "django_filters",
-    "allauth",
-    "allauth.account",
-    "allauth.socialaccount",
     "sport",
     "ai",
     "aiusage",
@@ -82,7 +79,6 @@ MIDDLEWARE = [
     "tools.middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "django-trainingmanager.urls"
@@ -333,20 +329,7 @@ SPECTACULAR_SETTINGS = {
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
 ]
-
-ACCOUNT_LOGIN_METHODS = {"username", "email"}
-ACCOUNT_SIGNUP_FIELDS = ["username*", "email*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
-ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
-
-# Custom adapter routes the email confirmation link to the frontend
-# (replaces the role HEADLESS_FRONTEND_URLS used to play before we
-# disabled allauth.headless).
-ACCOUNT_ADAPTER = "customuser.adapter.FrontendAccountAdapter"
 
 # Public SPA base URL (fleet OPERATIONS.md §3.14). FRONTEND_URL stays as an
 # in-code alias — adapter / magic_action / team views still reference it.

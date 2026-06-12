@@ -94,7 +94,7 @@ class DataExportView(APIView):
         data = build_export(user)
         response = Response(data)
         response["Content-Disposition"] = (
-            f'attachment; filename="trainingmanager-export-{user.username}.json"'
+            f'attachment; filename="trainingmanager-export-{user.email}.json"'
         )
         return response
 
@@ -293,7 +293,6 @@ class EmailChangeConfirmView(APIView):
         },
     )
     def post(self, request):
-        from allauth.account.models import EmailAddress
         from django.core.signing import SignatureExpired
         from django.db import transaction
 
@@ -328,32 +327,22 @@ class EmailChangeConfirmView(APIView):
 
         # The uniqueness check + the write run in ONE atomic block so two
         # confirmations racing toward the same address can't both pass the
-        # check and create duplicate accounts; allauth's unique-email
-        # constraint is the backstop (IntegrityError -> clean 409).
+        # check and create duplicate accounts; the unique-email constraint on
+        # CustomUser.email is the backstop (IntegrityError -> clean 409).
         try:
             with transaction.atomic():
                 taken = (
                     CustomUser.objects.filter(email__iexact=new_email)
                     .exclude(pk=user.pk)
                     .exists()
-                    or EmailAddress.objects.filter(email__iexact=new_email)
-                    .exclude(user_id=user.pk)
-                    .exists()
                 )
                 if taken:
                     raise _EmailTaken()
-                # Demote any other primary, then make the new address
-                # primary+verified and sync the user's email column.
-                EmailAddress.objects.filter(user=user, primary=True).exclude(
-                    email__iexact=new_email
-                ).update(primary=False)
-                EmailAddress.objects.update_or_create(
-                    user=user,
-                    email=new_email,
-                    defaults={"verified": True, "primary": True},
-                )
+                # Swap the user's email and (re)assert email_confirmed: clicking
+                # the link sent to the NEW address proves ownership of it.
                 user.email = new_email
-                user.save(update_fields=["email"])
+                user.email_confirmed = True
+                user.save(update_fields=["email", "email_confirmed"])
         except (_EmailTaken, IntegrityError):
             return Response(
                 {"code": "email_taken", "detail": _("This email is already in use.")},
@@ -435,7 +424,7 @@ class AccountDeleteView(APIView):
             request,
             AuditAction.ACCOUNT_DELETED,
             team=None,
-            target_repr=f"User #{user.id} ({user.username})",
+            target_repr=f"User #{user.id} ({user.email})",
         )
 
         user.delete()

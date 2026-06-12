@@ -24,7 +24,7 @@ def _url(team_pk):
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="rd_owner", email="rd_o@x.test", password="p")
+    return User.objects.create_user(email="rd_o@x.test", password="p")
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def test_unauthenticated_returns_401(api_client, team):
 
 
 def test_athlete_forbidden(api_client, team):
-    athlete = User.objects.create_user(username="rd_ath", email="rd_a@x.test", password="p")
+    athlete = User.objects.create_user(email="rd_a@x.test", password="p")
     m = Member.objects.create(firstname="A", lastname="T", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
     api_client.force_authenticate(user=athlete)

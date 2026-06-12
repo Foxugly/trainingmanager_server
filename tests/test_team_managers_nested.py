@@ -18,7 +18,7 @@ User = get_user_model()
 @pytest.fixture
 def owner_user(db):
     return User.objects.create_user(
-        username="tm_owner", email="tm_owner@local.test", password="pass"
+        email="tm_owner@local.test", password="pass"
     )
 
 
@@ -31,7 +31,6 @@ def owner_client(api_client, owner_user):
 @pytest.fixture
 def manager_user(db):
     return User.objects.create_user(
-        username="tm_manager",
         email="tm_manager@local.test",
         password="pass",
         first_name="Mana",
@@ -55,16 +54,17 @@ def test_GET_team_managers_returns_nested_user_public(owner_client, team_with_ma
     assert len(data["managers"]) == 1
     nested = data["managers"][0]
     assert "id" in nested
-    assert "username" in nested
     assert "first_name" in nested
     assert "last_name" in nested
-    # CustomUserPublic must NOT leak email
+    # Email-only: there is no username field anymore. CustomUserPublic must NOT
+    # leak the email either.
+    assert "username" not in nested
     assert "email" not in nested
 
 
 def test_PATCH_team_managers_via_managers_ids(owner_client, team_with_manager):
     new_mgr = User.objects.create_user(
-        username="tm_new_mgr", email="tm_new_mgr@local.test", password="pass"
+        email="tm_new_mgr@local.test", password="pass"
     )
     response = owner_client.patch(
         f"/api/v1/teams/{team_with_manager.pk}/",
@@ -83,7 +83,7 @@ def test_PATCH_managers_ids_by_non_owner_manager_is_403(
     (self-escalation). managers_owner_only is raised."""
     api_client.force_authenticate(user=manager_user)
     intruder = User.objects.create_user(
-        username="tm_intruder", email="tm_intruder@local.test", password="pass"
+        email="tm_intruder@local.test", password="pass"
     )
     response = api_client.patch(
         f"/api/v1/teams/{team_with_manager.pk}/",
@@ -112,7 +112,7 @@ def test_PATCH_other_fields_by_manager_still_allowed(api_client, team_with_manag
 def test_PATCH_with_old_managers_field_is_ignored(owner_client, team_with_manager):
     """`managers` is now read-only; PATCH on it should not mutate state."""
     new_mgr = User.objects.create_user(
-        username="tm_should_not_attach", email="tm_snan@local.test", password="pass"
+        email="tm_snan@local.test", password="pass"
     )
     before = list(team_with_manager.managers.values_list("pk", flat=True))
     response = owner_client.patch(

@@ -17,15 +17,21 @@ def generate_calendar_token():
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, username, email, password=None, **extra_fields):
-        """Create and save a user with the given username, email and password.
+    """Email-only user manager (no username).
+
+    ``email`` is the ``USERNAME_FIELD`` — there is no ``username`` column
+    anymore. Mirrors Django's stock ``UserManager`` contract but keyed on
+    email instead of username (fleet canonical pattern, OPERATIONS.md §3.16).
+    """
+
+    use_in_migrations = True
+
+    def create_user(self, email, password=None, **extra_fields):
+        """Create and save a user with the given email and password.
 
         Accepts any AbstractUser/CustomUser field as keyword argument
-        (first_name, last_name, language, is_staff, ...). Mirrors Django's
-        standard UserManager.create_user contract.
+        (first_name, last_name, language, is_staff, ...).
         """
-        if not username:
-            raise ValueError("Username is required.")
         if not email:
             raise ValueError("Email is required.")
 
@@ -34,12 +40,12 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_active", True)
 
         email = self.normalize_email(email)
-        user = self.model(username=username, email=email, **extra_fields)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, email, password=None, **extra_fields):
+    def create_superuser(self, email, password=None, **extra_fields):
         """Create and save a superuser. is_staff and is_superuser are forced to True."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -49,10 +55,23 @@ class CustomUserManager(BaseUserManager):
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
 
-        return self.create_user(username, email, password, **extra_fields)
+        return self.create_user(email, password, **extra_fields)
 
 
 class CustomUser(AbstractUser):
+    # Email-only auth: drop username entirely, key on email (fleet canonical
+    # pattern, OPERATIONS.md §3.16). USERNAME_FIELD = "email" below.
+    username = None
+    email = models.EmailField(_("email address"), unique=True)
+    email_confirmed = models.BooleanField(
+        default=False,
+        help_text=_(
+            "True once the user has proven control of their email address "
+            "(registration confirmation, password reset, or a verified email "
+            "change). The login + magic-link gates require this. Replaces the "
+            "former allauth EmailAddress.verified flag."
+        ),
+    )
     language = models.CharField(
         _("language"),
         max_length=2,
@@ -111,10 +130,12 @@ class CustomUser(AbstractUser):
     )
     objects = CustomUserManager()
 
-    USERNAME_FIELD = "username"
+    USERNAME_FIELD = "email"
+    EMAIL_FIELD = "email"
+    REQUIRED_FIELDS = []
 
     def __str__(self):
-        return self.username
+        return self.email
 
     def active_owned_teams_count(self) -> int:
         """Number of teams the user currently owns AND that are still active.

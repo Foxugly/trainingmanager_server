@@ -266,7 +266,8 @@ def test_GET_team_ai_usage_details_includes_username(auth_client_trainer, traine
     body = response.json()
     assert body["count"] == 1
     row = body["results"][0]
-    assert row["username"] == trainer_user.username
+    # Email-only: the "username" denorm field is sourced off email now.
+    assert row["username"] == trainer_user.email
     assert row["endpoint"] == "plan"
     assert row["total_tokens"] == 1500
 

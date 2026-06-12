@@ -1,5 +1,10 @@
 """Public self-signup: account creation + email confirmation + resend."""
 
+import logging
+
+from django.conf import settings
+from django.core.mail import send_mail
+from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import serializers as drf_serializers
@@ -12,6 +17,8 @@ from tools.exceptions import CaptchaFailed
 from tools.throttling import RegisterThrottle, ResendEmailThrottle
 from tools.turnstile import get_remote_ip, verify_turnstile_token
 
+from ..email_tokens import make_key, parse_key, token_is_valid
+from ..frontend_urls import get_email_confirmation_url
 from ..models import CustomUser
 from ..serializers import (
     EmailConfirmSerializer,
@@ -20,13 +27,43 @@ from ..serializers import (
 )
 from ._helpers import _jwt_pair, _user_payload
 
+logger = logging.getLogger(__name__)
+
+
+def send_confirmation_email(user) -> None:
+    """Mail the user a confirmation link (Django default_token_generator + uid,
+    mirroring QuizOnline). Best-effort: a delivery failure is logged, not raised
+    — the account still exists with email_confirmed=False so /auth/email/resend/
+    works rather than leaving a half-registered state."""
+    key = make_key(user)
+    url = get_email_confirmation_url(key)
+    with translation.override(user.language or "en"):
+        subject = f"[TrainingManager] {_('Confirm your registration')}"
+        body = (
+            f"{_('Hello')} {user.first_name or user.email},\n\n"
+            f"{_('Welcome! Please confirm your email address to activate your account.')}\n\n"
+            f"{_('To confirm, click the link below:')}\n"
+            f"{url}\n\n"
+            f"{_('If you did not create this account, you can safely ignore this email.')}\n"
+        )
+        try:
+            send_mail(
+                subject=str(subject),
+                message=str(body),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception("Failed to send confirmation email to %s", user.email)
+
 
 class RegisterView(APIView):
     """POST /api/v1/auth/register/ — public self-signup.
 
-    Creates a CustomUser (is_active=True) plus an unverified EmailAddress
-    via allauth, then sends a confirmation email. No JWT is returned —
-    the caller must verify their email before obtaining tokens.
+    Creates a CustomUser (is_active=True, email_confirmed=False), then sends a
+    confirmation email carrying a Django default_token_generator link. No JWT is
+    returned — the caller must confirm their email before obtaining tokens.
 
     Rate-limited to 5 requests per hour per IP (anti-bot signup).
     """
@@ -46,29 +83,25 @@ class RegisterView(APIView):
                         "code": drf_serializers.ChoiceField(
                             choices=["registration_pending_verification"]
                         ),
-                        "username": drf_serializers.CharField(),
                         "email": drf_serializers.EmailField(),
                     },
                 ),
                 description=(
                     "Account created. Returns "
-                    "{detail, code: 'registration_pending_verification', username, email}. "
+                    "{detail, code: 'registration_pending_verification', email}. "
                     "JWT is intentionally NOT returned — the user must confirm their "
                     "email first."
                 ),
             ),
             400: OpenApiResponse(
                 description=(
-                    "Validation error. Field-level codes include `username_taken`, "
+                    "Validation error. Field-level codes include "
                     "`email_taken`, password validators."
                 )
             ),
         },
     )
     def post(self, request):
-        from allauth.account.models import EmailAddress
-        from django.db import transaction
-
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -78,25 +111,19 @@ class RegisterView(APIView):
         if not verify_turnstile_token(data["turnstile_token"], remote_ip=get_remote_ip(request)):
             raise CaptchaFailed()
 
-        # User + EmailAddress are created atomically so a failure on the second
-        # insert can't leave an orphaned user with a now-taken username/email but
-        # no EmailAddress (which would be unable to log in OR re-register).
-        with transaction.atomic():
-            user = CustomUser.objects.create_user(
-                username=data["username"],
-                email=data["email"],
-                password=data["password"],
-                first_name=data["first_name"],
-                last_name=data["last_name"],
-                language=data.get("language", "en"),
-            )
-            address = EmailAddress.objects.create(
-                user=user, email=user.email, primary=True, verified=False
-            )
-        # Send the confirmation AFTER commit: if the mail backend fails the
-        # account still exists with an unverified address, so /auth/email/resend/
-        # works rather than rolling back into a half-registered state.
-        address.send_confirmation(request, signup=True)
+        user = CustomUser.objects.create_user(
+            email=data["email"],
+            password=data["password"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            language=data.get("language", "en"),
+        )
+        # email_confirmed defaults to False on the model; be explicit anyway so
+        # the intent is obvious and a changed default can't silently auto-confirm.
+        if user.email_confirmed:
+            user.email_confirmed = False
+            user.save(update_fields=["email_confirmed"])
+        send_confirmation_email(user)
 
         return Response(
             {
@@ -104,7 +131,6 @@ class RegisterView(APIView):
                     "Account created. Please check your email to confirm your registration."
                 ),
                 "code": "registration_pending_verification",
-                "username": user.username,
                 "email": user.email,
             },
             status=status.HTTP_201_CREATED,
@@ -132,7 +158,6 @@ class ConfirmEmailView(APIView):
                             name="EmailConfirmUser",
                             fields={
                                 "id": drf_serializers.IntegerField(),
-                                "username": drf_serializers.CharField(),
                                 "email": drf_serializers.EmailField(),
                                 "first_name": drf_serializers.CharField(),
                                 "last_name": drf_serializers.CharField(),
@@ -149,37 +174,28 @@ class ConfirmEmailView(APIView):
         },
     )
     def post(self, request):
-        from allauth.account.models import EmailConfirmation, EmailConfirmationHMAC
-
         serializer = EmailConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         key = serializer.validated_data["key"]
 
-        # Try HMAC first (no DB row, default for ACCOUNT_EMAIL_CONFIRMATION_HMAC=True)
-        confirmation = EmailConfirmationHMAC.from_key(key)
-        if confirmation is None:
-            # Legacy fallback for db-stored confirmations.
-            try:
-                confirmation = EmailConfirmation.objects.get(key=key.lower())
-            except EmailConfirmation.DoesNotExist:
-                confirmation = None
-
-        if confirmation is None or confirmation.key_expired():
+        # key shape: "<uid>-<token>" (Django default_token_generator).
+        parsed = parse_key(key)
+        if parsed is None:
+            raise drf_serializers.ValidationError(
+                {"detail": _("Invalid or expired confirmation token.")},
+                code="invalid_or_expired_token",
+            )
+        user, token = parsed
+        if not token_is_valid(user, token):
             raise drf_serializers.ValidationError(
                 {"detail": _("Invalid or expired confirmation token.")},
                 code="invalid_or_expired_token",
             )
 
-        email_address = confirmation.confirm(request)
-        if email_address is None:
-            # confirm() returns None when EmailAddress no longer exists
-            # or was already confirmed in a way that cancelled this key.
-            raise drf_serializers.ValidationError(
-                {"detail": _("Invalid or expired confirmation token.")},
-                code="invalid_or_expired_token",
-            )
+        if not user.email_confirmed:
+            user.email_confirmed = True
+            user.save(update_fields=["email_confirmed"])
 
-        user = email_address.user
         return Response({**_jwt_pair(user), "user": _user_payload(user)})
 
 
@@ -220,18 +236,17 @@ class ResendEmailView(APIView):
         },
     )
     def post(self, request):
-        from allauth.account.models import EmailAddress
-
         serializer = EmailResendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"].lower()
 
-        try:
-            address = EmailAddress.objects.get(email__iexact=email, verified=False)
-            address.send_confirmation(request)
-        except EmailAddress.DoesNotExist:
-            # Anti-leak: silently no-op.
-            pass
+        # Anti-leak: only (re)send to a known, still-unconfirmed account;
+        # silently no-op otherwise. ``.filter().first()`` never raises.
+        user = CustomUser.objects.filter(
+            email__iexact=email, email_confirmed=False
+        ).first()
+        if user is not None:
+            send_confirmation_email(user)
 
         return Response(
             {

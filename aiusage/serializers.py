@@ -4,9 +4,11 @@ from .models import AIUsage
 
 
 class AIUsageDetailSerializer(serializers.ModelSerializer):
-    """Single AI call row, with username for display."""
+    """Single AI call row, with the user's email for display."""
 
-    username = serializers.CharField(source="user.username", read_only=True, default=None)
+    # Email-only: no username column — sourced off email (field NAME kept to
+    # avoid churn on the admin AI-usage UI that reads it).
+    username = serializers.CharField(source="user.email", read_only=True, default=None)
 
     class Meta:
         model = AIUsage

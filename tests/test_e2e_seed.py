@@ -5,7 +5,6 @@ settings.
 """
 
 import pytest
-from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -31,15 +30,11 @@ def test_create_e2e_data_seeds_expected_entities():
     manager = User.objects.get(email=MANAGER_EMAIL)
     assert manager.is_active
     assert manager.check_password(E2E_PASSWORD)
-    assert EmailAddress.objects.filter(
-        user=manager, email=MANAGER_EMAIL, verified=True, primary=True
-    ).exists()
+    assert manager.email_confirmed is True
 
     athlete = User.objects.get(email=ATHLETE_EMAIL)
     assert athlete.check_password(E2E_PASSWORD)
-    assert EmailAddress.objects.filter(
-        user=athlete, email=ATHLETE_EMAIL, verified=True
-    ).exists()
+    assert athlete.email_confirmed is True
 
     team = Team.objects.get(name=TEAM_NAME)
     assert team.owner == manager

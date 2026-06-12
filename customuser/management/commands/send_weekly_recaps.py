@@ -120,7 +120,7 @@ def build_email_body(recipient, recaps, date_from, date_to):
     `recaps` is the list of per-team recap dicts for the teams this recipient
     coaches. Must be called inside a translation.override block.
     """
-    greeting_name = recipient.first_name or recipient.username
+    greeting_name = recipient.first_name or recipient.email
     lines = [
         f"{_('Hello')} {greeting_name},",
         "",

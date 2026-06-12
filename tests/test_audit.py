@@ -32,7 +32,7 @@ AUDIT_URL = "/api/v1/audit-log/"
 
 @pytest.fixture
 def manager():
-    return UserFactory(username="audit_manager")
+    return UserFactory(email="audit_manager@local.test")
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def manager_client(api_client, manager):
 
 @pytest.fixture
 def outsider():
-    return UserFactory(username="audit_outsider")
+    return UserFactory(email="audit_outsider@local.test")
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def outsider_client(api_client, outsider):
 
 @pytest.fixture
 def athlete_user():
-    return UserFactory(username="audit_athlete")
+    return UserFactory(email="audit_athlete@local.test")
 
 
 @pytest.fixture
@@ -92,7 +92,7 @@ def test_record_creates_entry_with_snapshot(manager, team):
     assert entry.pk is not None
     assert entry.action == "member_removed"
     assert entry.actor_id == manager.pk
-    assert entry.actor_label == "audit_manager"  # snapshot of username
+    assert entry.actor_label == "audit_manager@local.test"  # snapshot of email
     assert entry.team_id == team.pk
     assert entry.target_repr == "Member #1 (Alice Martin)"
     assert entry.metadata == {"reason": "left"}
@@ -193,7 +193,7 @@ def test_manager_sees_their_team_entries(manager_client, manager, team):
     assert row["action_display"]  # human label present
     assert row["team"] == team.pk
     assert row["actor"] == manager.pk
-    assert row["actor_label"] == "audit_manager"
+    assert row["actor_label"] == "audit_manager@local.test"
 
 
 def test_outsider_sees_no_entries(outsider_client, manager, team):

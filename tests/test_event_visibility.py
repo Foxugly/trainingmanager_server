@@ -37,7 +37,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def owner_user():
-    return UserFactory(username="vis_owner")
+    return UserFactory(email="vis_owner@local.test")
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def team(owner_user):
 
 @pytest.fixture
 def athlete_user():
-    return UserFactory(username="vis_athlete2")
+    return UserFactory(email="vis_athlete2@local.test")
 
 
 @pytest.fixture

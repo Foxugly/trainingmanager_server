@@ -29,7 +29,7 @@ def present_status(db):
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="db_owner", email="db_o@x.test", password="p")
+    return User.objects.create_user(email="db_o@x.test", password="p")
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ def test_unauthenticated_returns_401(api_client, event):
 
 
 def test_athlete_forbidden(api_client, team, event):
-    athlete = User.objects.create_user(username="db_ath", email="db_a@x.test", password="p")
+    athlete = User.objects.create_user(email="db_a@x.test", password="p")
     m = Member.objects.create(firstname="Ath", lastname="L", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
     api_client.force_authenticate(user=athlete)
@@ -89,7 +89,7 @@ def test_debrief_not_exposed_to_athlete_via_event_get(api_client, owner, team, e
     """B-P1-a: the coach debrief must NOT leak through the ordinary event read."""
     event.debrief = "secret coach notes"
     event.save(update_fields=["debrief"])
-    athlete = User.objects.create_user(username="db_ath2", email="db_a2@x.test", password="p")
+    athlete = User.objects.create_user(email="db_a2@x.test", password="p")
     m = Member.objects.create(firstname="Ath", lastname="L", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
 

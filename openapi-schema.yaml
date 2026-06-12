@@ -910,9 +910,9 @@ paths:
       description: |-
         POST /api/v1/auth/register/ — public self-signup.
 
-        Creates a CustomUser (is_active=True) plus an unverified EmailAddress
-        via allauth, then sends a confirmation email. No JWT is returned —
-        the caller must verify their email before obtaining tokens.
+        Creates a CustomUser (is_active=True, email_confirmed=False), then sends a
+        confirmation email carrying a Django default_token_generator link. No JWT is
+        returned — the caller must confirm their email before obtaining tokens.
 
         Rate-limited to 5 requests per hour per IP (anti-bot signup).
       tags:
@@ -938,11 +938,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegisterResponse'
           description: 'Account created. Returns {detail, code: ''registration_pending_verification'',
-            username, email}. JWT is intentionally NOT returned — the user must confirm
-            their email first.'
+            email}. JWT is intentionally NOT returned — the user must confirm their
+            email first.'
         '400':
-          description: Validation error. Field-level codes include `username_taken`,
-            `email_taken`, password validators.
+          description: Validation error. Field-level codes include `email_taken`,
+            password validators.
   /api/v1/auth/token/:
     post:
       operationId: auth_token_create
@@ -7396,7 +7396,7 @@ components:
       - total_tokens
     AIUsageDetail:
       type: object
-      description: Single AI call row, with username for display.
+      description: Single AI call row, with the user's email for display.
       properties:
         id:
           type: integer
@@ -7864,25 +7864,24 @@ components:
       - exercise_id
     CompleteInvitationRequest:
       type: object
+      description: |-
+        Finalize an invitation. Email-only: the account email comes from the
+        invitation itself, so the invitee only chooses a password.
       properties:
-        username:
-          type: string
-          minLength: 1
-          maxLength: 150
         password:
           type: string
           writeOnly: true
           minLength: 8
       required:
       - password
-      - username
     CompleteInvitationResponse:
       type: object
       properties:
         detail:
           type: string
-        username:
+        email:
           type: string
+          format: email
         access:
           type: string
         refresh:
@@ -7890,8 +7889,8 @@ components:
       required:
       - access
       - detail
+      - email
       - refresh
-      - username
     CreateInvitationRequest:
       type: object
       properties:
@@ -7952,11 +7951,6 @@ components:
         id:
           type: integer
           readOnly: true
-        username:
-          type: string
-          readOnly: true
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
         first_name:
           type: string
           readOnly: true
@@ -7967,7 +7961,6 @@ components:
       - first_name
       - id
       - last_name
-      - username
     DashboardEvent:
       type: object
       description: The minimal Event shape the dashboard lists render.
@@ -8267,8 +8260,6 @@ components:
       properties:
         id:
           type: integer
-        username:
-          type: string
         email:
           type: string
           format: email
@@ -8284,7 +8275,6 @@ components:
       - id
       - language
       - last_name
-      - username
     EmailResendRequest:
       type: object
       description: Body for POST /api/v1/auth/email/resend/.
@@ -9611,16 +9601,18 @@ components:
         id:
           type: integer
           readOnly: true
-        username:
-          type: string
-          readOnly: true
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
         email:
           type: string
           format: email
           readOnly: true
           title: Email address
+        email_confirmed:
+          type: boolean
+          readOnly: true
+          description: True once the user has proven control of their email address
+            (registration confirmation, password reset, or a verified email change).
+            The login + magic-link gates require this. Replaces the former allauth
+            EmailAddress.verified flag.
         first_name:
           type: string
           maxLength: 150
@@ -9677,13 +9669,13 @@ components:
       - calendar_token
       - date_joined
       - email
+      - email_confirmed
       - id
       - is_staff
       - is_superuser
       - last_login
       - member_id
       - team_quota
-      - username
     Member:
       type: object
       properties:
@@ -10697,8 +10689,6 @@ components:
       properties:
         id:
           type: integer
-        username:
-          type: string
         email:
           type: string
           format: email
@@ -10714,7 +10704,6 @@ components:
       - id
       - language
       - last_name
-      - username
     PasswordResetRequestRequest:
       type: object
       description: |-
@@ -11926,17 +11915,13 @@ components:
       description: |-
         Public registration payload for POST /api/v1/auth/register/.
 
-        Validates uniqueness against both CustomUser AND allauth.EmailAddress
-        (allauth allows two unverified entries for the same email otherwise).
+        Email-only: there is no username. Uniqueness is enforced against
+        CustomUser.email (the unique constraint is the DB backstop).
 
         `turnstile_token` is required: server-side verification with Cloudflare
         happens in the view (not here, because we need the request to extract
         the remote IP). The serializer just enforces presence.
       properties:
-        username:
-          type: string
-          minLength: 1
-          maxLength: 150
         email:
           type: string
           format: email
@@ -11967,7 +11952,6 @@ components:
       - last_name
       - password
       - turnstile_token
-      - username
     RegisterResponse:
       type: object
       properties:
@@ -11975,8 +11959,6 @@ components:
           type: string
         code:
           $ref: '#/components/schemas/RegisterResponseCodeEnum'
-        username:
-          type: string
         email:
           type: string
           format: email
@@ -11984,7 +11966,6 @@ components:
       - code
       - detail
       - email
-      - username
     RegisterResponseCodeEnum:
       enum:
       - registration_pending_verification
@@ -13918,12 +13899,12 @@ components:
     VerifiedTokenObtainPairRequest:
       type: object
       description: |-
-        Block JWT login when the user has an unverified primary email.
+        Block JWT login when the user's email is not yet confirmed.
 
-        Legacy users predating allauth integration have no EmailAddress row;
-        they are treated as verified to preserve backwards compatibility (no
-        data migration). Once an EmailAddress exists for a user, the
-        `verified` flag becomes authoritative.
+        simplejwt authenticates on the USERNAME_FIELD, which is now ``email``
+        (no username) — the request field is therefore ``email``. The gate is
+        ``user.email_confirmed`` (the boolean that replaced allauth's
+        EmailAddress.verified flag).
 
         Optional `remember` flag (default False) extends the refresh token
         lifetime to settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME_REMEMBER"]
@@ -13934,7 +13915,7 @@ components:
           type: boolean
           writeOnly: true
           default: false
-        username:
+        email:
           type: string
           writeOnly: true
           minLength: 1
@@ -13943,8 +13924,8 @@ components:
           writeOnly: true
           minLength: 1
       required:
+      - email
       - password
-      - username
     VisibilityMode:
       enum:
       - always

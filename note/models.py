@@ -54,5 +54,5 @@ class Note(models.Model):
         ]
 
     def __str__(self):
-        author_str = self.author.username if self.author else "(deleted)"
+        author_str = self.author.email if self.author else "(deleted)"
         return f"Note by {author_str} on {self.member} ({self.created_at:%Y-%m-%d})"

@@ -101,7 +101,7 @@ class Command(BaseCommand):
 def _build_digest_body(user, rows):
     """Localized plain-text digest body. Call inside a translation.override."""
     base = settings.FRONTEND_BASE_URL.rstrip("/")
-    greeting = user.first_name or user.username
+    greeting = user.first_name or user.email
     lines = [
         f"{_('Hello')} {greeting},",
         "",

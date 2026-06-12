@@ -19,7 +19,7 @@ pytestmark = pytest.mark.django_db
 def test_GET_me_authenticated_returns_200(auth_client, authenticated_user):
     response = auth_client.get("/api/v1/me/")
     assert response.status_code == 200
-    assert response.json()["username"] == authenticated_user.username
+    assert response.json()["email"] == authenticated_user.email
 
 
 def test_PATCH_me_updates_first_name(auth_client):
@@ -182,7 +182,8 @@ def test_GET_team_owner_is_nested_in_response(auth_client, user_team, authentica
     assert response.status_code == 200
     body = response.json()
     assert body["owner"]["id"] == authenticated_user.pk
-    assert body["owner"]["username"] == authenticated_user.username
+    # Email-only: CustomUserPublic exposes id + names, no username/email.
+    assert "username" not in body["owner"]
     assert isinstance(body["sport"], dict)
     assert body["sport"]["id"] == user_team.sport.pk
 

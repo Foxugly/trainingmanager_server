@@ -482,8 +482,10 @@ class TeamMembershipSerializer(serializers.ModelSerializer):
     `team` is set by the view from URL kwargs; only `member` is accepted on POST.
     """
 
+    # Denorm display label. Email-only: no username column — sourced off the
+    # member's linked user email (field NAME kept to avoid roster-UI churn).
     member_username = serializers.CharField(
-        source="member.user.username",
+        source="member.user.email",
         read_only=True,
         default=None,
     )

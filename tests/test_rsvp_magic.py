@@ -31,7 +31,7 @@ User = get_user_model()
 @pytest.fixture
 def team(db):
     owner = User.objects.create_user(
-        username="magic_coach", email="magic_coach@local.test", password="pass"
+        email="magic_coach@local.test", password="pass"
     )
     return TeamFactory(owner=owner, is_active=True, rsvp_enabled=True)
 
@@ -49,7 +49,7 @@ def event(team):
 @pytest.fixture
 def member(team):
     user = User.objects.create_user(
-        username="magic_athlete", email="magic_athlete@local.test", password="pass"
+        email="magic_athlete@local.test", password="pass"
     )
     m = Member.objects.create(firstname="M", lastname="A", email=user.email, user=user)
     TeamMembership.objects.create(team=team, member=m)

@@ -26,7 +26,7 @@ User = get_user_model()
 @pytest.fixture
 def coach_user(db):
     return User.objects.create_user(
-        username="ms_coach", email="ms_coach@local.test", password="pass"
+        email="ms_coach@local.test", password="pass"
     )
 
 
@@ -38,7 +38,7 @@ def coach_team(coach_user):
 @pytest.fixture
 def athlete_user(db):
     return User.objects.create_user(
-        username="ms_athlete", email="ms_athlete@local.test", password="pass"
+        email="ms_athlete@local.test", password="pass"
     )
 
 
@@ -66,7 +66,7 @@ def athlete_client(api_client, athlete_user):
 @pytest.fixture
 def random_client(api_client, db):
     user = User.objects.create_user(
-        username="ms_rando", email="ms_rando@local.test", password="pass"
+        email="ms_rando@local.test", password="pass"
     )
     api_client.force_authenticate(user=user)
     return api_client
@@ -126,7 +126,7 @@ def test_manager_can_add_member_from_team_they_manage(coach_client, coach_user, 
 def test_manager_cannot_add_stranger_attached_member(coach_client, coach_team):
     """A member active in a team the caller does NOT manage -> 403 (PII grab)."""
     stranger_owner = User.objects.create_user(
-        username="ms_stranger", email="ms_stranger@local.test", password="pass"
+        email="ms_stranger@local.test", password="pass"
     )
     stranger_team = TeamFactory(owner=stranger_owner, is_active=True)
     stranger_member = Member.objects.create(

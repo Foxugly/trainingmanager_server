@@ -12,7 +12,6 @@ def _jwt_pair(user):
 def _user_payload(user):
     return {
         "id": user.id,
-        "username": user.username,
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,

@@ -23,7 +23,6 @@ CURRENT_PASSWORD = "OldP@ssw0rd!"
 
 def _user(username="change_user"):
     return User.objects.create_user(
-        username=username,
         email=f"{username}@local.test",
         password=CURRENT_PASSWORD,
         first_name="Change",

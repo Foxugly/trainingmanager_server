@@ -32,7 +32,6 @@ User = get_user_model()
 
 def _make_user(username):
     return User.objects.create_user(
-        username=username,
         email=f"{username}@local.test",
         password="Str0ngP@ssTest!",
     )
@@ -41,7 +40,7 @@ def _make_user(username):
 def _attach_athlete(user, team):
     member = Member.objects.create(
         firstname="Ath",
-        lastname=user.username,
+        lastname=user.email,
         email=user.email,
         user=user,
     )
@@ -134,7 +133,6 @@ def test_athlete_does_not_see_archived_even_with_include_inactive(api_client):
 
 def test_staff_sees_archived_programs_of_their_visible_teams(api_client):
     staff = User.objects.create_user(
-        username="staff_seer",
         email="staff_seer@local.test",
         password="Str0ngP@ssStaff!",
         is_staff=True,

@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -15,10 +14,13 @@ class TeamJoinRequestSerializer(serializers.ModelSerializer):
     pattern of exposing username/fullname denorms so the manager dashboard can
     render the requester without a separate /users/{id}/ fetch."""
 
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    # Denorm display labels. Email-only: there is no username column anymore,
+    # so these are sourced off email (the field NAMES are kept to avoid churn
+    # on the manager dashboard that already reads them).
+    user_username = serializers.CharField(source="user.email", read_only=True)
     user_fullname = serializers.SerializerMethodField()
     responded_by_username = serializers.CharField(
-        source="responded_by.username",
+        source="responded_by.email",
         read_only=True,
         allow_null=True,
         default=None,
@@ -55,7 +57,7 @@ class TeamJoinRequestSerializer(serializers.ModelSerializer):
     def get_user_fullname(self, obj) -> str:
         user = obj.user
         parts = [p for p in [user.first_name, user.last_name] if p]
-        return " ".join(parts) if parts else user.username
+        return " ".join(parts) if parts else user.email
 
 
 # ---------------------------------------------------------------------
@@ -236,20 +238,10 @@ class ValidateInvitationSerializer(serializers.ModelSerializer):
 
 
 class CompleteInvitationSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    password = serializers.CharField(write_only=True, min_length=8)
+    """Finalize an invitation. Email-only: the account email comes from the
+    invitation itself, so the invitee only chooses a password."""
 
-    def validate_username(self, username):
-        User = get_user_model()
-        # Case-insensitive uniqueness, consistent with RegisterSerializer.
-        # A case-sensitive check would let "Bob"/"bob" both register and risks
-        # a 500 on the DB-level case-insensitive unique constraint at create.
-        if User.objects.filter(username__iexact=username).exists():
-            raise serializers.ValidationError(
-                _("This username is already taken."),
-                code="username_taken",
-            )
-        return username
+    password = serializers.CharField(write_only=True, min_length=8)
 
     def validate_password(self, password):
         from django.contrib.auth.password_validation import validate_password

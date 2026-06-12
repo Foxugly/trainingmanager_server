@@ -243,7 +243,6 @@ def test_throttle_scopes_are_independent(
 
 def _register_payload(suffix):
     return {
-        "username": f"thr_user_{suffix}",
         "email": f"thr_user_{suffix}@local.test",
         "password": "Sup3rS@fePass!",
         "first_name": "Thr",
@@ -283,7 +282,7 @@ def test_login_throttle_returns_429_after_limit(api_client, set_throttle_rate):
     """Anti-bruteforce. Bad creds also count toward the throttle (DRF
     increments on the request, not the response)."""
     set_throttle_rate("auth_login", "3/min")
-    payload = {"username": "ghost", "password": "wrong"}
+    payload = {"email": "ghost@local.test", "password": "wrong"}
     statuses = [
         api_client.post("/api/v1/auth/token/", payload, format="json").status_code for _ in range(4)
     ]

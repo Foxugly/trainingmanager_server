@@ -30,7 +30,7 @@ def _url(member_id):
 @pytest.fixture
 def coach_user(db):
     return User.objects.create_user(
-        username="anon_coach", email="anon_coach@local.test", password="pass"
+        email="anon_coach@local.test", password="pass"
     )
 
 
@@ -42,7 +42,7 @@ def coach_team(coach_user):
 @pytest.fixture
 def athlete_user(db):
     return User.objects.create_user(
-        username="anon_athlete", email="anon_athlete@local.test", password="pass"
+        email="anon_athlete@local.test", password="pass"
     )
 
 
@@ -116,7 +116,7 @@ def test_non_coach_athlete_cannot_anonymize(api_client, member, athlete_user):
 
 def test_unrelated_user_cannot_anonymize(api_client, member):
     other = User.objects.create_user(
-        username="anon_other", email="anon_other@local.test", password="pass"
+        email="anon_other@local.test", password="pass"
     )
     api_client.force_authenticate(user=other)
     response = api_client.post(_url(member.id), format="json")

@@ -36,14 +36,14 @@ User = get_user_model()
 @pytest.fixture
 def coach():
     return User.objects.create_user(
-        username="cal_coach", email="cal_coach@local.test", password="pass"
+        email="cal_coach@local.test", password="pass"
     )
 
 
 @pytest.fixture
 def athlete():
     return User.objects.create_user(
-        username="cal_athlete", email="cal_athlete@local.test", password="pass"
+        email="cal_athlete@local.test", password="pass"
     )
 
 

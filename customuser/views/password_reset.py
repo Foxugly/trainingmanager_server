@@ -1,5 +1,5 @@
 """Public password-reset flow: request a reset link + confirm the new password
-(allauth token generator + custom views)."""
+(Django default_token_generator + custom views, mirroring QuizOnline)."""
 
 import logging
 
@@ -70,11 +70,10 @@ class PasswordResetRequestView(APIView):
         },
     )
     def post(self, request):
-        from allauth.account.forms import default_token_generator
-        from allauth.account.utils import user_pk_to_url_str
         from django.core.mail import send_mail
 
-        from customuser.adapter import FrontendAccountAdapter
+        from customuser.email_tokens import make_key
+        from customuser.frontend_urls import get_password_reset_url
 
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -88,14 +87,12 @@ class PasswordResetRequestView(APIView):
         # silently no-op when no user matches.
         user = CustomUser.objects.filter(email__iexact=data["email"].lower()).first()
         if user is not None:
-            uid = user_pk_to_url_str(user)
-            token = default_token_generator.make_token(user)
-            key = f"{uid}-{token}"
-            reset_url = FrontendAccountAdapter.get_password_reset_url(key)
+            key = make_key(user)
+            reset_url = get_password_reset_url(key)
             with translation.override(user.language or "en"):
                 subject = f"[TrainingManager] {_('Password reset')}"
                 body = (
-                    f"{_('Hello')} {user.first_name or user.username},\n\n"
+                    f"{_('Hello')} {user.first_name or user.email},\n\n"
                     f"{_('You (or someone) requested a password reset for your account.')}\n\n"
                     f"{_('To set a new password, click the link below:')}\n"
                     f"{reset_url}\n\n"
@@ -143,7 +140,6 @@ class PasswordResetConfirmView(APIView):
                             name="PasswordResetConfirmUser",
                             fields={
                                 "id": drf_serializers.IntegerField(),
-                                "username": drf_serializers.CharField(),
                                 "email": drf_serializers.EmailField(),
                                 "first_name": drf_serializers.CharField(),
                                 "last_name": drf_serializers.CharField(),
@@ -166,33 +162,25 @@ class PasswordResetConfirmView(APIView):
         },
     )
     def post(self, request):
-        from allauth.account.forms import default_token_generator
-        from allauth.account.utils import url_str_to_user_pk
         from django.contrib.auth.password_validation import validate_password
+
+        from customuser.email_tokens import parse_key, token_is_valid
 
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         key = serializer.validated_data["key"]
         new_password = serializer.validated_data["new_password"]
 
-        # Key shape: "{uid}-{token}". Token itself contains dashes, so split
-        # on the FIRST dash only.
-        if "-" not in key:
+        # Key shape: "{uid}-{token}". Token itself contains dashes, so parse_key
+        # splits on the FIRST dash only.
+        parsed = parse_key(key)
+        if parsed is None:
             raise drf_serializers.ValidationError(
                 {"detail": _("Invalid or expired password reset token.")},
                 code="invalid_or_expired_token",
             )
-        uid, token = key.split("-", 1)
-        try:
-            user_pk = url_str_to_user_pk(uid)
-            user = CustomUser.objects.get(pk=user_pk)
-        except (ValueError, CustomUser.DoesNotExist):
-            raise drf_serializers.ValidationError(
-                {"detail": _("Invalid or expired password reset token.")},
-                code="invalid_or_expired_token",
-            )
-
-        if not default_token_generator.check_token(user, token):
+        user, token = parsed
+        if not token_is_valid(user, token):
             raise drf_serializers.ValidationError(
                 {"detail": _("Invalid or expired password reset token.")},
                 code="invalid_or_expired_token",
@@ -209,25 +197,12 @@ class PasswordResetConfirmView(APIView):
                 code="weak_password",
             )
 
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
-
         # Successful reset = user proved control of their email by clicking
-        # the reset link → mark the EmailAddress verified. allauth's
-        # EmailAwarePasswordResetTokenGenerator side-effects an unverified
-        # EmailAddress when computing hashes, so we both upgrade-or-create
-        # the row and flag it primary+verified.
-        from allauth.account.models import EmailAddress
-
-        addr, _created = EmailAddress.objects.get_or_create(
-            user=user,
-            email=user.email,
-            defaults={"primary": True, "verified": True},
-        )
-        if not addr.verified or not addr.primary:
-            addr.verified = True
-            addr.primary = True
-            addr.save(update_fields=["verified", "primary"])
+        # the reset link → mark email_confirmed (replaces allauth's
+        # EmailAddress.verified flag). Saved together with the new password.
+        user.set_password(new_password)
+        user.email_confirmed = True
+        user.save(update_fields=["password", "email_confirmed"])
 
         # Defence in depth: blacklist every outstanding refresh token of
         # this user so a stolen-but-still-valid refresh in the wild is

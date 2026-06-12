@@ -8,15 +8,13 @@ The signed token is minted by customuser.magic_link_token (a Django
 TimestampSigner, 15-min TTL, payload = user id). Email send is captured
 by the locmem backend (conftest forces it across the suite).
 
-"Email confirmed" mirrors the login gate: a user with no allauth
-EmailAddress row is legacy/confirmed; once an EmailAddress exists the
-`verified` flag is authoritative.
+"Email confirmed" mirrors the login gate: a user is eligible iff
+``email_confirmed`` is True.
 """
 
 import re
 
 import pytest
-from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
 
@@ -34,22 +32,16 @@ REQUEST_URL = "/api/v1/auth/magic-link/request/"
 EXCHANGE_URL = "/api/v1/auth/magic-link/exchange/"
 
 
-def _user(username="magic_user", verified=True, is_active=True):
-    """Create a user. `verified` controls the allauth EmailAddress row:
-    True = verified, False = unverified, None = no row at all (legacy)."""
-    user = User.objects.create_user(
-        username=username,
-        email=f"{username}@local.test",
+def _user(slug="magic_user", confirmed=True, is_active=True):
+    """Create a user. ``confirmed`` sets email_confirmed (the eligibility gate)."""
+    return User.objects.create_user(
+        email=f"{slug}@local.test",
         password="S0meP@ssw0rd!",
         first_name="Magic",
         last_name="User",
         is_active=is_active,
+        email_confirmed=confirmed,
     )
-    if verified is True:
-        EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
-    elif verified is False:
-        EmailAddress.objects.create(user=user, email=user.email, verified=False, primary=True)
-    return user
 
 
 def _issue_token(user) -> str:
@@ -76,7 +68,7 @@ def _extract_token(body: str) -> str:
 
 
 def test_request_for_confirmed_user_sends_one_email_with_token(api_client):
-    user = _user(verified=True)
+    user = _user(confirmed=True)
     mail.outbox = []
     response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
 
@@ -92,9 +84,9 @@ def test_request_for_confirmed_user_sends_one_email_with_token(api_client):
     assert parse_magic_link_token(token)[0] == user.id
 
 
-def test_request_for_legacy_user_no_emailaddress_sends_email(api_client):
-    """Legacy accounts (no allauth EmailAddress row) count as confirmed."""
-    user = _user(username="legacy_magic", verified=None)
+def test_request_for_another_confirmed_user_sends_email(api_client):
+    """A second confirmed account is eligible just like the first."""
+    user = _user(slug="another_magic", confirmed=True)
     mail.outbox = []
     response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
 
@@ -115,7 +107,7 @@ def test_request_for_unknown_email_returns_200_no_mail(api_client):
 
 def test_request_for_unconfirmed_user_returns_200_no_mail(api_client):
     """An unverified (non-legacy) user is not eligible: same 200, no login email."""
-    user = _user(username="unconfirmed_magic", verified=False)
+    user = _user(slug="unconfirmed_magic", confirmed=False)
     mail.outbox = []
     response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
 
@@ -125,7 +117,7 @@ def test_request_for_unconfirmed_user_returns_200_no_mail(api_client):
 
 
 def test_request_for_inactive_user_returns_200_no_mail(api_client):
-    user = _user(username="inactive_magic", verified=True, is_active=False)
+    user = _user(slug="inactive_magic", confirmed=True, is_active=False)
     mail.outbox = []
     response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
 
@@ -151,7 +143,7 @@ def test_request_throttled_after_limit(api_client, set_throttle_rate):
 
 
 def test_exchange_valid_token_returns_jwt_pair(api_client):
-    user = _user(username="exchange_ok", verified=True)
+    user = _user(slug="exchange_ok", confirmed=True)
     token = _issue_token(user)
     response = api_client.post(EXCHANGE_URL, {"token": token}, format="json")
 
@@ -165,7 +157,7 @@ def test_exchange_valid_token_returns_jwt_pair(api_client):
     api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {body['access']}")
     me = api_client.get("/api/v1/me/")
     assert me.status_code == 200
-    assert me.json()["username"] == user.username
+    assert me.json()["email"] == user.email
 
 
 def test_exchange_garbage_token_returns_400_token_invalid(api_client):
@@ -177,7 +169,7 @@ def test_exchange_garbage_token_returns_400_token_invalid(api_client):
 
 
 def test_exchange_tampered_token_returns_400_token_invalid(api_client):
-    user = _user(username="exchange_tamper", verified=True)
+    user = _user(slug="exchange_tamper", confirmed=True)
     token = _issue_token(user)
     tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
     response = api_client.post(EXCHANGE_URL, {"token": tampered}, format="json")
@@ -190,7 +182,7 @@ def test_exchange_expired_token_returns_410_token_expired(api_client, monkeypatc
     exchange (the signer timestamp is older than max_age=0)."""
     import customuser.views as views_mod
 
-    user = _user(username="exchange_expired", verified=True)
+    user = _user(slug="exchange_expired", confirmed=True)
     token = _issue_token(user)
 
     # The view imports TOKEN_MAX_AGE_SECONDS from magic_link_token at call
@@ -206,7 +198,7 @@ def test_exchange_expired_token_returns_410_token_expired(api_client, monkeypatc
 
 
 def test_exchange_for_deactivated_user_returns_400_token_invalid(api_client):
-    user = _user(username="exchange_deactivated", verified=True)
+    user = _user(slug="exchange_deactivated", confirmed=True)
     token = _issue_token(user)
 
     user.is_active = False
@@ -218,7 +210,7 @@ def test_exchange_for_deactivated_user_returns_400_token_invalid(api_client):
 
 
 def test_exchange_for_deleted_user_returns_400_token_invalid(api_client):
-    user = _user(username="exchange_deleted", verified=True)
+    user = _user(slug="exchange_deleted", confirmed=True)
     token = _issue_token(user)
     user.delete()
 
@@ -230,7 +222,7 @@ def test_exchange_for_deleted_user_returns_400_token_invalid(api_client):
 def test_exchange_token_is_single_use(api_client):
     """A magic-link works at most ONCE: the second exchange of the same token
     is refused (the nonce was consumed on the first)."""
-    user = _user(username="exchange_single_use", verified=True)
+    user = _user(slug="exchange_single_use", confirmed=True)
     token = _issue_token(user)
 
     first = api_client.post(EXCHANGE_URL, {"token": token}, format="json")
@@ -247,7 +239,7 @@ def test_exchange_token_is_single_use(api_client):
 def test_new_request_invalidates_previous_link(api_client):
     """Requesting a new link rotates the nonce, so a still-unexpired PREVIOUS
     link no longer works (only the latest one does)."""
-    user = _user(username="magic_rotate", verified=True)
+    user = _user(slug="magic_rotate", confirmed=True)
 
     mail.outbox = []
     api_client.post(REQUEST_URL, {"email": user.email}, format="json")

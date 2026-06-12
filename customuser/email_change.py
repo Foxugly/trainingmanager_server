@@ -46,14 +46,14 @@ def parse_email_change_token(token: str) -> tuple[int, str] | None:
 def send_email_change_email(user, new_email: str) -> None:
     """Email the confirmation link to the NEW address, localized to the user's
     language. Never raises — a delivery failure is logged, not surfaced."""
-    from customuser.adapter import FrontendAccountAdapter
+    from customuser.frontend_urls import get_email_change_url
 
     token = make_email_change_token(user.pk, new_email)
-    url = FrontendAccountAdapter.get_email_change_url(token)
+    url = get_email_change_url(token)
     with translation.override(user.language or "en"):
         subject = f"[TrainingManager] {_('Confirm your new email address')}"
         body = (
-            f"{_('Hello')} {user.first_name or user.username},\n\n"
+            f"{_('Hello')} {user.first_name or user.email},\n\n"
             f"{_('You requested to change your account email to this address.')}\n\n"
             f"{_('To confirm the change, click the link below:')}\n"
             f"{url}\n\n"

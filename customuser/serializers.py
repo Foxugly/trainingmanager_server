@@ -20,7 +20,7 @@ class CustomUserPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["id", "username", "first_name", "last_name"]
+        fields = ["id", "first_name", "last_name"]
         read_only_fields = fields
 
 
@@ -44,8 +44,8 @@ class MeSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "id",
-            "username",
             "email",
+            "email_confirmed",
             "first_name",
             "last_name",
             "language",
@@ -63,10 +63,12 @@ class MeSerializer(serializers.ModelSerializer):
         # affordances (the admin back-office link is superuser-only). They are the
         # user's own flags; server-side permissions still enforce every admin
         # endpoint. read_only prevents privilege escalation via PATCH.
+        # email is read-only here: it is changed through the dedicated verified
+        # change-email flow, never mutated directly via /me/.
         read_only_fields = [
             "id",
-            "username",
             "email",
+            "email_confirmed",
             "is_staff",
             "is_superuser",
             "last_login",
@@ -110,14 +112,13 @@ class CalendarTokenSerializer(serializers.Serializer):
 class RegisterSerializer(serializers.Serializer):
     """Public registration payload for POST /api/v1/auth/register/.
 
-    Validates uniqueness against both CustomUser AND allauth.EmailAddress
-    (allauth allows two unverified entries for the same email otherwise).
+    Email-only: there is no username. Uniqueness is enforced against
+    CustomUser.email (the unique constraint is the DB backstop).
 
     `turnstile_token` is required: server-side verification with Cloudflare
     happens in the view (not here, because we need the request to extract
     the remote IP). The serializer just enforces presence."""
 
-    username = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(max_length=150)
@@ -132,22 +133,9 @@ class RegisterSerializer(serializers.Serializer):
     )
     turnstile_token = serializers.CharField(write_only=True)
 
-    def validate_username(self, value):
-        if CustomUser.objects.filter(username__iexact=value).exists():
-            raise serializers.ValidationError(
-                _("This username is already taken."), code="username_taken"
-            )
-        return value
-
     def validate_email(self, value):
-        from allauth.account.models import EmailAddress
-
         normalized = value.lower()
         if CustomUser.objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError(
-                _("This email is already in use."), code="email_taken"
-            )
-        if EmailAddress.objects.filter(email__iexact=normalized).exists():
             raise serializers.ValidationError(
                 _("This email is already in use."), code="email_taken"
             )
@@ -171,12 +159,12 @@ class EmailResendSerializer(serializers.Serializer):
 
 
 class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Block JWT login when the user has an unverified primary email.
+    """Block JWT login when the user's email is not yet confirmed.
 
-    Legacy users predating allauth integration have no EmailAddress row;
-    they are treated as verified to preserve backwards compatibility (no
-    data migration). Once an EmailAddress exists for a user, the
-    `verified` flag becomes authoritative.
+    simplejwt authenticates on the USERNAME_FIELD, which is now ``email``
+    (no username) — the request field is therefore ``email``. The gate is
+    ``user.email_confirmed`` (the boolean that replaced allauth's
+    EmailAddress.verified flag).
 
     Optional `remember` flag (default False) extends the refresh token
     lifetime to settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME_REMEMBER"]
@@ -187,15 +175,13 @@ class VerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
     remember = serializers.BooleanField(required=False, default=False, write_only=True)
 
     def validate(self, attrs):
-        from allauth.account.models import EmailAddress
         from rest_framework_simplejwt.tokens import RefreshToken
 
         # Pop `remember` before super().validate — TokenObtainSerializer
-        # only knows about username/password and would otherwise complain.
+        # only knows about email/password and would otherwise complain.
         remember = attrs.pop("remember", False)
         data = super().validate(attrs)  # raises 401 if creds invalid; sets self.user
-        addresses = EmailAddress.objects.filter(user=self.user)
-        if addresses.exists() and not addresses.filter(verified=True).exists():
+        if not getattr(self.user, "email_confirmed", False):
             # Use a dedicated APIException (not ValidationError) so the
             # custom_exception_handler hits the APIException branch and
             # surfaces default_code="email_not_verified" at the top of
@@ -241,8 +227,6 @@ class EmailChangeRequestSerializer(serializers.Serializer):
     new_email = serializers.EmailField()
 
     def validate_new_email(self, value):
-        from allauth.account.models import EmailAddress
-
         normalized = value.lower()
         user = getattr(self.context.get("request"), "user", None)
         if user is not None and user.email and user.email.lower() == normalized:
@@ -250,11 +234,9 @@ class EmailChangeRequestSerializer(serializers.Serializer):
                 _("This is already your email address."), code="email_unchanged"
             )
         users = CustomUser.objects.filter(email__iexact=normalized)
-        addrs = EmailAddress.objects.filter(email__iexact=normalized)
         if user is not None:
             users = users.exclude(pk=user.pk)
-            addrs = addrs.exclude(user_id=user.pk)
-        if users.exists() or addrs.exists():
+        if users.exists():
             raise serializers.ValidationError(
                 _("This email is already in use."), code="email_taken"
             )

@@ -30,7 +30,7 @@ User = get_user_model()
 @pytest.fixture
 def coach_user(db):
     return User.objects.create_user(
-        username="roti_coach", email="roti_coach@local.test", password="pass"
+        email="roti_coach@local.test", password="pass"
     )
 
 
@@ -56,7 +56,7 @@ def future_event(coach_program):
 @pytest.fixture
 def athlete_user(db):
     return User.objects.create_user(
-        username="roti_athlete", email="roti_athlete@local.test", password="pass"
+        email="roti_athlete@local.test", password="pass"
     )
 
 
@@ -84,7 +84,7 @@ def athlete_client(api_client, athlete_user):
 @pytest.fixture
 def random_client(api_client, db):
     user = User.objects.create_user(
-        username="roti_rando", email="roti_rando@local.test", password="pass"
+        email="roti_rando@local.test", password="pass"
     )
     api_client.force_authenticate(user=user)
     return api_client

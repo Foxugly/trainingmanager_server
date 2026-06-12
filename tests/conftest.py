@@ -35,7 +35,6 @@ def api_client():
 def authenticated_user(db):
     User = get_user_model()
     user = User.objects.create_user(
-        username="testuser",
         email="testuser@local.test",
         password="Str0ngP@ssTest!",
     )
@@ -57,7 +56,6 @@ def user_team(authenticated_user):
 def trainer_user(db):
     User = get_user_model()
     user = User.objects.create_user(
-        username="trainer",
         email="trainer@local.test",
         password="Str0ngP@ssTrainer!",
     )
@@ -81,7 +79,6 @@ def auth_client_trainer(api_client, trainer_user):
 def non_trainer_user(db):
     User = get_user_model()
     return User.objects.create_user(
-        username="spectator",
         email="spectator@local.test",
         password="Str0ngP@ssSpec!",
     )
@@ -97,7 +94,6 @@ def auth_client_non_trainer(api_client, non_trainer_user):
 def admin_user(db):
     User = get_user_model()
     return User.objects.create_user(
-        username="adminuser",
         email="adminuser@local.test",
         password="Str0ngP@ssAdmin!",
         is_staff=True,

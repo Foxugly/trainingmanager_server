@@ -1,7 +1,6 @@
 """Coverage of the verified change-email flow (E7)."""
 
 import pytest
-from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
 
@@ -17,11 +16,9 @@ CONFIRM_URL = "/api/v1/auth/email/change/confirm/"
 
 @pytest.fixture
 def user(db):
-    u = User.objects.create_user(
-        username="ec_user", email="old@local.test", password="pass", language="en"
+    return User.objects.create_user(
+        email="old@local.test", password="pass", language="en", email_confirmed=True
     )
-    EmailAddress.objects.create(user=u, email="old@local.test", primary=True, verified=True)
-    return u
 
 
 def test_request_sends_link_then_confirm_swaps_email(api_client, user):
@@ -43,10 +40,8 @@ def test_request_sends_link_then_confirm_swaps_email(api_client, user):
 
     user.refresh_from_db()
     assert user.email == "new@local.test"
-    assert EmailAddress.objects.filter(
-        user=user, email="new@local.test", primary=True, verified=True
-    ).exists()
-    assert not EmailAddress.objects.filter(user=user, email="old@local.test", primary=True).exists()
+    # Confirming the link sent to the new address proves ownership → confirmed.
+    assert user.email_confirmed is True
 
 
 def test_request_same_email_returns_400(api_client, user):
@@ -57,7 +52,7 @@ def test_request_same_email_returns_400(api_client, user):
 
 
 def test_request_taken_email_returns_400(api_client, user):
-    User.objects.create_user(username="other", email="taken@local.test", password="pass")
+    User.objects.create_user(email="taken@local.test", password="pass")
     api_client.force_authenticate(user=user)
     resp = api_client.post(REQUEST_URL, {"new_email": "taken@local.test"}, format="json")
     assert resp.status_code == 400
@@ -76,7 +71,7 @@ def test_confirm_tampered_token_returns_400(api_client, user):
 
 def test_confirm_email_grabbed_meanwhile_returns_409(api_client, user):
     token = make_email_change_token(user.pk, "race@local.test")
-    User.objects.create_user(username="racer", email="race@local.test", password="pass")
+    User.objects.create_user(email="race@local.test", password="pass")
     resp = api_client.post(CONFIRM_URL, {"token": token}, format="json")
     assert resp.status_code == 409
     assert resp.json()["code"] == "email_taken"

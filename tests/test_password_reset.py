@@ -4,17 +4,19 @@ Endpoints:
 - POST /api/v1/auth/password/reset/         — anti-leak request
 - POST /api/v1/auth/password/reset/confirm/ — finalize with key + new_password
 
-Allauth's `default_token_generator` (EmailAwarePasswordResetTokenGenerator)
-mints / validates the {uid}-{token} key. Email send is captured by the
-locmem backend; Turnstile is monkeypatched to True unless a test
-explicitly flips it.
+Django's stock `default_token_generator` + a base64url uid mint / validate the
+{uid}-{token} key (mirroring QuizOnline). Email send is captured by the locmem
+backend; Turnstile is monkeypatched to True unless a test explicitly flips it.
+
+A successful reset also flips ``email_confirmed`` True (clicking the link proves
+email ownership).
 """
 
 import pytest
-from allauth.account.forms import default_token_generator
-from allauth.account.utils import user_pk_to_url_str
 from django.contrib.auth import get_user_model
 from django.core import mail
+
+from customuser.email_tokens import make_key as _make_key
 
 pytestmark = pytest.mark.django_db
 
@@ -35,21 +37,13 @@ def turnstile_pass(monkeypatch):
     )
 
 
-def _user(username="reset_user"):
+def _user(slug="reset_user"):
     return User.objects.create_user(
-        username=username,
-        email=f"{username}@local.test",
+        email=f"{slug}@local.test",
         password="OldP@ssw0rd!",
         first_name="Reset",
         last_name="User",
     )
-
-
-def _make_key(user):
-    """Mint a {uid}-{token} key the way the request endpoint does."""
-    uid = user_pk_to_url_str(user)
-    token = default_token_generator.make_token(user)
-    return f"{uid}-{token}"
 
 
 # =====================================================================
@@ -128,11 +122,13 @@ def test_reset_confirm_with_valid_key_and_password_returns_tokens(api_client):
     assert response.status_code == 200, response.json()
     body = response.json()
     assert "access" in body and "refresh" in body
-    assert body["user"]["username"] == user.username
+    assert body["user"]["email"] == user.email
 
     user.refresh_from_db()
     assert user.check_password("BrandN3wP@ss!")
     assert not user.check_password("OldP@ssw0rd!")
+    # Successful reset proves email ownership → email_confirmed flips True.
+    assert user.email_confirmed is True
 
 
 def test_reset_confirm_invalid_key_returns_400(api_client):
@@ -179,7 +175,7 @@ def test_reset_confirm_token_consumed_once_login_with_new_password(api_client):
 
     response = api_client.post(
         "/api/v1/auth/token/",
-        {"username": user.username, "password": "BrandN3wP@ss!"},
+        {"email": user.email, "password": "BrandN3wP@ss!"},
         format="json",
     )
     assert response.status_code == 200

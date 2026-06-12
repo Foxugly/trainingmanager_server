@@ -51,7 +51,7 @@ def absent_status(db):
 @pytest.fixture
 def owner_user(db):
     return User.objects.create_user(
-        username="stats_owner", email="stats_owner@local.test", password="pass"
+        email="stats_owner@local.test", password="pass"
     )
 
 
@@ -75,7 +75,6 @@ def _make_member(team, firstname, lastname, with_user=False):
     user = None
     if with_user:
         user = User.objects.create_user(
-            username=f"{firstname}{lastname}".lower(),
             email=f"{firstname}.{lastname}@local.test".lower(),
             password="pass",
         )
@@ -103,7 +102,7 @@ def test_owner_gets_200(owner_client, team):
 
 def test_manager_gets_200(api_client, team):
     mgr = User.objects.create_user(
-        username="stats_mgr", email="stats_mgr@local.test", password="pass"
+        email="stats_mgr@local.test", password="pass"
     )
     team.managers.add(mgr)
     api_client.force_authenticate(user=mgr)
@@ -113,7 +112,7 @@ def test_manager_gets_200(api_client, team):
 
 def test_athlete_member_gets_403(api_client, team):
     athlete = User.objects.create_user(
-        username="stats_athlete", email="stats_athlete@local.test", password="pass"
+        email="stats_athlete@local.test", password="pass"
     )
     member = Member.objects.create(
         firstname="Ath", lastname="Lete", email="a@x.test", user=athlete
@@ -126,7 +125,7 @@ def test_athlete_member_gets_403(api_client, team):
 
 def test_other_user_gets_403_or_404(api_client, team):
     other = User.objects.create_user(
-        username="stats_other", email="stats_other@local.test", password="pass"
+        email="stats_other@local.test", password="pass"
     )
     api_client.force_authenticate(user=other)
     resp = api_client.get(_url(team.pk))
@@ -370,7 +369,7 @@ def scoped_setup(team, program, present_status, absent_status):
 
     # Alice has a linked user account so she can authenticate.
     alice_user = User.objects.create_user(
-        username="alice_athlete", email="alice@local.test", password="pass"
+        email="alice@local.test", password="pass"
     )
     m_alice = Member.objects.create(
         firstname="Alice", lastname="Aaa", email="alice@x.test", user=alice_user

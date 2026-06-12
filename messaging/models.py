@@ -74,7 +74,7 @@ class Topic(models.Model):
         ]
 
     def __str__(self):
-        author_str = self.author.username if self.author else "(deleted)"
+        author_str = self.author.email if self.author else "(deleted)"
         return f"Topic #{self.pk} '{self.title}' by {author_str} [{self.audience}]"
 
 
@@ -114,7 +114,7 @@ class Message(models.Model):
         ]
 
     def __str__(self):
-        author_str = self.author.username if self.author else "(deleted)"
+        author_str = self.author.email if self.author else "(deleted)"
         return f"Message #{self.pk} in topic {self.topic_id} by {author_str}"
 
 

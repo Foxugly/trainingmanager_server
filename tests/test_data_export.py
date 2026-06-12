@@ -29,7 +29,6 @@ URL = "/api/v1/me/export/"
 @pytest.fixture
 def export_user(db):
     return User.objects.create_user(
-        username="export_me",
         email="export_me@local.test",
         password="Str0ngP@ssExport!",
         first_name="Ex",
@@ -53,14 +52,14 @@ def test_export_returns_profile_and_disposition_header(export_client, export_use
     assert response.status_code == 200, getattr(response, "data", None)
 
     disposition = response["Content-Disposition"]
+    # Email-only: the export filename is keyed on email (no username column).
     assert disposition == (
-        'attachment; filename="trainingmanager-export-export_me.json"'
+        'attachment; filename="trainingmanager-export-export_me@local.test.json"'
     )
 
     data = response.json()
     profile = data["profile"]
     assert profile["id"] == export_user.id
-    assert profile["username"] == "export_me"
     assert profile["email"] == "export_me@local.test"
     assert profile["first_name"] == "Ex"
     assert profile["last_name"] == "Porter"

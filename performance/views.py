@@ -140,7 +140,7 @@ class PerformanceViewSet(viewsets.ModelViewSet):
             from notifications.services import notify
 
             coach_name = (
-                self.request.user.get_full_name() or self.request.user.username
+                self.request.user.get_full_name() or self.request.user.email
             )
             notify(
                 member.user,

@@ -9,9 +9,7 @@ API (``tools/email.py``) wired through Django's ``send_mail``, and
 
 "Email confirmed" is determined exactly like login
 (:class:`customuser.serializers.VerifiedTokenObtainPairSerializer`): a
-user is eligible if they have NO allauth ``EmailAddress`` rows (legacy,
-pre-allauth accounts) OR at least one ``verified`` row. Once any
-EmailAddress exists, the ``verified`` flag is authoritative.
+user is eligible iff ``user.email_confirmed`` is True.
 """
 
 import logging
@@ -31,25 +29,18 @@ User = get_user_model()
 
 
 def _is_email_confirmed(user) -> bool:
-    """Mirror the login gate: eligible iff the user has no EmailAddress
-    rows (legacy) or at least one verified one."""
-    from allauth.account.models import EmailAddress
-
-    addresses = EmailAddress.objects.filter(user=user)
-    if not addresses.exists():
-        return True  # legacy account, pre-allauth — treated as confirmed
-    return addresses.filter(verified=True).exists()
+    """Mirror the login gate: eligible iff ``user.email_confirmed`` is True."""
+    return bool(getattr(user, "email_confirmed", False))
 
 
 def _magic_link_url(token: str) -> str:
     """Absolute frontend URL the user receives in the email.
 
-    No trailing slash — matches the SPA's strict-routing convention
-    (cf. password-reset / email-confirm URLs in
-    :class:`customuser.adapter.FrontendAccountAdapter`). The frontend
-    route POSTs the token to /auth/magic-link/exchange/."""
-    base = settings.FRONTEND_URL.rstrip("/")
-    return f"{base}/auth/magic-link/{token}"
+    No trailing slash — matches the SPA's strict-routing convention. The
+    frontend route POSTs the token to /auth/magic-link/exchange/."""
+    from customuser.frontend_urls import get_magic_link_url
+
+    return get_magic_link_url(token)
 
 
 def send_magic_link_email(user) -> None:
@@ -71,7 +62,7 @@ def send_magic_link_email(user) -> None:
     with translation.override(user.language or "en"):
         subject = f"[TrainingManager] {_('Your sign-in link')}"
         body = (
-            f"{_('Hello')} {user.first_name or user.username},\n\n"
+            f"{_('Hello')} {user.first_name or user.email},\n\n"
             f"{_('Click the link below to sign in without a password:')}\n"
             f"{link}\n\n"
             f"{_('This link is valid for 15 minutes.')}\n"

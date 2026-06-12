@@ -30,7 +30,7 @@ def present_status(db):
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="rel_owner", email="rel_o@x.test", password="p")
+    return User.objects.create_user(email="rel_o@x.test", password="p")
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def test_unauthenticated_returns_401(api_client, team):
 
 
 def test_athlete_member_forbidden(api_client, team):
-    athlete = User.objects.create_user(username="rel_ath", email="rel_a@x.test", password="p")
+    athlete = User.objects.create_user(email="rel_a@x.test", password="p")
     m = Member.objects.create(firstname="A", lastname="T", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
     api_client.force_authenticate(user=athlete)

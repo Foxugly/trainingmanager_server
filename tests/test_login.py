@@ -1,14 +1,12 @@
-"""Coverage of POST /api/v1/auth/token/ — JWT login with email-verification gate.
+"""Coverage of POST /api/v1/auth/token/ — JWT login with email-confirmed gate.
 
-VerifiedTokenObtainPairSerializer refuses login for users whose primary
-EmailAddress is not yet verified. Legacy users (no EmailAddress at all)
-are allowed through for backwards compatibility — there's no data
-migration; the verification gate engages once allauth has registered
-the user.
+Email-only auth: simplejwt authenticates on ``email`` (the USERNAME_FIELD).
+VerifiedTokenObtainPairSerializer refuses login for users whose
+``email_confirmed`` flag is False (the boolean that replaced allauth's
+EmailAddress.verified gate).
 """
 
 import pytest
-from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 
 pytestmark = pytest.mark.django_db
@@ -18,27 +16,20 @@ User = get_user_model()
 TOKEN_URL = "/api/v1/auth/token/"
 
 
-def _make_user(username="login_user", password="Sup3rS@fePass!", verified=None):
-    """Create a user. `verified` controls whether an EmailAddress row is
-    attached: True = verified, False = unverified, None = no EmailAddress
-    at all (legacy)."""
-    user = User.objects.create_user(
-        username=username,
-        email=f"{username}@local.test",
+def _make_user(slug="login_user", password="Sup3rS@fePass!", confirmed=True):
+    """Create a user. ``confirmed`` sets email_confirmed (the login gate)."""
+    return User.objects.create_user(
+        email=f"{slug}@local.test",
         password=password,
+        email_confirmed=confirmed,
     )
-    if verified is True:
-        EmailAddress.objects.create(user=user, email=user.email, verified=True, primary=True)
-    elif verified is False:
-        EmailAddress.objects.create(user=user, email=user.email, verified=False, primary=True)
-    return user
 
 
-def test_login_with_verified_user_returns_tokens(api_client):
-    _make_user(username="verified_login", verified=True)
+def test_login_with_confirmed_user_returns_tokens(api_client):
+    _make_user(slug="confirmed_login", confirmed=True)
     response = api_client.post(
         TOKEN_URL,
-        {"username": "verified_login", "password": "Sup3rS@fePass!"},
+        {"email": "confirmed_login@local.test", "password": "Sup3rS@fePass!"},
         format="json",
     )
     assert response.status_code == 200, response.json()
@@ -46,29 +37,15 @@ def test_login_with_verified_user_returns_tokens(api_client):
     assert "access" in body and "refresh" in body
 
 
-def test_login_with_unverified_user_returns_400_email_not_verified(api_client):
-    _make_user(username="unverified_login", verified=False)
+def test_login_with_unconfirmed_user_returns_400_email_not_verified(api_client):
+    _make_user(slug="unconfirmed_login", confirmed=False)
     response = api_client.post(
         TOKEN_URL,
-        {"username": "unverified_login", "password": "Sup3rS@fePass!"},
+        {"email": "unconfirmed_login@local.test", "password": "Sup3rS@fePass!"},
         format="json",
     )
     assert response.status_code == 400, response.json()
     assert response.json()["code"] == "email_not_verified"
-
-
-def test_login_with_legacy_user_no_emailaddress_is_allowed(api_client):
-    """Backwards compat: users that predate the allauth integration have
-    no EmailAddress row. They keep being able to log in until an
-    EmailAddress lands on their account."""
-    _make_user(username="legacy_login", verified=None)
-    response = api_client.post(
-        TOKEN_URL,
-        {"username": "legacy_login", "password": "Sup3rS@fePass!"},
-        format="json",
-    )
-    assert response.status_code == 200, response.json()
-    assert "access" in response.json()
 
 
 # =====================================================================
@@ -88,10 +65,10 @@ def _decode_token_exp(token_str):
 
 
 def test_login_without_remember_short_refresh_ttl(api_client):
-    _make_user(username="rem_short", verified=True)
+    _make_user(slug="rem_short", confirmed=True)
     response = api_client.post(
         TOKEN_URL,
-        {"username": "rem_short", "password": "Sup3rS@fePass!"},
+        {"email": "rem_short@local.test", "password": "Sup3rS@fePass!"},
         format="json",
     )
     assert response.status_code == 200
@@ -110,10 +87,10 @@ def test_login_without_remember_short_refresh_ttl(api_client):
 
 
 def test_login_with_remember_extends_refresh_to_30_days(api_client):
-    _make_user(username="rem_long", verified=True)
+    _make_user(slug="rem_long", confirmed=True)
     response = api_client.post(
         TOKEN_URL,
-        {"username": "rem_long", "password": "Sup3rS@fePass!", "remember": True},
+        {"email": "rem_long@local.test", "password": "Sup3rS@fePass!", "remember": True},
         format="json",
     )
     assert response.status_code == 200, response.json()

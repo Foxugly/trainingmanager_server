@@ -1,18 +1,23 @@
-"""Coverage of the public registration + email-verification flow.
+"""Coverage of the public registration + email-confirmation flow.
 
 Endpoints:
 - POST /api/v1/auth/register/      — public self-signup, sends confirmation mail
 - POST /api/v1/auth/email/confirm/ — verifies the email + returns JWT pair
 - POST /api/v1/auth/email/resend/  — re-sends the confirmation link (anti-leak)
 
+Email-only: there is no username. Confirmation uses Django's
+default_token_generator + a base64url uid (the "<uid>-<token>" key), and the
+account becomes usable once ``email_confirmed`` flips True.
+
 The autouse `use_locmem_email_backend` fixture (tests/conftest.py) routes
 mail to django.core.mail.outbox so we never hit Graph in tests.
 """
 
 import pytest
-from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from django.contrib.auth import get_user_model
 from django.core import mail
+
+from customuser.email_tokens import make_key
 
 pytestmark = pytest.mark.django_db
 
@@ -27,7 +32,6 @@ RESEND_URL = "/api/v1/auth/email/resend/"
 
 def _valid_payload(**overrides):
     base = {
-        "username": "newcomer",
         "email": "newcomer@local.test",
         "password": "Sup3rS@fePass!",
         "first_name": "New",
@@ -59,29 +63,18 @@ def test_register_valid_payload_creates_user_and_sends_mail(api_client):
     assert response.status_code == 201, response.json()
     body = response.json()
     assert body["code"] == "registration_pending_verification"
-    assert body["username"] == "newcomer"
     assert body["email"] == "newcomer@local.test"
     assert "access" not in body and "refresh" not in body  # no JWT pre-verification
 
-    user = User.objects.get(username="newcomer")
-    assert user.email == "newcomer@local.test"
-    assert user.is_active is True  # is_active is unrelated; verification is on EmailAddress
-    address = EmailAddress.objects.get(user=user)
-    assert address.verified is False
+    user = User.objects.get(email="newcomer@local.test")
+    assert user.is_active is True  # is_active unrelated; the gate is email_confirmed
+    assert user.email_confirmed is False
     assert len(mail.outbox) == 1
     assert "newcomer@local.test" in mail.outbox[0].to
 
 
-def test_register_username_taken_returns_400(api_client):
-    User.objects.create_user(username="taken", email="taken@local.test", password="x")
-    response = api_client.post(REGISTER_URL, _valid_payload(username="taken"), format="json")
-    assert response.status_code == 400
-    body = response.json()
-    assert body["fields"]["username"][0]["code"] == "username_taken"
-
-
 def test_register_email_taken_returns_400(api_client):
-    User.objects.create_user(username="other", email="dup@local.test", password="x")
+    User.objects.create_user(email="dup@local.test", password="x")
     response = api_client.post(REGISTER_URL, _valid_payload(email="dup@local.test"), format="json")
     assert response.status_code == 400
     body = response.json()
@@ -100,11 +93,10 @@ def test_register_password_too_short_returns_400(api_client):
 
 
 def _register_and_get_key(api_client):
-    """Helper: register a user and pull the HMAC key from the captured mail."""
+    """Helper: register a user and mint the confirmation key for them."""
     api_client.post(REGISTER_URL, _valid_payload(), format="json")
-    user = User.objects.get(username="newcomer")
-    address = EmailAddress.objects.get(user=user)
-    return EmailConfirmationHMAC(address).key, user
+    user = User.objects.get(email="newcomer@local.test")
+    return make_key(user), user
 
 
 def test_email_confirm_valid_key_returns_tokens(api_client):
@@ -115,10 +107,10 @@ def test_email_confirm_valid_key_returns_tokens(api_client):
     assert response.status_code == 200, response.json()
     body = response.json()
     assert "access" in body and "refresh" in body
-    assert body["user"]["username"] == "newcomer"
+    assert body["user"]["email"] == "newcomer@local.test"
 
-    address = EmailAddress.objects.get(user=user)
-    assert address.verified is True
+    user.refresh_from_db()
+    assert user.email_confirmed is True
 
 
 def test_email_confirm_invalid_key_returns_400(api_client):
@@ -167,7 +159,7 @@ def test_register_turnstile_invalid_returns_400_no_user_created(api_client, monk
     response = api_client.post(REGISTER_URL, _valid_payload(), format="json")
     assert response.status_code == 400
     assert response.json()["code"] == "captcha_failed"
-    assert not User.objects.filter(username="newcomer").exists()
+    assert not User.objects.filter(email="newcomer@local.test").exists()
     assert mail.outbox == []
 
 

@@ -34,7 +34,7 @@ def _detail(pk):
 @pytest.fixture
 def coach_user(db):
     return User.objects.create_user(
-        username="perf_coach", email="perf_coach@local.test", password="pass"
+        email="perf_coach@local.test", password="pass"
     )
 
 
@@ -46,7 +46,7 @@ def coach_team(coach_user):
 @pytest.fixture
 def athlete_user(db):
     return User.objects.create_user(
-        username="perf_athlete", email="perf_athlete@local.test", password="pass"
+        email="perf_athlete@local.test", password="pass"
     )
 
 
@@ -63,7 +63,7 @@ def athlete_member(athlete_user, coach_team):
 def other_member(coach_team):
     """A second athlete in the coach's team, with their own linked user."""
     user = User.objects.create_user(
-        username="perf_other", email="perf_other@local.test", password="pass"
+        email="perf_other@local.test", password="pass"
     )
     member = Member.objects.create(
         firstname="Oth", lastname="Er", email=user.email, user=user
@@ -87,7 +87,7 @@ def athlete_client(api_client, athlete_user):
 @pytest.fixture
 def stranger_client(api_client, db):
     user = User.objects.create_user(
-        username="perf_stranger", email="perf_stranger@local.test", password="pass"
+        email="perf_stranger@local.test", password="pass"
     )
     api_client.force_authenticate(user=user)
     return api_client

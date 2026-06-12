@@ -19,7 +19,7 @@ User = get_user_model()
 @pytest.fixture
 def manager_user(db):
     user = User.objects.create_user(
-        username="mc_manager", email="mc_manager@local.test", password="pass"
+        email="mc_manager@local.test", password="pass"
     )
     TeamFactory(owner=user, is_active=True)
     return user
@@ -33,13 +33,13 @@ def manager_client(api_client, manager_user):
 
 @pytest.fixture
 def free_user(db):
-    return User.objects.create_user(username="mc_free", email="mc_free@local.test", password="pass")
+    return User.objects.create_user(email="mc_free@local.test", password="pass")
 
 
 @pytest.fixture
 def busy_user(db):
     """User who already has a Member profile."""
-    user = User.objects.create_user(username="mc_busy", email="mc_busy@local.test", password="pass")
+    user = User.objects.create_user(email="mc_busy@local.test", password="pass")
     Member.objects.create(firstname="Busy", lastname="User", email=user.email, user=user)
     return user
 
@@ -109,7 +109,7 @@ def test_POST_member_linking_a_stranger_user_is_rejected(manager_client, free_us
 def test_POST_member_linking_a_user_in_a_managed_team_returns_201(manager_client, manager_user):
     """A user already in a team the caller manages may be linked at creation."""
     teammate = User.objects.create_user(
-        username="mc_mate", email="mc_mate@local.test", password="pass"
+        email="mc_mate@local.test", password="pass"
     )
     manager_user.owned_teams.first().managers.add(teammate)
     response = manager_client.post(

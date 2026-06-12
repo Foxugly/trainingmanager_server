@@ -34,7 +34,9 @@ def record(action, *, actor=None, team=None, target_repr="", metadata=None, requ
 
         actor_label = ""
         if actor is not None:
-            actor_label = (getattr(actor, "username", "") or "")[:150]
+            # Email-only: the human-readable actor snapshot is the email (the
+            # former username column is gone).
+            actor_label = (getattr(actor, "email", "") or "")[:150]
 
         # Wrap the write in its own savepoint so a failed INSERT rolls back
         # cleanly and never poisons the caller's surrounding transaction (the

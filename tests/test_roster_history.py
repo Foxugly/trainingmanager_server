@@ -20,7 +20,7 @@ def _url(team_pk):
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="rh_owner", email="rh_owner@x.test", password="p")
+    return User.objects.create_user(email="rh_owner@x.test", password="p")
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def test_owner_gets_active_and_past_periods(api_client, owner, team):
 
 
 def test_athlete_member_forbidden(api_client, team):
-    athlete = User.objects.create_user(username="rh_ath", email="rh_ath@x.test", password="p")
+    athlete = User.objects.create_user(email="rh_ath@x.test", password="p")
     m = Member.objects.create(firstname="Ath", lastname="Lete", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
     api_client.force_authenticate(user=athlete)

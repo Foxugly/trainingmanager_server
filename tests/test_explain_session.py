@@ -38,7 +38,7 @@ def _mock_explain(brief="Today is an aerobic base session — hold your form."):
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user(username="ex_owner", email="ex_o@x.test", password="p")
+    return User.objects.create_user(email="ex_o@x.test", password="p")
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_unauthenticated_returns_401(api_client, event):
 
 def test_athlete_forbidden(api_client, team, event, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake"
-    athlete = User.objects.create_user(username="ex_ath", email="ex_a@x.test", password="p")
+    athlete = User.objects.create_user(email="ex_a@x.test", password="p")
     m = Member.objects.create(firstname="A", lastname="T", user=athlete)
     TeamMembership.objects.create(team=team, member=m)
     api_client.force_authenticate(user=athlete)

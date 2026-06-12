@@ -48,7 +48,7 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
             return TeamJoinRequest.objects.none()
         user = self.request.user
         # select_related the two FKs the serializer dereferences per row
-        # (user.username/first_name/last_name + responded_by.username) to avoid
+        # (user.email/first_name/last_name + responded_by.email) to avoid
         # an N+1 across the manager's join-request list.
         return (
             TeamJoinRequest.objects.filter(
@@ -113,9 +113,10 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
                 # the moment the string is used, which on f-string formatting
                 # happens immediately and would be fine, but explicit eager
                 # resolution makes the intent unambiguous.
-                subject = f"[TrainingManager] {_('Join request from')} {join_request.user.username}"
+                _requester_label = join_request.user.get_full_name() or join_request.user.email
+                subject = f"[TrainingManager] {_('Join request from')} {_requester_label}"
                 body = (
-                    f"{join_request.user.username} ({join_request.user.email}) "
+                    f"{_requester_label} ({join_request.user.email}) "
                     f'{_("wants to join your team")} "{team.name}".\n\n'
                     f"{_('Message')}: {join_request.message or _('(none)')}\n\n"
                     f"{_('Accept')}: {accept_url}\n"
@@ -201,7 +202,7 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
             return
 
         member = Member.objects.create(
-            firstname=user.first_name or user.username,
+            firstname=user.first_name or user.email,
             lastname=user.last_name or "",
             email=user.email,
             phonenumber="",
@@ -265,7 +266,7 @@ class _MagicActionBase(APIView):
         reflects whether the executed action reversed a previous decision —
         otherwise (GET preview path) it predicts whether the proposed action
         WOULD reverse the current state."""
-        responded_by = join_request.responded_by.username if join_request.responded_by else None
+        responded_by = join_request.responded_by.email if join_request.responded_by else None
         target_status = "accepted" if action_proposed == "accept" else "rejected"
         if previous_status is None:
             # GET preview: compare against current state.
@@ -282,7 +283,7 @@ class _MagicActionBase(APIView):
                 "id": join_request.id,
                 "team_id": join_request.team_id,
                 "team_name": join_request.team.name,
-                "requester_username": join_request.user.username,
+                "requester_username": join_request.user.email,
                 "requester_email": join_request.user.email,
                 "message": join_request.message,
                 "requested_at": join_request.requested_at.isoformat(),

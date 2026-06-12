@@ -17,7 +17,6 @@ module-level constants below; keep them in sync with the e2e config.
 
 import logging
 
-from allauth.account.models import EmailAddress
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
@@ -36,10 +35,8 @@ logger = logging.getLogger(__name__)
 # --- Seeded values (the Playwright specs depend on these exact strings) ------
 E2E_PASSWORD = "e2e-Passw0rd!"
 
-MANAGER_USERNAME = "e2e-manager@foxugly.com"
 MANAGER_EMAIL = "e2e-manager@foxugly.com"
 
-ATHLETE_USERNAME = "e2e-athlete@foxugly.com"
 ATHLETE_EMAIL = "e2e-athlete@foxugly.com"
 
 SPORT_NAME = "E2E Sport"
@@ -83,33 +80,27 @@ class Command(BaseCommand):
                 f"environment (DEBUG=False, STATE={state!r})."
             )
 
-    def _ensure_verified_user(self, *, username, email, first_name=""):
-        """get_or_create a user keyed on username; always (re)assert the
-        e2e password, active flag, and a verified primary EmailAddress so the
-        login gate (VerifiedTokenObtainPairSerializer) lets them through."""
+    def _ensure_verified_user(self, *, email, first_name=""):
+        """get_or_create a user keyed on email; always (re)assert the e2e
+        password, active flag, and email_confirmed=True so the login gate
+        (VerifiedTokenObtainPairSerializer) lets them through."""
         User = get_user_model()
         user, created = User.objects.get_or_create(
-            username=username,
+            email=email,
             defaults={
-                "email": email,
                 "first_name": first_name,
                 "is_active": True,
                 "language": SEED_LANGUAGE,
+                "email_confirmed": True,
             },
         )
         # Re-assert mutable state on every run (idempotent self-heal).
-        user.email = email
         user.first_name = first_name
         user.is_active = True
         user.language = SEED_LANGUAGE
+        user.email_confirmed = True
         user.set_password(E2E_PASSWORD)
         user.save()
-
-        EmailAddress.objects.update_or_create(
-            user=user,
-            email=email,
-            defaults={"verified": True, "primary": True},
-        )
         return user, created
 
     @transaction.atomic
@@ -118,7 +109,7 @@ class Command(BaseCommand):
 
         # --- Manager user ---------------------------------------------------
         manager, manager_created = self._ensure_verified_user(
-            username=MANAGER_USERNAME, email=MANAGER_EMAIL, first_name="E2E Manager"
+            email=MANAGER_EMAIL, first_name="E2E Manager"
         )
         # A team is a paid feature gated on team_quota; give the manager room
         # so the create-team flow works through the UI/API too.
@@ -180,7 +171,7 @@ class Command(BaseCommand):
 
         # --- Athlete user + Member + active membership ----------------------
         athlete, athlete_created = self._ensure_verified_user(
-            username=ATHLETE_USERNAME, email=ATHLETE_EMAIL, first_name="E2E Athlete"
+            email=ATHLETE_EMAIL, first_name="E2E Athlete"
         )
         member, _member_created = Member.objects.get_or_create(
             user=athlete,

@@ -62,8 +62,8 @@ def test_logout_with_other_users_refresh_returns_400(api_client):
     blacklist B's refresh via /auth/logout/ — must fail. Without this
     check, the endpoint would let any access-holder DOS another user's
     sessions."""
-    alice = UserFactory(username="alice_logout")
-    bob = UserFactory(username="bob_logout")
+    alice = UserFactory(email="alice_logout@local.test")
+    bob = UserFactory(email="bob_logout@local.test")
     bob_refresh = str(RefreshToken.for_user(bob))
 
     # Authenticate as alice

@@ -18,7 +18,6 @@ User = get_user_model()
 @pytest.fixture
 def staff_user(db):
     return User.objects.create_user(
-        username="as_staff",
         email="as_staff@local.test",
         password="pass",
         is_staff=True,

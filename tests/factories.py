@@ -23,9 +23,11 @@ class UserFactory(DjangoModelFactory):
         # DeprecationWarning without changing semantics.
         skip_postgeneration_save = True
 
-    username = factory.Sequence(lambda n: f"user_factory_{n}")
-    email = factory.LazyAttribute(lambda o: f"{o.username}@local.test")
+    # Email-only: no username column. email is the USERNAME_FIELD. Tests that
+    # used to pass username= now pass email= (or rely on the Sequence).
+    email = factory.Sequence(lambda n: f"user_factory_{n}@local.test")
     is_active = True
+    email_confirmed = True
     password = factory.PostGenerationMethodCall("set_password", "pass1234")
 
 

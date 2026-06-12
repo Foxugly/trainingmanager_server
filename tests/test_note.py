@@ -26,7 +26,7 @@ User = get_user_model()
 @pytest.fixture
 def coach_user(db):
     return User.objects.create_user(
-        username="coach1", email="coach1@local.test", password="passcoach"
+        email="coach1@local.test", password="passcoach"
     )
 
 
@@ -38,7 +38,7 @@ def coach_team(coach_user):
 @pytest.fixture
 def athlete_user(db):
     return User.objects.create_user(
-        username="athlete1", email="athlete1@local.test", password="passathlete"
+        email="athlete1@local.test", password="passathlete"
     )
 
 
@@ -69,7 +69,7 @@ def athlete_client(api_client, athlete_user):
 @pytest.fixture
 def random_user(db):
     return User.objects.create_user(
-        username="rando", email="rando@local.test", password="passrando"
+        email="rando@local.test", password="passrando"
     )
 
 
@@ -130,7 +130,7 @@ def test_owner_can_create_note(coach_client, coach_team, member_in_team):
     assert response.status_code == 201, response.json()
     body = response.json()
     assert body["content"] == "<p>Bonne séance aujourd'hui</p>"
-    assert body["author_username"] == "coach1"
+    assert body["author_username"] == "coach1@local.test"
 
 
 def test_manager_can_create_note(api_client, coach_team, member_in_team, athlete_user):
@@ -452,7 +452,6 @@ def test_author_set_null_if_user_deleted(coach_team, member_in_team):
     """Use a second coach (manager, not the team owner) as author so
     we can delete them without tripping the Team.owner PROTECT FK."""
     second_coach = User.objects.create_user(
-        username="coach2_for_authornull",
         email="coach2_an@local.test",
         password="passcoach",
     )

@@ -10,8 +10,10 @@ class NoteSerializer(serializers.ModelSerializer):
     and the request user; they are read-only here. The 'content' field
     is sanitized via nh3 on every write."""
 
+    # Denorm display label. Email-only: no username column — sourced off email
+    # (field NAME kept to avoid churn on the note UI that reads it).
     author_username = serializers.CharField(
-        source="author.username",
+        source="author.email",
         read_only=True,
         default=None,
     )

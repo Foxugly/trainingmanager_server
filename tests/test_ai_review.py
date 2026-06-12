@@ -62,7 +62,7 @@ _GOOD_TOOL_INPUT = {
 @pytest.fixture
 def owner_user(db):
     return User.objects.create_user(
-        username="rev_owner", email="rev_owner@local.test", password="pass"
+        email="rev_owner@local.test", password="pass"
     )
 
 
@@ -94,7 +94,7 @@ def test_unauthenticated_returns_401(api_client, team):
 def test_athlete_member_returns_403(api_client, team, settings):
     settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
     athlete = User.objects.create_user(
-        username="rev_ath", email="rev_ath@local.test", password="pass"
+        email="rev_ath@local.test", password="pass"
     )
     member = Member.objects.create(
         firstname="Ath", lastname="Lete", email="a@x.test", user=athlete
