@@ -8695,7 +8695,6 @@ components:
           type: string
         ai_athlete_brief:
           type: string
-          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -8705,7 +8704,6 @@ components:
           format: date-time
           readOnly: true
       required:
-      - ai_athlete_brief
       - ai_generated_at
       - ai_response
       - created_at
@@ -8909,6 +8907,8 @@ components:
             * `after` - After the session
             * `never` - Never
         debrief:
+          type: string
+        ai_athlete_brief:
           type: string
       required:
       - name
@@ -10962,6 +10962,8 @@ components:
             * `after` - After the session
             * `never` - Never
         debrief:
+          type: string
+        ai_athlete_brief:
           type: string
     PatchedExerciseRequest:
       type: object
