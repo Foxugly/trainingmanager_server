@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 
 from devices.models import Device, DevicePlatform, DeviceTokenStatus
 from notifications import services
@@ -69,3 +70,60 @@ def test_notify_no_push_to_actor(recipient_with_device, monkeypatch):
         recipient_with_device, TYPE, "Title", "Body", actor=recipient_with_device
     )
     assert calls == []
+
+
+@pytest.mark.django_db
+def test_notify_many_pushes_per_recipient_with_mixed_prefs(monkeypatch):
+    User = get_user_model()
+    user_a = User.objects.create_user(email="usera@local.test", password="Str0ngP@ss1!")
+    user_b = User.objects.create_user(email="userb@local.test", password="Str0ngP@ss2!")
+    Device.objects.create(user=user_a, push_token="a" * 40, platform=DevicePlatform.ANDROID)
+    Device.objects.create(user=user_b, push_token="e" * 40, platform=DevicePlatform.ANDROID)
+    NotificationPreference.objects.create(
+        user=user_b, type=TYPE, in_app=True, email=False, push=False
+    )
+    calls = []
+    monkeypatch.setattr(
+        services,
+        "send_push_to_device",
+        lambda token, title, body, data=None, platform=None: calls.append(
+            {"token": token, "data": data}
+        )
+        or "id",
+    )
+    services.notify_many([user_a, user_b], TYPE, "T", "B", url="/teams/9")
+    assert len(calls) == 1
+    assert "notification_id" in calls[0]["data"]
+    assert calls[0]["data"]["type"] == TYPE
+    assert calls[0]["data"]["url"] == "/teams/9"
+
+
+@pytest.mark.django_db
+def test_notify_many_excludes_actor(monkeypatch):
+    User = get_user_model()
+    user_a = User.objects.create_user(email="actora@local.test", password="Str0ngP@ss1!")
+    user_b = User.objects.create_user(email="recipientb@local.test", password="Str0ngP@ss2!")
+    Device.objects.create(user=user_a, push_token="a" * 40, platform=DevicePlatform.ANDROID)
+    Device.objects.create(user=user_b, push_token="b" * 40, platform=DevicePlatform.ANDROID)
+    calls = []
+    monkeypatch.setattr(
+        services,
+        "send_push_to_device",
+        lambda token, title, body, data=None, platform=None: calls.append(token) or "id",
+    )
+    services.notify_many([user_a, user_b], TYPE, "T", "B", actor=user_a)
+    assert len(calls) == 1
+    assert calls[0] == "b" * 40
+
+
+@pytest.mark.django_db
+def test_notify_marks_failure_count_on_provider_error(recipient_with_device, monkeypatch):
+    def _raise(*a, **k):
+        raise services.PushProviderError("boom")
+
+    monkeypatch.setattr(services, "send_push_to_device", _raise)
+    services.notify(recipient_with_device, TYPE, "Title", "Body")
+    device = Device.objects.get(push_token="d" * 40)
+    device.refresh_from_db()
+    assert device.failure_count > 0
+    assert device.status == DeviceTokenStatus.ACTIVE
