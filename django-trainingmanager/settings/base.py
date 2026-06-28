@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "rsvp",
     "level",
     "notifications",
+    "devices",
     "messaging",
     "attachment",
     "performance",
