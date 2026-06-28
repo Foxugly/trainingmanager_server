@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Channel defaults applied when no preference row exists for (user, type).
 DEFAULT_IN_APP = True
 DEFAULT_EMAIL = True
+DEFAULT_PUSH = True
 
 
 def get_effective_preferences(user):
@@ -46,6 +47,7 @@ def get_effective_preferences(user):
                 "label": str(label),
                 "in_app": pref.in_app if pref is not None else DEFAULT_IN_APP,
                 "email": pref.email if pref is not None else DEFAULT_EMAIL,
+                "push": pref.push if pref is not None else DEFAULT_PUSH,
             }
         )
     return effective

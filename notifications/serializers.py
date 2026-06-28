@@ -44,6 +44,7 @@ class NotificationPreferenceSerializer(serializers.Serializer):
     label = serializers.CharField(read_only=True)
     in_app = serializers.BooleanField()
     email = serializers.BooleanField()
+    push = serializers.BooleanField(required=False, default=True)
 
 
 class NotificationPreferenceUpdateSerializer(serializers.Serializer):

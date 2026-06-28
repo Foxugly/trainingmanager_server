@@ -75,6 +75,7 @@ class NotificationPreference(models.Model):
     type = models.CharField(choices=NotificationType.choices, max_length=40)
     in_app = models.BooleanField(default=True)
     email = models.BooleanField(default=True)
+    push = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
