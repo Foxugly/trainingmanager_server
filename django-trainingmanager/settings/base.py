@@ -371,6 +371,10 @@ ANTHROPIC_TIMEOUT_SECONDS = env.int("ANTHROPIC_TIMEOUT_SECONDS", default=60)
 # ATTACHMENTS_S3_BUCKET is published to SSM (/tm/prod/ATTACHMENTS_S3_BUCKET) by
 # deploy/create-attachments-infra.sh; an empty value means the feature is
 # unconfigured and the mutating endpoints fail-closed with HTTP 503.
+# --- Push (FCM) — dedicated TrainingManager Firebase project (never PushIT's).
+# Empty path => mock mode (local/dev/CI): pushes are logged, not sent.
+FCM_SERVICE_ACCOUNT_PATH = env("FCM_SERVICE_ACCOUNT_PATH", default="")
+
 ATTACHMENTS_S3_BUCKET = env("ATTACHMENTS_S3_BUCKET", default="")
 ATTACHMENTS_S3_REGION = env("ATTACHMENTS_S3_REGION", default="eu-west-1")
 ATTACHMENTS_MAX_BYTES = env.int("ATTACHMENTS_MAX_BYTES", default=500 * 1024 * 1024)  # 500 MB
