@@ -83,4 +83,4 @@ class NotificationPreference(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} / {self.type} (in_app={self.in_app}, email={self.email})"
+        return f"{self.user} / {self.type} (in_app={self.in_app}, email={self.email}, push={self.push})"

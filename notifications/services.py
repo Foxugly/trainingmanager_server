@@ -36,7 +36,7 @@ DEFAULT_PUSH = True
 def get_effective_preferences(user):
     """Return the user's effective channel prefs for every NotificationType.
 
-    A list of dicts ``{type, label, in_app, email}`` covering ALL members of
+    A list of dicts ``{type, label, in_app, email, push}`` covering ALL members of
     ``NotificationType`` (defaulting to in_app/email = True where the user has
     no stored row). The order matches ``NotificationType.choices``.
     """
@@ -87,6 +87,8 @@ def _push_to_user_devices(recipient, title, body, data):
             type(device).objects.filter(pk=device.pk).update(
                 failure_count=F("failure_count") + 1
             )
+        except Exception:
+            logger.exception("Failed to push to device %s", device.pk)
 
 
 def notify(recipient, type, title, body="", url="", *, actor=None, email_extra=""):
