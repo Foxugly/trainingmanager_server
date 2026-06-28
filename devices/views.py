@@ -45,7 +45,7 @@ class DeviceUnregisterView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=DeviceUnregisterSerializer, responses=None)
+    @extend_schema(request=DeviceUnregisterSerializer, responses={204: None})
     def post(self, request):
         serializer = DeviceUnregisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

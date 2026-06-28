@@ -53,14 +53,25 @@ def test_unregister_revokes(auth_client):
 
 @pytest.mark.django_db
 def test_list_returns_only_active_for_caller(auth_client):
-    auth_client.post(
+    from django.contrib.auth import get_user_model
+
+    from devices.models import DevicePlatform
+
+    resp = auth_client.post(
         "/api/v1/devices/register/",
         {"push_token": TOKEN, "platform": "android"},
         format="json",
     )
+    caller_device_id = resp.json()["id"]
+
+    other = get_user_model().objects.create_user(email="other@local.test", password="Str0ngP@ssOther!")
+    Device.objects.create(user=other, push_token="o" * 40, platform=DevicePlatform.ANDROID)
+
     resp = auth_client.get("/api/v1/devices/")
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == caller_device_id
 
 
 @pytest.mark.django_db
@@ -70,4 +81,20 @@ def test_register_requires_auth(api_client):
         {"push_token": TOKEN, "platform": "android"},
         format="json",
     )
+    assert resp.status_code == 401
+
+
+@pytest.mark.django_db
+def test_unregister_requires_auth(api_client):
+    resp = api_client.post(
+        "/api/v1/devices/unregister/",
+        {"push_token": TOKEN},
+        format="json",
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.django_db
+def test_list_requires_auth(api_client):
+    resp = api_client.get("/api/v1/devices/")
     assert resp.status_code == 401
