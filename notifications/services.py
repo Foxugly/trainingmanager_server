@@ -18,9 +18,12 @@ import logging
 
 from django.conf import settings
 from django.core.mail import get_connection, send_mail
-from django.utils import translation
+from django.db.models import F
+from django.utils import timezone, translation
 
+from devices.models import DeviceTokenStatus
 from .models import Notification, NotificationPreference, NotificationType
+from .push import InvalidPushTokenError, PushProviderError, send_push_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +57,36 @@ def get_effective_preferences(user):
 
 
 def _resolve_channels(recipient, type):
-    """Resolve (in_app, email) booleans for one recipient + type, applying
-    defaults when no preference row exists."""
+    """Resolve (in_app, email, push) booleans for one recipient + type,
+    applying defaults when no preference row exists."""
     pref = NotificationPreference.objects.filter(user=recipient, type=type).first()
     if pref is None:
-        return DEFAULT_IN_APP, DEFAULT_EMAIL
-    return pref.in_app, pref.email
+        return DEFAULT_IN_APP, DEFAULT_EMAIL, DEFAULT_PUSH
+    return pref.in_app, pref.email, pref.push
+
+
+def _push_to_user_devices(recipient, title, body, data):
+    """Best-effort push to all the recipient's active devices.
+
+    Invalid tokens flip the device to ``invalid`` (skipped next time); other
+    provider errors bump ``failure_count`` and are swallowed so a flaky push
+    never breaks the triggering request.
+    """
+    for device in recipient.devices.filter(status=DeviceTokenStatus.ACTIVE):
+        try:
+            send_push_to_device(
+                device.push_token, title, body, data=data, platform=device.platform
+            )
+            device.last_seen_at = timezone.now()
+            device.failure_count = 0
+            device.save(update_fields=["last_seen_at", "failure_count"])
+        except InvalidPushTokenError:
+            device.status = DeviceTokenStatus.INVALID
+            device.save(update_fields=["status"])
+        except PushProviderError:
+            type(device).objects.filter(pk=device.pk).update(
+                failure_count=F("failure_count") + 1
+            )
 
 
 def notify(recipient, type, title, body="", url="", *, actor=None, email_extra=""):
@@ -89,7 +116,7 @@ def notify(recipient, type, title, body="", url="", *, actor=None, email_extra="
     if recipient is None:
         return None
 
-    in_app, email = _resolve_channels(recipient, type)
+    in_app, email, push = _resolve_channels(recipient, type)
 
     created = None
     if in_app:
@@ -104,6 +131,13 @@ def notify(recipient, type, title, body="", url="", *, actor=None, email_extra="
                 body=str(body),
                 url=url,
             )
+            if push:
+                _push_to_user_devices(
+                    recipient,
+                    str(title),
+                    str(body),
+                    data={"type": type, "url": url, "notification_id": created.id},
+                )
 
     # digest_email users get no immediate email — the daily send_digests cron
     # batches the day's notifications instead (the in-app row above still fires).
@@ -152,20 +186,21 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
     if not targets:
         return []
 
-    # One query for the whole batch: {user_id: (in_app, email)}. Absent rows
+    # One query for the whole batch: {user_id: (in_app, email, push)}. Absent rows
     # fall back to the defaults, exactly like _resolve_channels.
     prefs = {
-        p.user_id: (p.in_app, p.email)
-        for p in NotificationPreference.objects.filter(
-            user__in=targets, type=type
-        )
+        p.user_id: (p.in_app, p.email, p.push)
+        for p in NotificationPreference.objects.filter(user__in=targets, type=type)
     }
 
     to_create = []
     in_app_recipients = []
+    in_app_push_flags = []
     email_recipients = []
     for recipient in targets:
-        in_app, email = prefs.get(recipient.pk, (DEFAULT_IN_APP, DEFAULT_EMAIL))
+        in_app, email, push = prefs.get(
+            recipient.pk, (DEFAULT_IN_APP, DEFAULT_EMAIL, DEFAULT_PUSH)
+        )
         if in_app:
             # Resolve the (possibly lazy) strings in the recipient's language,
             # mirroring notify(): the stored row keeps a concrete string.
@@ -180,6 +215,7 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
                     )
                 )
             in_app_recipients.append(recipient)
+            in_app_push_flags.append(push)
         if (
             email
             and getattr(recipient, "email", None)
@@ -190,6 +226,16 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
     created = []
     if to_create:
         created = Notification.objects.bulk_create(to_create)
+
+    for recipient, notif, push in zip(in_app_recipients, created, in_app_push_flags):
+        if push:
+            with translation.override(getattr(recipient, "language", None) or "en"):
+                _push_to_user_devices(
+                    recipient,
+                    str(title),
+                    str(body),
+                    data={"type": type, "url": url, "notification_id": notif.id},
+                )
 
     if email_recipients:
         # Reuse ONE SMTP connection for the whole batch instead of opening a
