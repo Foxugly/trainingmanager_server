@@ -5,12 +5,16 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from customuser.views import VerifiedTokenObtainPairView
+from customuser.views.turnstile_page import turnstile_page
 from event.public_views import PublicEventView
 from tools.health import HealthCheckView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/health/", HealthCheckView.as_view(), name="healthcheck"),
+    # WebView-hosted Turnstile widget for the mobile app (served at root on
+    # tm-api.foxugly.com, where the mobile widget's hostname allowlist points).
+    path("turnstile/", turnstile_page, name="turnstile-page"),
     # Auth API (JWT). VerifiedTokenObtainPairView refuses login for users
     # whose primary email is not yet verified — see customuser/serializers.py.
     path(

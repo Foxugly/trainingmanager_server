@@ -351,6 +351,12 @@ DEFAULT_FROM_EMAIL = env("GRAPH_SENDER")
 # secret and MUST stay in .env (never committed).
 TURNSTILE_SITE_KEY = env("TURNSTILE_SITE_KEY", default="0x4AAAAAADI-0tcntdflxEqO")
 TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
+# Dedicated MOBILE widget (Cloudflare), separate from the web widget above. Its
+# host page is served at /turnstile/ (loaded by the app's WebView). Both keys come
+# from SSM in prod; empty in dev. siteverify tries the web secret then this one,
+# so a token from either widget is accepted (see tools/turnstile.py).
+TURNSTILE_SITE_KEY_MOBILE = env("TURNSTILE_SITE_KEY_MOBILE", default="")
+TURNSTILE_SECRET_KEY_MOBILE = env("TURNSTILE_SECRET_KEY_MOBILE", default="")
 
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 ANTHROPIC_MODEL_DEFAULT = env("ANTHROPIC_MODEL_DEFAULT", default="claude-haiku-4-5-20251001")
