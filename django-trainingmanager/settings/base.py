@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "rsvp",
     "level",
     "notifications",
+    "devices",
     "messaging",
     "attachment",
     "performance",
@@ -370,6 +371,7 @@ ANTHROPIC_TIMEOUT_SECONDS = env.int("ANTHROPIC_TIMEOUT_SECONDS", default=60)
 # ATTACHMENTS_S3_BUCKET is published to SSM (/tm/prod/ATTACHMENTS_S3_BUCKET) by
 # deploy/create-attachments-infra.sh; an empty value means the feature is
 # unconfigured and the mutating endpoints fail-closed with HTTP 503.
+
 ATTACHMENTS_S3_BUCKET = env("ATTACHMENTS_S3_BUCKET", default="")
 ATTACHMENTS_S3_REGION = env("ATTACHMENTS_S3_REGION", default="eu-west-1")
 ATTACHMENTS_MAX_BYTES = env.int("ATTACHMENTS_MAX_BYTES", default=500 * 1024 * 1024)  # 500 MB
@@ -391,6 +393,10 @@ _DEFAULT_ATTACHMENTS_ALLOWED_MIME = (
 ATTACHMENTS_ALLOWED_MIME = frozenset(
     env.list("ATTACHMENTS_ALLOWED_MIME", default=list(_DEFAULT_ATTACHMENTS_ALLOWED_MIME))
 )
+
+# --- Push (FCM) — dedicated TrainingManager Firebase project (never PushIT's).
+# Empty path => mock mode (local/dev/CI): pushes are logged, not sent.
+FCM_SERVICE_ACCOUNT_PATH = env("FCM_SERVICE_ACCOUNT_PATH", default="")
 
 # --- Sentry (error tracking / performance) — OPERATIONS.md §3.8 -------------
 # Only active under prod (STATE=PROD): even with a DSN present in dev/test we

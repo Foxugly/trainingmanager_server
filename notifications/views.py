@@ -121,6 +121,7 @@ class NotificationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
                     defaults={
                         "in_app": entry["in_app"],
                         "email": entry["email"],
+                        "push": entry["push"],
                     },
                 )
         effective = get_effective_preferences(request.user)

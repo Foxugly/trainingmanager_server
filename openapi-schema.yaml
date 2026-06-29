@@ -1036,6 +1036,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/DashboardSummary'
           description: ''
+  /api/v1/devices/:
+    get:
+      operationId: devices_list
+      description: List the caller's active devices.
+      tags:
+      - devices
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceRead'
+          description: ''
+  /api/v1/devices/register/:
+    post:
+      operationId: devices_register_create
+      description: Upsert the caller's device by FCM token (idempotent; call on launch
+        + token rotation).
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRead'
+          description: ''
+  /api/v1/devices/unregister/:
+    post:
+      operationId: devices_unregister_create
+      description: Revoke the caller's device with the given token (call on logout).
+      tags:
+      - devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceUnregisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceUnregisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceUnregisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/discussions/unread/:
     get:
       operationId: discussions_unread
@@ -8137,6 +8205,74 @@ components:
       - member_teams
       - member_upcoming
       - member_upcoming_total
+    DeviceRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        platform:
+          allOf:
+          - $ref: '#/components/schemas/PlatformEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DeviceReadStatusEnum'
+          readOnly: true
+        device_name:
+          type: string
+          readOnly: true
+        last_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - device_name
+      - id
+      - last_seen_at
+      - platform
+      - status
+    DeviceReadStatusEnum:
+      enum:
+      - active
+      - invalid
+      - revoked
+      type: string
+      description: |-
+        * `active` - Active
+        * `invalid` - Invalid
+        * `revoked` - Revoked
+    DeviceRegisterRequest:
+      type: object
+      properties:
+        push_token:
+          type: string
+          minLength: 20
+          maxLength: 512
+        platform:
+          $ref: '#/components/schemas/PlatformEnum'
+        device_name:
+          type: string
+          default: ''
+          maxLength: 120
+      required:
+      - platform
+      - push_token
+    DeviceUnregisterRequest:
+      type: object
+      properties:
+        push_token:
+          type: string
+          minLength: 20
+          maxLength: 512
+      required:
+      - push_token
     DuplicateEventCreated:
       type: object
       properties:
@@ -9976,6 +10112,9 @@ components:
           type: boolean
         email:
           type: boolean
+        push:
+          type: boolean
+          default: true
       required:
       - email
       - in_app
@@ -9996,6 +10135,9 @@ components:
           type: boolean
         email:
           type: boolean
+        push:
+          type: boolean
+          default: true
       required:
       - email
       - in_app
@@ -11745,6 +11887,14 @@ components:
           writeOnly: true
       required:
       - name
+    PlatformEnum:
+      enum:
+      - android
+      - ios
+      type: string
+      description: |-
+        * `android` - Android
+        * `ios` - iOS
     PresignUploadHeaders:
       type: object
       properties:

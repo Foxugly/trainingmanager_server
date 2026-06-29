@@ -39,6 +39,7 @@ urlpatterns = [
     path("api/v1/", include("rsvp.urls")),
     path("api/v1/", include("level.urls")),
     path("api/v1/", include("notifications.urls")),
+    path("api/v1/", include("devices.urls")),
     path("api/v1/", include("messaging.urls")),
     path("api/v1/", include("attachment.urls")),
     path("api/v1/", include("performance.urls")),

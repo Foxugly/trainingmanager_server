@@ -75,6 +75,7 @@ class NotificationPreference(models.Model):
     type = models.CharField(choices=NotificationType.choices, max_length=40)
     in_app = models.BooleanField(default=True)
     email = models.BooleanField(default=True)
+    push = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
@@ -82,4 +83,4 @@ class NotificationPreference(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user} / {self.type} (in_app={self.in_app}, email={self.email})"
+        return f"{self.user} / {self.type} (in_app={self.in_app}, email={self.email}, push={self.push})"
