@@ -57,7 +57,14 @@ def _event_dict(event):
         "hour_start": event.hour_start,
         "hour_end": event.hour_end,
         "location": event.location or "",
-        "place": {"id": place.id, "name": place.name} if place is not None else None,
+        # Must match the declared PlaceMinimalSerializer shape (id/name/address):
+        # a strict typed client (the mobile app) rejects the whole response if a
+        # schema-required field like `address` is missing.
+        "place": (
+            {"id": place.id, "name": place.name, "address": place.address}
+            if place is not None
+            else None
+        ),
     }
 
 

@@ -339,7 +339,9 @@ def test_event_detail_embeds_rounds_detail_with_nested_exercises(owner_client, t
 
 
 def test_event_list_omits_rounds_detail(owner_client, team):
-    """The list payload stays light — rounds_detail is null there."""
+    """The list payload stays light — rounds_detail is an EMPTY list there, not
+    the full nested rounds. It must stay an array (the schema declares one, and a
+    strict typed client rejects null), so the rounds simply aren't expanded."""
     event = _make_event(team, vis_rounds="always")
     event.rounds.add(RoundFactory(sport=team.sport, language=team.language))
     resp = owner_client.get("/api/v1/events/")
@@ -347,7 +349,7 @@ def test_event_list_omits_rounds_detail(owner_client, team):
     rows = resp.json()
     rows = rows.get("results", rows) if isinstance(rows, dict) else rows
     row = next(r for r in rows if r["id"] == event.pk)
-    assert row["rounds_detail"] is None
+    assert row["rounds_detail"] == []
 
 
 def test_athlete_rounds_detail_redacted_when_hidden(athlete_client, team):

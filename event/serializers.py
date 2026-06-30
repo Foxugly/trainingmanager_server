@@ -416,11 +416,12 @@ class EventSerializer(serializers.ModelSerializer):
     @extend_schema_field(EventRoundDetailSerializer(many=True))
     def get_rounds_detail(self, event):
         """Rounds + nested exercises, but only on retrieve (a single event):
-        list payloads stay light, so we return null there. Ordered by round
-        order using the prefetched cache."""
+        list payloads stay light, so we return an EMPTY list there (the schema
+        — and strict typed clients like the mobile app — expect an array, not
+        null). Ordered by round order using the prefetched cache."""
         view = self.context.get("view")
         if getattr(view, "action", None) != "retrieve":
-            return None
+            return []
         ordered = sorted(event.rounds.all(), key=lambda r: r.order or 0)
         return EventRoundDetailSerializer(ordered, many=True, context=self.context).data
 
