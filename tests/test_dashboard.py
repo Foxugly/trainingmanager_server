@@ -65,6 +65,27 @@ def test_coach_counts_upcoming_and_pending(auth_client, authenticated_user):
     assert pending_ids == [past.id]
 
 
+def test_event_place_carries_all_declared_fields(auth_client, authenticated_user):
+    """The dashboard hand-builds the event.place dict, so it must carry every
+    field PlaceMinimalSerializer declares (id/name/address). A strict typed
+    client (the mobile app) rejects the whole response if `address` is missing."""
+    from place.models import Place
+
+    team = TeamFactory(owner=authenticated_user)
+    program = Program.objects.create(name="Active", team=team, is_active=True)
+    place = Place.objects.create(name="Olympic pool", address="1 rue du Stade")
+    past = _event(program, TODAY - timedelta(days=2), place=place)
+    past.members.add(Member.objects.create(firstname="P", lastname="Q"))
+
+    data = auth_client.get(URL).json()
+    pending = data["coach_attendance_pending"]
+    assert pending, data
+    place_repr = pending[0]["event"]["place"]
+    assert place_repr is not None
+    assert set(place_repr.keys()) == {"id", "name", "address"}
+    assert place_repr["address"] == "1 rue du Stade"
+
+
 def test_dashboard_does_not_leak_other_coaches_teams(auth_client, authenticated_user):
     """Security: the summary aggregates only teams the caller owns/manages or
     belongs to — a stranger's team with upcoming events + pending attendance
