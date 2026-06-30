@@ -4,8 +4,14 @@
 
 bind = "127.0.0.1:8005"
 workers = 3
-worker_class = "sync"
-timeout = 120          # AI endpoints call Claude synchronously; allow headroom.
+# Threaded workers: the AI endpoints call Claude synchronously (up to
+# ANTHROPIC_TIMEOUT_SECONDS, currently 60s). With sync workers a few concurrent
+# generations would occupy all 3 workers and stall the whole API. Those calls are
+# I/O-bound (the GIL is released while waiting on the socket), so threads keep
+# serving other requests meanwhile. 3 workers x 6 threads = 18 concurrent slots.
+worker_class = "gthread"
+threads = 6
+timeout = 120          # > the 60s AI ceiling, with headroom.
 graceful_timeout = 30
 keepalive = 5
 
