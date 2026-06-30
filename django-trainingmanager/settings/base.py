@@ -267,13 +267,18 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ),
-    # Global baseline throttle for unauthenticated callers (per IP). Endpoints
-    # with their own throttle_classes override this (e.g. ai_* + auth_* below).
+    # Global baseline throttles: per-IP for anonymous callers, per-user for
+    # authenticated ones. Endpoints with their own throttle_classes override
+    # these (e.g. ai_* + auth_* below). The `user` rate is a deliberately
+    # generous anti-abuse backstop (a runaway client / scraper), set well above
+    # any real interactive session; tune down if needed.
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
+        "user": "5000/hour",
         "ai_ping": "30/hour",
         "ai_plan_generation": "10/hour",
         "ai_training_generation": "10/hour",
