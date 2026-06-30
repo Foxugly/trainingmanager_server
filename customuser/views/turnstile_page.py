@@ -8,6 +8,8 @@ success, hands the token back to the app through a JS bridge:
   - Android: a ``@JavascriptInterface`` object injected as ``TMTurnstileBridge``
     → ``TMTurnstileBridge.onToken(token)`` / ``TMTurnstileBridge.onError()``
   - iOS (WKWebView): ``window.webkit.messageHandlers.turnstile.postMessage(token)``
+    on success, and ``window.webkit.messageHandlers.turnstileError.postMessage()``
+    on widget error/expiry (parity with Android's ``TMTurnstileBridge.onError()``)
 
 Served at ``/turnstile/`` (root, not ``/api/``) on tm-api.foxugly.com — the
 widget's Cloudflare hostname allowlist is pinned to that domain, and nginx
@@ -81,6 +83,11 @@ def turnstile_page(request) -> HttpResponse:
   function onToken(token) {{ deliver(token); }}
   function onError() {{
     try {{ if (window.TMTurnstileBridge && window.TMTurnstileBridge.onError) window.TMTurnstileBridge.onError(); }} catch (e) {{}}
+    try {{
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.turnstileError) {{
+        window.webkit.messageHandlers.turnstileError.postMessage("error");
+      }}
+    }} catch (e) {{}}
     try {{ if (window.turnstile) turnstile.reset(); }} catch (e) {{}}
   }}
   function onExpired() {{ try {{ if (window.turnstile) turnstile.reset(); }} catch (e) {{}} }}
