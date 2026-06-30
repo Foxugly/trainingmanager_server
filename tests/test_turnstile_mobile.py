@@ -72,3 +72,25 @@ def test_turnstile_page_falls_back_to_web_sitekey_in_dev(client):
         resp = client.get("/turnstile/")
     assert resp.status_code == 200
     assert b"0xWEBKEY" in resp.content
+
+
+@pytest.mark.django_db
+def test_turnstile_page_bridges_both_platforms_on_success(client):
+    """Success path must reach Android (TMTurnstileBridge) and iOS (turnstile handler)."""
+    resp = client.get("/turnstile/")
+    assert resp.status_code == 200
+    body = resp.content
+    assert b"TMTurnstileBridge.onToken" in body
+    assert b"messageHandlers.turnstile" in body
+
+
+@pytest.mark.django_db
+def test_turnstile_page_bridges_both_platforms_on_error(client):
+    """Error path must reach Android AND iOS — the iOS error handler
+    (messageHandlers.turnstileError) lets the WKWebView host clear a stale
+    token and force a fresh solve, at parity with Android's onError bridge."""
+    resp = client.get("/turnstile/")
+    assert resp.status_code == 200
+    body = resp.content
+    assert b"TMTurnstileBridge.onError" in body
+    assert b"messageHandlers.turnstileError" in body
