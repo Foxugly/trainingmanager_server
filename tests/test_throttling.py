@@ -157,7 +157,7 @@ def _trainer_event(trainer_user):
     es = EnergySystem.objects.create(name="Aero")
     EnergySegment.objects.create(abv="A1", energysystem=es)
     program = ProgramFactory(team=team)
-    return EventFactory(refer_program=program, total=1000)
+    return EventFactory(refer_program=program, total=1000, total_target=1000)
 
 
 def test_generate_training_throttle_after_limit_returns_429(
@@ -169,7 +169,7 @@ def test_generate_training_throttle_after_limit_returns_429(
     e1 = _trainer_event(trainer_user)
     team = trainer_user.owned_teams.first()
     program = ProgramFactory(team=team)
-    e2 = EventFactory(refer_program=program, total=1000)
+    e2 = EventFactory(refer_program=program, total=1000, total_target=1000)
 
     mod = Modality.objects.filter(sport=team.sport).first()
     seg = EnergySegment.objects.first()

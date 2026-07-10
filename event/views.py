@@ -44,6 +44,7 @@ _EVENT_COPY_FIELDS = (
     "hour_start",
     "hour_end",
     "total",
+    "total_target",
     "location",
     "equipment",
     "vis_distance",
@@ -306,6 +307,20 @@ class EventViewSet(viewsets.ModelViewSet):
                 {
                     "code": "event_has_rounds",
                     "detail": _("Event already has rounds. Remove them before regenerating."),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # A structured session is generated to approach a target volume; without
+        # one the AI has nothing to size the session against. Require the coach
+        # to set the target volume first (issue #9).
+        if not event.total_target:
+            return Response(
+                {
+                    "code": "event_without_volume",
+                    "detail": _(
+                        "Set a target volume for this session before generating its training."
+                    ),
                 },
                 status=status.HTTP_409_CONFLICT,
             )

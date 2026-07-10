@@ -39,7 +39,10 @@ class ProgramSerializer(serializers.ModelSerializer):
             "team",
             "team_id",
             "events",
-            "frequency_per_week",
+            # frequency_per_week is intentionally NOT exposed: a program's weekly
+            # frequency is the team's training template (its slots), so the field
+            # is redundant on the program itself (issue #10). The model column is
+            # kept only as an internal record of what a past AI generation used.
             "description",
             "generated_by_ai",
             "ai_response",

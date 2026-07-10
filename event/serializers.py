@@ -186,6 +186,7 @@ class EventSerializer(serializers.ModelSerializer):
             "hour_start",
             "hour_end",
             "total",
+            "total_target",
             "refer_program",
             "refer_program_id",
             "team_id",
@@ -400,6 +401,9 @@ class EventSerializer(serializers.ModelSerializer):
             data["debrief"] = ""
         if not instance.aspect_visible_to_athlete("distance"):
             data["total"] = None
+            # The target volume is coach planning data gated by the same aspect
+            # as the realized distance — never leak it to a restricted athlete.
+            data["total_target"] = None
         if not instance.aspect_visible_to_athlete("goal"):
             data["goal"] = None
             # The athlete brief summarises the session/goal — gate it with goal.

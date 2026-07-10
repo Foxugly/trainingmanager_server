@@ -251,7 +251,9 @@ def test_generate_training_uses_team_language(auth_client_trainer, trainer_user,
     sport = team.sport
 
     program = Program.objects.create(name="NL prog", team=team)
-    event = Event.objects.create(name="NL event", refer_program=program, total=1000)
+    event = Event.objects.create(
+        name="NL event", refer_program=program, total=1000, total_target=1000
+    )
 
     modality = ModalityFactory(sport=sport)
     segment = EnergySegmentFactory()

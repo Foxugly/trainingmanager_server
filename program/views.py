@@ -147,6 +147,21 @@ class ProgramViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        # The generation window must stay within the program's own dates: a
+        # session cannot be planned before the program starts or after it ends
+        # (issue #12). The frontend already clamps the pickers; this is the
+        # server-side backstop.
+        if program.date_start and data["date_start"] < program.date_start:
+            raise serializers.ValidationError(
+                {"date_start": _("The start date cannot precede the program's start date.")},
+                code="date_start_before_program",
+            )
+        if program.date_end and data["date_end"] > program.date_end:
+            raise serializers.ValidationError(
+                {"date_end": _("The end date cannot follow the program's end date.")},
+                code="date_end_after_program",
+            )
+
         # Resolve the team's weekly training template. When it has slots, the
         # frequency is derived from the number of slots (any supplied value is
         # ignored) and the slots + default_pool drive the AI placement. With no
@@ -334,6 +349,10 @@ class ProgramViewSet(viewsets.ModelViewSet):
                 place=place,
                 color=ev_data["color"],
                 total=ev_data["total_distance"],
+                # Seed the coach's target volume from the AI's suggested distance
+                # so a later per-session generate-training has an objective to aim
+                # for (issue #9) without the coach re-entering it.
+                total_target=ev_data["total_distance"],
                 sport=slot_sport_by_weekday.get(ev_date.weekday()) or default_sport,
             )
             created_count += 1

@@ -104,7 +104,17 @@ class Event(models.Model):
         blank=True,
         null=True,
     )
+    # The session's REALIZED volume: the sum of its rounds' distances, kept in
+    # sync with the structured content (the frontend recomputes it from the
+    # rounds and patches it back). Read by the team volume stats and the athlete
+    # brief. For a session with no rounds it stays 0.
     total = models.PositiveIntegerField(default=0)
+    # The coach's TARGET volume for the session — an objective set before any
+    # rounds exist, distinct from the realized `total`. It is what the AI aims
+    # for when generating the structured content (event/ai.py) and what gates
+    # generation (a structured session cannot be generated without one). Never
+    # overwritten by the rounds sync, so the coach's objective is preserved.
+    total_target = models.PositiveIntegerField(default=0)
     rounds = models.ManyToManyField(
         Round,
         blank=True,

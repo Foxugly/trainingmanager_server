@@ -253,10 +253,10 @@ def build_user_prompt(
         f"{duration_line}"
         f"{venue_line}"
         f"{equipment_line}"
-        f"- Target total distance: {event.total or 0} meters\n\n"
+        f"- Target total distance: {event.total_target or 0} meters\n\n"
         f"Rules for THIS session:\n"
         f"- The sum of (exercise.distance * exercise.repetition * round.count) "
-        f"across the whole session must approach {event.total or 0} meters.\n"
+        f"across the whole session must approach {event.total_target or 0} meters.\n"
         + (
             "- Size the whole session (volume and rest) to realistically fit the "
             "stated duration.\n"
@@ -492,7 +492,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
     )
     logger.info(
         "generate_training inputs: event=%s program=%s team=%s sport=%r "
-        "modalities=%s energysegments=%s event_total=%s event_date=%s "
+        "modalities=%s energysegments=%s event_total_target=%s event_date=%s "
         "additional_prompt_len=%s",
         event.pk,
         program.pk if program else None,
@@ -500,7 +500,7 @@ def generate_training(*, event, user=None, additional_prompt=""):
         sport_name,
         modality_ids,
         energysegment_ids,
-        event.total,
+        event.total_target,
         event.date,
         len(additional_prompt or ""),
     )
