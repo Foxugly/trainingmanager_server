@@ -57,7 +57,8 @@ def trainer_event(trainer_user):
     EnergySegment.objects.create(abv="A1", energysystem=es_system)
     EnergySegment.objects.create(abv="A2", energysystem=es_system)
     program = ProgramFactory(team=team, date_start=date(2026, 6, 1), date_end=date(2026, 6, 30))
-    return EventFactory(refer_program=program, total=2000)
+    # A target volume is required to generate a structured session (issue #9).
+    return EventFactory(refer_program=program, total=2000, total_target=2000)
 
 
 def _build_rounds_payload(event=None):

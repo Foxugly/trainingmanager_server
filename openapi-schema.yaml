@@ -8753,6 +8753,11 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
+        total_target:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
         refer_program:
           allOf:
           - $ref: '#/components/schemas/ProgramMinimal'
@@ -9004,6 +9009,11 @@ components:
           format: time
           nullable: true
         total:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        total_target:
           type: integer
           maximum: 9223372036854775807
           minimum: 0
@@ -11069,6 +11079,11 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
+        total_target:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
         refer_program_id:
           type: integer
           writeOnly: true
@@ -11389,12 +11404,6 @@ components:
         team_id:
           type: integer
           writeOnly: true
-        frequency_per_week:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         description:
           type: string
         is_active:
@@ -11970,12 +11979,6 @@ components:
           items:
             type: integer
           readOnly: true
-        frequency_per_week:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         description:
           type: string
         generated_by_ai:
@@ -12040,12 +12043,6 @@ components:
         team_id:
           type: integer
           writeOnly: true
-        frequency_per_week:
-          type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
-          nullable: true
         description:
           type: string
         is_active:
