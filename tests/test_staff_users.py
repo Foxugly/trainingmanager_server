@@ -57,6 +57,7 @@ def test_PATCH_staff_user_revoke_keeps_granted_at(admin_client):
     )
     target.refresh_from_db()
     granted = target.bypass_granted_at
+    assert granted is not None
     admin_client.patch(
         f"/api/v1/staff/users/{target.pk}/", {"subscription_bypass": False}, format="json"
     )
