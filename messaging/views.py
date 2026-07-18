@@ -273,11 +273,6 @@ class TopicMessageViewSet(TeamScopedViewMixin, viewsets.ModelViewSet):
         )
 
 
-@extend_schema(
-    summary="Unread discussion summary for the current user",
-    operation_id="discussions_unread",
-    responses={200: UnreadSummarySerializer},
-)
 class DiscussionsUnreadView(APIView):
     """GET /api/v1/discussions/unread/ — the caller's unread count + the topics
     that have unread messages, across all teams they are a member of.
@@ -289,6 +284,16 @@ class DiscussionsUnreadView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    # Decorateur sur la METHODE et non sur la classe : drf-spectacular refuse
+    # operation_id au niveau classe (il suppose un viewset a plusieurs actions,
+    # ou un id unique collisionnerait) et emettait une erreur permanente. Cette
+    # vue n'a qu'un GET, le schema produit etait deja correct — seule la
+    # position du decorateur change.
+    @extend_schema(
+        summary="Unread discussion summary for the current user",
+        operation_id="discussions_unread",
+        responses={200: UnreadSummarySerializer},
+    )
     def get(self, request):
         user = request.user
         member_teams = user_member_teams(user)
