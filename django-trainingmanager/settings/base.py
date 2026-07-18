@@ -317,6 +317,14 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API pour la gestion d entrainements",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Prefixe EPINGLE, pas deduit. Par defaut drf-spectacular calcule le plus long
+    # prefixe commun a toutes les routes pour le retirer des operationId et des
+    # tags. Tant que tout vivait sous /api/v1/, l'inference donnait le bon
+    # resultat — mais ajouter une seule route a la racine (l'alias /health/) fait
+    # tomber ce prefixe commun a "/", et TOUS les operationId et tags changent
+    # d'un coup (ai_ping_create -> api_v1_ai_ping_create, tag "teams" -> "api"),
+    # ce qui renommerait integralement le client Angular genere.
+    "SCHEMA_PATH_PREFIX": "/api/v1",
     # Split request vs response schemas: request bodies (create/update/patch) get
     # their own *Request components WITHOUT read-only fields, so the typed client's
     # write payloads no longer need `as unknown as <Model>` casts to satisfy

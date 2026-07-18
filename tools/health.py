@@ -11,7 +11,12 @@ to take the pod out of rotation.
 import logging
 
 from django.db import DatabaseError, connection
-from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import serializers as drf_serializers
 from rest_framework import status as http_status
 from rest_framework.permissions import AllowAny
@@ -62,3 +67,15 @@ class HealthCheckView(APIView):
                 status=http_status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         return Response({"status": "ok", "database": "ok"})
+
+
+@extend_schema_view(get=extend_schema(exclude=True))
+class HealthCheckAliasView(HealthCheckView):
+    """Alias racine `/health/`, convention de flotte (les autres sites exposent
+    leur sonde a cette adresse). Meme comportement que `/api/v1/health/`, qui
+    reste l'adresse documentee et celle des sondes existantes.
+
+    Exclu du schema OpenAPI a dessein : documenter deux fois le meme endpoint
+    produirait une collision d'operationId, et le repo tient un zero warning
+    spectacular en permanence.
+    """
