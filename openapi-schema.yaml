@@ -5665,6 +5665,64 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/staff/users/:
+    get:
+      operationId: staff_users_retrieve
+      description: Search accounts by email or name. Without `q`, returns the accounts
+        that currently have offered access. Staff only.
+      summary: Search accounts (staff)
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Case-insensitive substring matched against email, first and last
+          name.
+      tags:
+      - staff
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUserListResponse'
+          description: ''
+  /api/v1/staff/users/{id}/:
+    patch:
+      operationId: staff_users_partial_update
+      description: Grant or revoke offered access on an account. Granting stamps `bypass_granted_at`;
+        revoking keeps it, so the original grant stays auditable. Staff only.
+      summary: Toggle offered access (staff)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - staff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffUserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+          description: ''
   /api/v1/teams/:
     get:
       operationId: teams_list
@@ -11503,6 +11561,22 @@ components:
 
             * `structured` - Structured (rounds & exercises)
             * `freeform` - Free text
+    PatchedStaffUserRequest:
+      type: object
+      description: |-
+        Vue staff d'un compte : identité + état de l'accès offert. Seuls
+        subscription_bypass et bypass_note sont mutables ; bypass_granted_at est
+        horodaté par la vue, jamais transmis par le client.
+      properties:
+        subscription_bypass:
+          type: boolean
+          description: 'When True, grants every paid feature without a subscription
+            (offered access): the team quota becomes unlimited. Distinct from is_staff,
+            which grants no business entitlement.'
+        bypass_note:
+          type: string
+          description: 'Audit only: why this account was offered access.'
+          maxLength: 200
     PatchedTeamJoinRequestRequest:
       type: object
       description: |-
@@ -12747,6 +12821,58 @@ components:
             * `freeform` - Free text
       required:
       - slug
+    StaffUser:
+      type: object
+      description: |-
+        Vue staff d'un compte : identité + état de l'accès offert. Seuls
+        subscription_bypass et bypass_note sont mutables ; bypass_granted_at est
+        horodaté par la vue, jamais transmis par le client.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        subscription_bypass:
+          type: boolean
+          description: 'When True, grants every paid feature without a subscription
+            (offered access): the team quota becomes unlimited. Distinct from is_staff,
+            which grants no business entitlement.'
+        bypass_note:
+          type: string
+          description: 'Audit only: why this account was offered access.'
+          maxLength: 200
+        bypass_granted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: 'Audit only: when the access was first granted.'
+      required:
+      - bypass_granted_at
+      - email
+      - first_name
+      - id
+      - last_name
+    StaffUserListResponse:
+      type: object
+      description: Enveloppe de la recherche staff (liste nue, pas de pagination).
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffUser'
+      required:
+      - results
     StatsAttendance:
       type: object
       properties:

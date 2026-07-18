@@ -7,6 +7,7 @@
 - ``login``         — login lifecycle (verified JWT obtain, logout, magic-link
                       request/exchange).
 - ``password_reset``— public password-reset request + confirm.
+- ``staff``          — is_staff-only account search + offered-access toggle.
 
 Re-exported flat so ``from customuser.views import X`` keeps working for
 urls.py and the project URLconf.
@@ -30,6 +31,7 @@ from .profile import (
     PasswordChangeView,
 )
 from .registration import ConfirmEmailView, RegisterView, ResendEmailView
+from .staff import StaffUserDetailView, StaffUserListView  # noqa: F401
 
 __all__ = [
     "AccountDeleteView",
@@ -48,5 +50,7 @@ __all__ = [
     "PasswordResetRequestView",
     "RegisterView",
     "ResendEmailView",
+    "StaffUserDetailView",
+    "StaffUserListView",
     "VerifiedTokenObtainPairView",
 ]

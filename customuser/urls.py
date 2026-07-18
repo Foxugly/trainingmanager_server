@@ -17,6 +17,8 @@ from .views import (
     PasswordResetRequestView,
     RegisterView,
     ResendEmailView,
+    StaffUserDetailView,
+    StaffUserListView,
 )
 
 urlpatterns = [
@@ -74,4 +76,6 @@ urlpatterns = [
         AccountDeleteView.as_view(),
         name="account-delete",
     ),
+    path("staff/users/", StaffUserListView.as_view(), name="staff_user_list"),
+    path("staff/users/<int:pk>/", StaffUserDetailView.as_view(), name="staff_user_detail"),
 ]

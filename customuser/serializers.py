@@ -324,3 +324,17 @@ class LogoutSerializer(serializers.Serializer):
     """
 
     refresh = serializers.CharField(write_only=True)
+
+
+class StaffUserSerializer(serializers.ModelSerializer):
+    """Vue staff d'un compte : identité + état de l'accès offert. Seuls
+    subscription_bypass et bypass_note sont mutables ; bypass_granted_at est
+    horodaté par la vue, jamais transmis par le client."""
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id", "email", "first_name", "last_name",
+            "subscription_bypass", "bypass_note", "bypass_granted_at",
+        ]
+        read_only_fields = ["id", "email", "first_name", "last_name", "bypass_granted_at"]
