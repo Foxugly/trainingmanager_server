@@ -9801,6 +9801,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/TeamQuotaStatus'
           readOnly: true
+        subscription_bypass:
+          type: boolean
+          readOnly: true
+          description: 'When True, grants every paid feature without a subscription
+            (offered access): the team quota becomes unlimited. Distinct from is_staff,
+            which grants no business entitlement.'
         calendar_token:
           type: string
           readOnly: true
@@ -9821,6 +9827,7 @@ components:
       - is_superuser
       - last_login
       - member_id
+      - subscription_bypass
       - team_quota
     Member:
       type: object

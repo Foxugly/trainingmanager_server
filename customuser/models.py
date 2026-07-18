@@ -161,7 +161,9 @@ class CustomUser(AbstractUser):
         return self.owned_teams.filter(is_active=True).count()
 
     def can_create_team(self) -> bool:
-        return self.active_owned_teams_count() < self.team_quota
+        from customuser.entitlements import can_create_team
+
+        return can_create_team(self)
 
     def rotate_calendar_token(self) -> str:
         """Generate a new calendar_token, persist it, and return it.
