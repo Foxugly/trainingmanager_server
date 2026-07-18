@@ -24,11 +24,12 @@ class CustomUserAdmin(UserAdmin):
         "is_active",
         "is_superuser",
     )
-    list_filter = ("is_staff", "is_superuser", "is_active", "email_confirmed")
+    list_filter = ("subscription_bypass", "is_staff", "is_superuser", "is_active", "email_confirmed")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "language", "email_confirmed")}),
         (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser")}),
+        (_("Billing"), {"fields": ("team_quota", "subscription_bypass", "bypass_note", "bypass_granted_at")}),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (

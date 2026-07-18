@@ -20,6 +20,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from customuser.entitlements import user_quota
 from tools.exceptions import TeamQuotaExceeded
 from tools.throttling import AIReviewThrottle
 
@@ -100,7 +101,8 @@ class TeamViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         used = user.active_owned_teams_count()
-        if used >= user.team_quota:
+        quota = user_quota(user)
+        if used >= quota:
             # Enrich the exception with quota context so the response body
             # includes used/max/can_create alongside code+detail.
             exc = TeamQuotaExceeded()
@@ -108,7 +110,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 "code": exc.default_code,
                 "detail": str(exc.default_detail),
                 "used": used,
-                "max": user.team_quota,
+                "max": quota,
                 "can_create": False,
             }
             raise exc

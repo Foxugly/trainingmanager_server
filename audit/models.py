@@ -17,6 +17,16 @@ class AuditAction(models.TextChoices):
     SESSION_UNSHARED = "session_unshared", _("Session sharing disabled")
     ATTACHMENT_DELETED = "attachment_deleted", _("Attachment deleted")
     TEAM_CONFIG_UPDATED = "team_config_updated", _("Team configuration updated")
+    SUBSCRIPTION_BYPASS_GRANTED = "subscription_bypass_granted", _("Offered access granted")
+    SUBSCRIPTION_BYPASS_REVOKED = "subscription_bypass_revoked", _("Offered access revoked")
+
+
+# Actions conservees indefiniment : elles tracent l'octroi d'un droit payant, dont la
+# valeur commerciale survit a la fenetre de retention ordinaire (purge_audit_log).
+NON_PURGEABLE_ACTIONS = (
+    AuditAction.SUBSCRIPTION_BYPASS_GRANTED,
+    AuditAction.SUBSCRIPTION_BYPASS_REVOKED,
+)
 
 
 class AuditLogEntry(models.Model):

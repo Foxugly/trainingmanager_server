@@ -7,6 +7,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from tools.exceptions import EmailNotVerified
 
+from .entitlements import user_quota
 from .models import CustomUser
 
 
@@ -56,6 +57,7 @@ class MeSerializer(serializers.ModelSerializer):
             "last_login",
             "date_joined",
             "team_quota",
+            "subscription_bypass",
             "calendar_token",
             "member_id",
         ]
@@ -63,6 +65,8 @@ class MeSerializer(serializers.ModelSerializer):
         # affordances (the admin back-office link is superuser-only). They are the
         # user's own flags; server-side permissions still enforce every admin
         # endpoint. read_only prevents privilege escalation via PATCH.
+        # subscription_bypass follows the same rule: read-only so the SPA can show
+        # an "offered access" badge and hide pricing, never mutable by its owner.
         # email is read-only here: it is changed through the dedicated verified
         # change-email flow, never mutated directly via /me/.
         read_only_fields = [
@@ -74,6 +78,7 @@ class MeSerializer(serializers.ModelSerializer):
             "last_login",
             "date_joined",
             "team_quota",
+            "subscription_bypass",
             "calendar_token",
             "member_id",
         ]
@@ -81,10 +86,11 @@ class MeSerializer(serializers.ModelSerializer):
     @extend_schema_field(TeamQuotaStatusSerializer)
     def get_team_quota(self, obj):
         used = obj.active_owned_teams_count()
+        quota = user_quota(obj)
         return {
             "used": used,
-            "max": obj.team_quota,
-            "can_create": used < obj.team_quota,
+            "max": quota,
+            "can_create": used < quota,
         }
 
     @extend_schema_field(serializers.IntegerField(allow_null=True))
@@ -318,3 +324,17 @@ class LogoutSerializer(serializers.Serializer):
     """
 
     refresh = serializers.CharField(write_only=True)
+
+
+class StaffUserSerializer(serializers.ModelSerializer):
+    """Vue staff d'un compte : identité + état de l'accès offert. Seuls
+    subscription_bypass et bypass_note sont mutables ; bypass_granted_at est
+    horodaté par la vue, jamais transmis par le client."""
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "id", "email", "first_name", "last_name",
+            "subscription_bypass", "bypass_note", "bypass_granted_at",
+        ]
+        read_only_fields = ["id", "email", "first_name", "last_name", "bypass_granted_at"]

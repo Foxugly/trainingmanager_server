@@ -106,6 +106,24 @@ class CustomUser(AbstractUser):
             "via a future billing flow)."
         ),
     )
+    subscription_bypass = models.BooleanField(
+        default=False,
+        help_text=_(
+            "When True, grants every paid feature without a subscription "
+            "(offered access): the team quota becomes unlimited. Distinct from "
+            "is_staff, which grants no business entitlement."
+        ),
+    )
+    bypass_note = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text=_("Audit only: why this account was offered access."),
+    )
+    bypass_granted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=_("Audit only: when the access was first granted."),
+    )
     calendar_token = models.CharField(
         max_length=64,
         unique=True,
@@ -143,7 +161,9 @@ class CustomUser(AbstractUser):
         return self.owned_teams.filter(is_active=True).count()
 
     def can_create_team(self) -> bool:
-        return self.active_owned_teams_count() < self.team_quota
+        from customuser.entitlements import can_create_team
+
+        return can_create_team(self)
 
     def rotate_calendar_token(self) -> str:
         """Generate a new calendar_token, persist it, and return it.

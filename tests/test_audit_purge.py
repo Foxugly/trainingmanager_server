@@ -7,6 +7,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from audit.models import AuditAction, AuditLogEntry
+from audit.services import record
 from tests.factories import TeamFactory
 
 pytestmark = pytest.mark.django_db
@@ -62,3 +63,16 @@ def test_purge_batched_deletes_all_old_rows():
     call_command("purge_audit_log", days=365, batch_size=2)
 
     assert AuditLogEntry.objects.count() == 0
+
+
+def test_purge_keeps_subscription_bypass_entries():
+    """Les octrois d'acces offert ont une valeur commerciale : ils survivent a la purge."""
+    old = timezone.now() - timedelta(days=800)
+    kept = record(AuditAction.SUBSCRIPTION_BYPASS_GRANTED, target_repr="User #1 (a@b.c)")
+    purged = record(AuditAction.MEMBER_REMOVED, target_repr="Member #1 (X)")
+    AuditLogEntry.objects.filter(pk__in=[kept.pk, purged.pk]).update(created_at=old)
+
+    call_command("purge_audit_log")
+
+    assert AuditLogEntry.objects.filter(pk=kept.pk).exists()
+    assert not AuditLogEntry.objects.filter(pk=purged.pk).exists()
