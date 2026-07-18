@@ -11,6 +11,7 @@ Covers:
 """
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from audit.models import AuditAction, AuditLogEntry
@@ -227,3 +228,56 @@ def test_team_filter_for_managed_team_ok(manager_client, manager, team):
     results = data["results"] if isinstance(data, dict) else data
     assert len(results) == 1
     assert results[0]["team"] == team.pk
+
+
+# --------------------------------------------------------------------------
+# 5. subscription bypass grant/revoke wiring (staff)
+# --------------------------------------------------------------------------
+
+
+def test_PATCH_staff_user_grant_then_revoke_records_two_audit_entries(admin_client):
+    User = get_user_model()
+    target = User.objects.create_user(email="audited@local.test", password="Sup3rS@fePass!")
+
+    admin_client.patch(
+        f"/api/v1/staff/users/{target.pk}/",
+        {"subscription_bypass": True, "bypass_note": "asso X"},
+        format="json",
+    )
+    admin_client.patch(
+        f"/api/v1/staff/users/{target.pk}/", {"subscription_bypass": False}, format="json"
+    )
+
+    actions = list(
+        AuditLogEntry.objects.filter(target_repr__contains=f"User #{target.pk}")
+        .order_by("created_at")
+        .values_list("action", flat=True)
+    )
+    assert actions == [
+        AuditAction.SUBSCRIPTION_BYPASS_GRANTED,
+        AuditAction.SUBSCRIPTION_BYPASS_REVOKED,
+    ]
+
+
+def test_bypass_audit_entry_records_actor_and_reason(admin_client, admin_user):
+    User = get_user_model()
+    target = User.objects.create_user(email="audited2@local.test", password="Sup3rS@fePass!")
+    admin_client.patch(
+        f"/api/v1/staff/users/{target.pk}/",
+        {"subscription_bypass": True, "bypass_note": "asso X"},
+        format="json",
+    )
+    entry = AuditLogEntry.objects.get(action=AuditAction.SUBSCRIPTION_BYPASS_GRANTED)
+    assert entry.actor_id == admin_user.pk
+    assert entry.actor_label == admin_user.email
+    assert entry.metadata == {"reason": "asso X"}
+
+
+def test_no_audit_entry_when_flag_is_unchanged(admin_client):
+    """Un PATCH qui ne touche que la note ne doit rien journaliser."""
+    User = get_user_model()
+    target = User.objects.create_user(email="audited3@local.test", password="Sup3rS@fePass!")
+    admin_client.patch(
+        f"/api/v1/staff/users/{target.pk}/", {"bypass_note": "note seule"}, format="json"
+    )
+    assert not AuditLogEntry.objects.filter(action__startswith="subscription_bypass_").exists()

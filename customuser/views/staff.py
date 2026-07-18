@@ -75,4 +75,19 @@ class StaffUserDetailView(APIView):
         if user.subscription_bypass and not was_granted:
             user.bypass_granted_at = timezone.now()
             user.save(update_fields=["bypass_granted_at"])
+
+        # Audit de l'octroi/revocation (best-effort; never breaks the action).
+        if user.subscription_bypass != was_granted:
+            from audit.models import AuditAction
+            from audit.services import audit_event
+
+            audit_event(
+                request,
+                AuditAction.SUBSCRIPTION_BYPASS_GRANTED
+                if user.subscription_bypass
+                else AuditAction.SUBSCRIPTION_BYPASS_REVOKED,
+                team=None,
+                target_repr=f"User #{user.id} ({user.email})",
+                metadata={"reason": user.bypass_note} if user.bypass_note else {},
+            )
         return Response(StaffUserSerializer(user).data)

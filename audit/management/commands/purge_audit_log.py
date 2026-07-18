@@ -10,6 +10,11 @@ Idempotent: re-running after a full purge deletes 0 rows and exits 0.
 ``--dry-run`` counts what WOULD be deleted without deleting. Operator-facing
 logs only (no user-facing i18n).
 
+Exclusion: rows whose action is in ``audit.models.NON_PURGEABLE_ACTIONS``
+(currently the offered-access grant/revoke pair) are kept regardless of age —
+they trace the grant of a paid entitlement, whose commercial value survives
+the ordinary retention window. This command never deletes them.
+
 Intended to run from a weekly systemd timer (deploy/systemd/tm-audit-purge.*).
 """
 
@@ -21,7 +26,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from audit.models import AuditLogEntry
+from audit.models import AuditLogEntry, NON_PURGEABLE_ACTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -57,17 +62,24 @@ class Command(BaseCommand):
         batch_size = max(1, options["batch_size"])
         cutoff = timezone.now() - datetime.timedelta(days=days)
 
-        old_qs = AuditLogEntry.objects.filter(created_at__lt=cutoff)
+        old_qs = AuditLogEntry.objects.filter(created_at__lt=cutoff).exclude(
+            action__in=NON_PURGEABLE_ACTIONS
+        )
 
         if options["dry_run"]:
             count = old_qs.count()
             logger.info(
-                "purge_audit_log dry-run: %d row(s) older than %dd (cutoff %s) would be deleted.",
+                "purge_audit_log dry-run: %d row(s) older than %dd (cutoff %s) would be deleted "
+                "(non-purgeable actions %s excluded regardless of age).",
                 count,
                 days,
                 cutoff.isoformat(),
+                NON_PURGEABLE_ACTIONS,
             )
-            self.stdout.write(f"[dry-run] would delete {count} audit row(s) older than {days} days.")
+            self.stdout.write(
+                f"[dry-run] would delete {count} audit row(s) older than {days} days "
+                f"(excludes non-purgeable actions: {', '.join(NON_PURGEABLE_ACTIONS)})."
+            )
             return
 
         total = 0

@@ -7593,6 +7593,8 @@ components:
       - session_unshared
       - attachment_deleted
       - team_config_updated
+      - subscription_bypass_granted
+      - subscription_bypass_revoked
       type: string
       description: |-
         * `member_anonymized` - Member anonymized
@@ -7602,6 +7604,8 @@ components:
         * `session_unshared` - Session sharing disabled
         * `attachment_deleted` - Attachment deleted
         * `team_config_updated` - Team configuration updated
+        * `subscription_bypass_granted` - Offered access granted
+        * `subscription_bypass_revoked` - Offered access revoked
     ActionProposedEnum:
       enum:
       - accept
@@ -7937,6 +7941,8 @@ components:
             * `session_unshared` - Session sharing disabled
             * `attachment_deleted` - Attachment deleted
             * `team_config_updated` - Team configuration updated
+            * `subscription_bypass_granted` - Offered access granted
+            * `subscription_bypass_revoked` - Offered access revoked
         action_display:
           type: string
           readOnly: true
