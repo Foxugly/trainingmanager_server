@@ -9259,15 +9259,21 @@ components:
           type: string
           maxLength: 200
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         modality:
           allOf:
           - $ref: '#/components/schemas/Modality'
@@ -9319,15 +9325,21 @@ components:
           type: string
           maxLength: 200
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         modality_id:
           type: integer
           writeOnly: true
@@ -9909,10 +9921,13 @@ components:
           type: string
           readOnly: true
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         phonenumber:
           type: string
           nullable: true
@@ -9955,10 +9970,13 @@ components:
           minLength: 1
           maxLength: 100
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         phonenumber:
           type: string
           nullable: true
@@ -11215,15 +11233,21 @@ components:
           type: string
           maxLength: 200
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         modality_id:
           type: integer
           writeOnly: true
@@ -11341,10 +11365,13 @@ components:
           minLength: 1
           maxLength: 100
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         phonenumber:
           type: string
           nullable: true
@@ -11498,15 +11525,21 @@ components:
           minimum: 0
           format: int64
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         exercises:
           type: array
           items:
@@ -12455,15 +12488,21 @@ components:
           minimum: 0
           format: int64
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         exercises:
           type: array
           items:
@@ -12505,15 +12544,21 @@ components:
           minimum: 0
           format: int64
         t_start:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         t_break:
-          type: string
           nullable: true
           description: MM:SS format, e.g. 1:30.
-          pattern: ^\d{1,3}:[0-5]\d$
+          oneOf:
+          - type: string
+            pattern: ^\d{1,3}:[0-5]\d$
+          - type: string
+            maxLength: 0
         exercises:
           type: array
           items:
