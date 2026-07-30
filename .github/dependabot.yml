@@ -22,10 +22,14 @@
 # github-actions fait exception : ses majeures sont groupees en un seul PR par
 # depot, vert, donc sans nuisance.
 #
-# ATTENTION : une regle `ignore` s'applique AUSSI aux security updates. Un
-# correctif de securite qui n'existerait qu'en majeure n'ouvrira donc pas de PR
-# automatique. Il reste visible comme alerte dans l'onglet Security, a traiter
-# comme une montee de version a part entiere -- ce qu'il est.
+# A NOTER : cette regle ne bloque PAS les correctifs de securite. Verifie
+# empiriquement le 2026-07-30 -- 13 minutes apres le merge de la regle,
+# Dependabot a ouvert trainingmanager_app#81, « io.sentry:sentry-android 7.18.0
+# -> 8.14.0 in the security group », soit une majeure. Les majeures de routine
+# sont donc filtrees, les correctifs de securite passent, y compris quand ils
+# exigent une majeure. C'est exactement le comportement voulu.
+#
+# (Une premiere version de ce commentaire affirmait l'inverse. C'etait faux.)
 version: 2
 
 updates:
