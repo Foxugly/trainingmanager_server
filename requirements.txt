@@ -15,7 +15,7 @@ icalendar==7.2.2             # RFC 5545 .ics generation for the per-user calenda
 anthropic==0.120.2
 firebase-admin==7.5.0
 boto3==1.43.59               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
-psycopg[binary]>=3.2,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
+psycopg[binary]>=3.3.4,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
 gunicorn==23.0.0
