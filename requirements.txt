@@ -18,5 +18,5 @@ boto3==1.35.99               # AWS SDK — S3 presigned URLs for file attachment
 psycopg[binary]>=3.2,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
-gunicorn==23.0.0
+gunicorn==26.0.0
 sentry-sdk==2.20.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
