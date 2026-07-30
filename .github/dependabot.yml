@@ -10,15 +10,22 @@
 # Dependabot avait ouvert 5 PR concurrentes sur un meme lockfile ; chaque
 # merge invalidait les 4 autres, qui devaient etre rebasees en serie.
 #
-# Majeures Angular ignorees : sans cette regle, Dependabot proposait le
-# tooling v22 sur des projets v21 et produisait des PR qui cassaient le build
-# (ERESOLVE sur les peer deps @angular/compiler-cli@^22). Trois ont du etre
-# fermees le 2026-07-30 (QuizOnline #123/#125, Poker_frontend #51).
+# Majeures ignorees (npm, pip, gradle). Une montee de majeure n'est jamais
+# une mise a jour de routine : elle demande une decision. Laissees libres, le
+# premier passage du 2026-07-30 a ouvert 84 PR individuelles a travers la
+# flotte, dont l'essentiel echouait en CI -- primeng 21->22 (exige Angular 22),
+# typescript 5.9->7.0 (non supporte par Angular 20/21), jsdom 28->30,
+# primeicons 7->8, @primeuix/themes 2->3. Une premiere version de ce fichier
+# n'ignorait que les majeures @angular* : c'etait traiter le symptome observe
+# au lieu de la classe entiere.
+#
+# github-actions fait exception : ses majeures sont groupees en un seul PR par
+# depot, vert, donc sans nuisance.
 #
 # ATTENTION : une regle `ignore` s'applique AUSSI aux security updates. Un
-# correctif de securite qui n'existerait qu'en Angular 22 n'ouvrirait donc
-# pas de PR automatique. Il resterait visible comme alerte dans l'onglet
-# Security, a traiter alors comme une montee de version a part entiere.
+# correctif de securite qui n'existerait qu'en majeure n'ouvrira donc pas de PR
+# automatique. Il reste visible comme alerte dans l'onglet Security, a traiter
+# comme une montee de version a part entiere -- ce qu'il est.
 version: 2
 
 updates:
@@ -44,6 +51,9 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Les actions de workflow n'etaient mises a jour par personne : sans ce
   # bloc, aucune version update ne les touche.
