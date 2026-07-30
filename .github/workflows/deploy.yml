@@ -3,6 +3,11 @@ name: Test & Deploy
 on:
   push:
     branches: [main]
+  # Sans ce declencheur, une PR n'etait verifiee par RIEN : la suite ne tournait
+  # qu'apres le merge, sur la branche qui deploie. Constate le 2026-07-30 --
+  # plusieurs PR Dependabot ouvertes sur ce depot n'avaient aucun check.
+  # Seul `test` tourne ici ; `deploy` reste garde par son `if`.
+  pull_request:
 
 concurrency:
   group: deploy-production
