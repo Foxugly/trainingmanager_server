@@ -1,0 +1,63 @@
+# Dependabot — configuration de flotte Foxugly.
+#
+# Sans ce fichier, seules les *security updates* tournaient : les lockfiles
+# derivaient librement jusqu'a ce qu'une CVE tombe, d'ou les backlogs de 59 a
+# 77 alertes constates le 2026-07-30 sur les frontends. Les *version updates*
+# declares ici les maintiennent a jour en continu, ce qui est la vraie
+# prevention.
+#
+# Regroupement : un seul PR par lot plutot qu'un par paquet. Le 2026-07-30,
+# Dependabot avait ouvert 5 PR concurrentes sur un meme lockfile ; chaque
+# merge invalidait les 4 autres, qui devaient etre rebasees en serie.
+#
+# Majeures Angular ignorees : sans cette regle, Dependabot proposait le
+# tooling v22 sur des projets v21 et produisait des PR qui cassaient le build
+# (ERESOLVE sur les peer deps @angular/compiler-cli@^22). Trois ont du etre
+# fermees le 2026-07-30 (QuizOnline #123/#125, Poker_frontend #51).
+#
+# ATTENTION : une regle `ignore` s'applique AUSSI aux security updates. Un
+# correctif de securite qui n'existerait qu'en Angular 22 n'ouvrirait donc
+# pas de PR automatique. Il resterait visible comme alerte dans l'onglet
+# Security, a traiter alors comme une montee de version a part entiere.
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Europe/Brussels"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Un seul PR pour tous les correctifs de securite du lot.
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Mineures et correctives regroupees : sures, pas besoin d'un PR chacune.
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Les actions de workflow n'etaient mises a jour par personne : sans ce
+  # bloc, aucune version update ne les touche.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "Europe/Brussels"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns:
+          - "*"
