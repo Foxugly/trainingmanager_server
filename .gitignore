@@ -105,6 +105,13 @@ celerybeat.pid
 
 # Environments
 .env
+# Toute variante .env.<quelque chose> : `.env` seul ne couvre que le nom exact.
+# Un .env.e2e-backup contenant SECRET_KEY / DB_PASSWORD / GRAPH_CLIENT_SECRET
+# tramait dans l'arbre de travail sans etre ignore — un `git add -A` l'aurait
+# commite. Constate le 2026-07-31.
+.env.*
+# ... sauf le gabarit, qui est versionne a dessein.
+!.env.example
 .venv
 env/
 venv/
