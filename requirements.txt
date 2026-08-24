@@ -1,22 +1,22 @@
-Django==6.0.7
+Django==6.1
 django-environ==0.14.0
 django-debug-toolbar==6.3.0
-djangorestframework==3.17.1
+djangorestframework==3.18.0
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.9.0
 drf-spectacular==0.30.0
 msal==1.37.0
 httpx==0.28.1
 django-filter==25.2
-drf-nested-routers==0.95.0
+drf-nested-routers==0.95.3
 django-modeltranslation==0.20.3
 nh3==0.3.6                   # Rust/ammonia HTML sanitizer (replaced bleach) — tools/html_sanitizer.py
-icalendar==7.2.2             # RFC 5545 .ics generation for the per-user calendar feed
-anthropic==0.120.2
+icalendar==7.3.0             # RFC 5545 .ics generation for the per-user calendar feed
+anthropic==0.125.0
 firebase-admin==7.5.0
-boto3==1.43.59               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
+boto3==1.43.76               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
 psycopg[binary]>=3.3.4,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
 gunicorn==23.0.0
-sentry-sdk==2.66.1           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
+sentry-sdk==2.68.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
