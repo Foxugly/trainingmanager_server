@@ -6,7 +6,7 @@ from datetime import date as _date
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
-from tools.ai import AIServiceError, call_claude_with_tool, truncate_for_log
+from tools.ai import AIServiceError, call_claude_with_tool, coerce_ai_quantity, truncate_for_log
 from tools.ai_prompt import append_coach_instructions
 from tools.ai_prompt import build_system_prompt as _build_system_prompt
 from tools.i18n import resolve_language_label
@@ -432,6 +432,9 @@ def generate_plan(
 
     for ev in events:
         ev_date = _parse_date_strict(ev.get("date"))
+        ev["total_distance"] = coerce_ai_quantity(
+            ev.get("total_distance"), field="total_distance", minimum=0
+        )
         if ev_date < date_start or ev_date > date_end:
             logger.warning(
                 "AI generated out-of-range date for program=%s: %s not in [%s, %s] (event=%r)",

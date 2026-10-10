@@ -4,7 +4,7 @@ import logging
 
 from django.utils.translation import gettext_lazy as _
 
-from tools.ai import AIServiceError, call_claude_with_tool, truncate_for_log
+from tools.ai import AIServiceError, call_claude_with_tool, coerce_ai_quantity, truncate_for_log
 from tools.ai_prompt import append_coach_instructions
 from tools.ai_prompt import build_system_prompt as _build_system_prompt
 from tools.html_sanitizer import strip_html
@@ -570,7 +570,15 @@ def generate_training(*, event, user=None, additional_prompt=""):
     valid_modality_ids = set(modality_ids)
     valid_segment_ids = set(energysegment_ids)
     for r in rounds_data:
+        if "count" in r:
+            r["count"] = coerce_ai_quantity(r["count"], field="count", minimum=1, event=event)
         for ex in r.get("exercises", []):
+            ex["distance"] = coerce_ai_quantity(
+                ex.get("distance"), field="distance", minimum=0, event=event
+            )
+            ex["repetition"] = coerce_ai_quantity(
+                ex.get("repetition"), field="repetition", minimum=1, event=event
+            )
             if ex.get("modality_id") not in valid_modality_ids:
                 logger.warning(
                     "AI used invalid modality_id for event=%s: %r not in %s (exercise=%r)",

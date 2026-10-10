@@ -5,6 +5,7 @@ should sit in domain-specific modules and call into this one.
 """
 
 import logging
+import re
 
 from anthropic import Anthropic, APIError, APITimeoutError, AuthenticationError
 from django.conf import settings
@@ -220,3 +221,42 @@ def call_claude_with_tool(
         "cache_read_tokens": cache_read or 0,
         "stop_reason": response.stop_reason,
     }
+
+
+# Thousands separators the model may put in a quantity: comma, dot, apostrophe
+# (Swiss) and the various spaces (plain, no-break, narrow no-break, thin).
+_THOUSANDS_SEPARATORS = ",.'’    "
+_GROUPED_THOUSANDS = re.compile(r"\d{1,3}(?:[,.'’    ]\d{3})+")
+_UNIT_SUFFIX = re.compile(r"\s*(?:m|meters?|metres?|mètres?)\s*$", re.IGNORECASE)
+
+
+def coerce_ai_quantity(value, *, field, minimum, event=None):
+    """Normalise a distance / repetition / count returned by the AI to an int.
+
+    The tool schema asks for integers, but it is guidance, not a guarantee: the
+    model sometimes writes ``"1,000"``, ``"1.000"``, ``"1 000"`` or ``"1000m"``.
+    Those all mean 1000 here (a fractional number of meters or repetitions
+    makes no sense, so ``.``/``,`` followed by exactly three digits is a
+    thousands separator). Anything else (fraction, negative, text) is an invalid
+    AI answer: raise AIServiceError (502) instead of crashing the save with a
+    500 or silently truncating ``1.5`` to ``1``.
+    """
+    parsed = None
+    if isinstance(value, bool):
+        parsed = None
+    elif isinstance(value, int):
+        parsed = value
+    elif isinstance(value, float):
+        parsed = int(value) if value.is_integer() else None
+    elif isinstance(value, str):
+        text = _UNIT_SUFFIX.sub("", value.strip())
+        if text.isdigit():
+            parsed = int(text)
+        elif _GROUPED_THOUSANDS.fullmatch(text):
+            parsed = int("".join(c for c in text if c not in _THOUSANDS_SEPARATORS))
+    if parsed is None or parsed < minimum:
+        logger.warning(
+            "AI returned invalid %s for event=%s: %r", field, getattr(event, "pk", None), value
+        )
+        raise AIServiceError(_("AI returned an invalid number in the training."))
+    return parsed
