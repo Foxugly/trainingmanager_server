@@ -22,7 +22,7 @@ DIRECTIVES = ['NoNewPrivileges=yes', 'PrivateTmp=yes', 'ProtectSystem=full', 'Pr
 
 
 def read(unit):
-    return (UNITS_DIR / ("%s.service" % unit)).read_text(encoding="utf-8")
+    return (UNITS_DIR / f"{unit}.service").read_text(encoding="utf-8")
 
 
 class SystemdHardeningTests(unittest.TestCase):
