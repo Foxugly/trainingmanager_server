@@ -661,3 +661,51 @@ def test_generate_training_no_catalog_omits_equipment_block(
     assert "Team equipment catalog" not in sent_prompt
     tool_arg = mock_client.messages.create.call_args.kwargs["tools"][0]
     assert "equipment_used" not in tool_arg["input_schema"]["properties"]
+
+
+# --------------------- AI number formats (distance) -------------------
+
+
+@pytest.mark.parametrize("distance", ["1,000", "1.000", "1 000", "1000m"])
+def test_POST_generate_training_normalises_formatted_distance(
+    auth_client_trainer, trainer_event, settings, distance
+):
+    """The schema asks for integers but the model may format them: 1,000 = 1000 m."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    rounds_payload = _build_rounds_payload(trainer_event)
+    rounds_payload[0]["exercises"][0]["distance"] = distance
+    rounds_payload[1]["exercises"][0]["repetition"] = "6"
+    rounds_payload[1]["count"] = "2"
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/", {}, format="json"
+        )
+
+    assert response.status_code == 200
+    assert Exercise.objects.filter(notes="warm-up").get().distance == 1000
+    assert Exercise.objects.filter(notes="main set").get().repetition == 6
+    assert Round.objects.filter(event=trainer_event, count=2).exists()
+
+
+@pytest.mark.parametrize("distance", [1.5, "1.5", -100, "far"])
+def test_POST_generate_training_invalid_distance_returns_502_and_saves_nothing(
+    auth_client_trainer, trainer_event, settings, distance
+):
+    """A fractional / negative / textual distance is an invalid AI answer, not a 500
+    (and 1.5 must not be silently truncated to 1 m)."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    rounds_payload = _build_rounds_payload(trainer_event)
+    rounds_payload[0]["exercises"][0]["distance"] = distance
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_training_response(rounds_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/events/{trainer_event.pk}/generate-training/", {}, format="json"
+        )
+
+    assert response.status_code == 502
+    assert trainer_event.rounds.count() == 0

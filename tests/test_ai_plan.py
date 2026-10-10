@@ -688,3 +688,55 @@ def test_generate_events_empty_location_leaves_place_null(
     ev = Event.objects.get(refer_program=program, date=start)
     assert ev.place_id is None
     assert ev.location == ""
+
+
+# --------------------- AI number formats (total_distance) --------------
+
+
+def test_POST_generate_events_normalises_formatted_total_distance(
+    auth_client_trainer, trainer_user, settings
+):
+    """The schema asks for an integer but the model may write '3 000' / '3.000'."""
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+    events_payload = _make_events_payload(start, 2)
+    events_payload[0]["total_distance"] = "3 000"
+    events_payload[1]["total_distance"] = "3.000"
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(events=events_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert response.status_code == 200
+    totals = set(Event.objects.filter(refer_program=program).values_list("total", flat=True))
+    assert totals == {3000}
+
+
+def test_POST_generate_events_invalid_total_distance_returns_502(
+    auth_client_trainer, trainer_user, settings
+):
+    settings.ANTHROPIC_API_KEY = "sk-ant-fake-test-key"
+    program = _trainer_program(trainer_user)
+    start = date(2026, 5, 1)
+    end = date(2026, 5, 14)
+    events_payload = _make_events_payload(start, 2)
+    events_payload[1]["total_distance"] = "about 3k"
+
+    with patch("tools.ai.Anthropic") as MockAnthropic:
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = _mock_tool_use_response(events=events_payload)
+        response = auth_client_trainer.post(
+            f"/api/v1/programs/{program.pk}/generate-events/",
+            _generate_payload(start, end),
+            format="json",
+        )
+
+    assert response.status_code == 502
+    assert not Event.objects.filter(refer_program=program).exists()
