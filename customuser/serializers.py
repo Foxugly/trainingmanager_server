@@ -291,9 +291,15 @@ class MagicLinkRequestSerializer(serializers.Serializer):
 
     Anti-leak by design — the view always returns the same 200 payload
     regardless of whether `email` matches a confirmed user. Validation
-    here only enforces the field shape."""
+    here only enforces the field shape.
+
+    `turnstile_token` is optional for now (backward compatibility with
+    frontends deployed before the widget was added): when present and
+    Turnstile is configured, the view verifies it; when absent the request
+    is still accepted. A follow-up change can make it required."""
 
     email = serializers.EmailField()
+    turnstile_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
 
 class MagicLinkExchangeRequestSerializer(serializers.Serializer):

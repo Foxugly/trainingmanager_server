@@ -753,7 +753,9 @@ paths:
         doesn't, the call is a silent no-op — the response is byte-for-byte
         identical (no user enumeration, timing-insensitive wording).
 
-        Rate-limited to 5 requests per hour per IP.
+        Rate-limited to 5 requests per hour per IP. An optional Cloudflare
+        Turnstile ``turnstile_token`` is verified when supplied (400
+        ``captcha_failed`` on failure); it is not yet required.
       tags:
       - auth
       requestBody:
@@ -780,7 +782,8 @@ paths:
             active, email-confirmed account, a sign-in link has been dispatched; otherwise
             the response is identical (anti-leak).'
         '400':
-          description: Body validation error (malformed email).
+          description: Body validation error (malformed email) or Turnstile failure
+            (code=captcha_failed).
         '429':
           description: Too Many Requests (rate limit hit).
   /api/v1/auth/password/change/:
@@ -9803,11 +9806,19 @@ components:
         Anti-leak by design — the view always returns the same 200 payload
         regardless of whether `email` matches a confirmed user. Validation
         here only enforces the field shape.
+
+        `turnstile_token` is optional for now (backward compatibility with
+        frontends deployed before the widget was added): when present and
+        Turnstile is configured, the view verifies it; when absent the request
+        is still accepted. A follow-up change can make it required.
       properties:
         email:
           type: string
           format: email
           minLength: 1
+        turnstile_token:
+          type: string
+          writeOnly: true
       required:
       - email
     MagicLinkRequestResponse:
