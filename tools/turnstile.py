@@ -46,6 +46,14 @@ def _verify_with_secret(secret: str, token: str, remote_ip: str | None) -> bool:
     return bool(data.get("success"))
 
 
+def turnstile_configured() -> bool:
+    """True when at least one Turnstile secret (web or mobile) is set."""
+    return any(
+        getattr(settings, name, None)
+        for name in ("TURNSTILE_SECRET_KEY", "TURNSTILE_SECRET_KEY_MOBILE")
+    )
+
+
 def verify_turnstile_token(token: str, remote_ip: str | None = None) -> bool:
     """Exchange the client-side Turnstile token for a verification result.
 

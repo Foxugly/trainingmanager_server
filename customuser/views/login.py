@@ -12,7 +12,9 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from tools.exceptions import CaptchaFailed
 from tools.throttling import LoginThrottle, LogoutThrottle, MagicLinkRequestThrottle
+from tools.turnstile import get_remote_ip, turnstile_configured, verify_turnstile_token
 
 from ..serializers import (
     LogoutSerializer,
@@ -79,7 +81,9 @@ class MagicLinkRequestView(APIView):
     doesn't, the call is a silent no-op — the response is byte-for-byte
     identical (no user enumeration, timing-insensitive wording).
 
-    Rate-limited to 5 requests per hour per IP.
+    Rate-limited to 5 requests per hour per IP. An optional Cloudflare
+    Turnstile ``turnstile_token`` is verified when supplied (400
+    ``captcha_failed`` on failure); it is not yet required.
     """
 
     permission_classes = [AllowAny]
@@ -101,7 +105,9 @@ class MagicLinkRequestView(APIView):
                     "dispatched; otherwise the response is identical (anti-leak)."
                 ),
             ),
-            400: OpenApiResponse(description="Body validation error (malformed email)."),
+            400: OpenApiResponse(
+                description="Body validation error (malformed email) or Turnstile failure (code=captcha_failed)."
+            ),
             429: OpenApiResponse(description="Too Many Requests (rate limit hit)."),
         },
     )
@@ -110,6 +116,12 @@ class MagicLinkRequestView(APIView):
 
         serializer = MagicLinkRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # Backward compatible: verify only when a token is supplied and
+        # Turnstile is configured; a missing token is not rejected (yet).
+        token = serializer.validated_data.get("turnstile_token")
+        if token and turnstile_configured():
+            if not verify_turnstile_token(token, remote_ip=get_remote_ip(request)):
+                raise CaptchaFailed()
         request_magic_link(serializer.validated_data["email"])
         return Response({"detail": "ok"})
 

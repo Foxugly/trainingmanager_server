@@ -126,6 +126,40 @@ def test_request_for_inactive_user_returns_200_no_mail(api_client):
     assert mail.outbox == []
 
 
+def test_request_with_valid_turnstile_token_sends_mail(api_client, settings, monkeypatch):
+    settings.TURNSTILE_SECRET_KEY = "secret"
+    monkeypatch.setattr(
+        "customuser.views.login.verify_turnstile_token", lambda token, remote_ip=None: True
+    )
+    user = _user("magic_ts_ok")
+    payload = {"email": user.email, "turnstile_token": "tok"}
+    response = api_client.post(REQUEST_URL, payload, format="json")
+    assert response.status_code == 200
+    assert len(mail.outbox) == 1
+
+
+def test_request_with_invalid_turnstile_token_returns_400(api_client, settings, monkeypatch):
+    settings.TURNSTILE_SECRET_KEY = "secret"
+    monkeypatch.setattr(
+        "customuser.views.login.verify_turnstile_token", lambda token, remote_ip=None: False
+    )
+    user = _user("magic_ts_ko")
+    payload = {"email": user.email, "turnstile_token": "bad"}
+    response = api_client.post(REQUEST_URL, payload, format="json")
+    assert response.status_code == 400
+    assert response.json()["code"] == "captcha_failed"
+    assert mail.outbox == []
+
+
+def test_request_without_turnstile_token_still_accepted(api_client, settings):
+    """Backward compatibility: an older frontend sends no token."""
+    settings.TURNSTILE_SECRET_KEY = "secret"
+    user = _user("magic_ts_none")
+    response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
+    assert response.status_code == 200
+    assert len(mail.outbox) == 1
+
+
 def test_request_throttled_after_limit(api_client, set_throttle_rate):
     """5/hour by default. Reduce to 2/min for the test budget."""
     set_throttle_rate("auth_magic_link_request", "2/min")
