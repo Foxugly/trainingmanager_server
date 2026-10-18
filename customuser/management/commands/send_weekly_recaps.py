@@ -89,9 +89,7 @@ def compute_team_recap(team, date_from, date_to):
     expected = sum(_expected_for(e["date"]) for e in events)
 
     if event_ids and expected:
-        present = Attendance.objects.filter(
-            event_id__in=event_ids, status__code="present"
-        ).count()
+        present = Attendance.objects.filter(event_id__in=event_ids, status__code="present").count()
         attendance_rate = (present / expected) if expected else None
     else:
         attendance_rate = None
@@ -138,14 +136,14 @@ def build_email_body(recipient, recaps, date_from, date_to):
         lines.append(f"  {_('Sessions')}: {recap['sessions']}")
         lines.append(f"  {_('Attendance rate')}: {rate_str}")
         lines.append(f"  {_('Total volume')}: {recap['total_volume']}")
-        lines.append(
-            f"  {_('Upcoming sessions next week')}: {recap['upcoming_next_week']}"
-        )
+        lines.append(f"  {_('Upcoming sessions next week')}: {recap['upcoming_next_week']}")
         lines.append("")
 
     lines.append(
-        _("You receive this because you own or manage these teams. To stop, "
-          "disable the weekly recap in your account preferences.")
+        _(
+            "You receive this because you own or manage these teams. To stop, "
+            "disable the weekly recap in your account preferences."
+        )
     )
     return "\n".join(lines)
 
@@ -236,9 +234,7 @@ class Command(BaseCommand):
                     continue
                 if not user.email:
                     continue
-                entry = recaps_by_user.setdefault(
-                    user.pk, {"user": user, "recaps": []}
-                )
+                entry = recaps_by_user.setdefault(user.pk, {"user": user, "recaps": []})
                 entry["recaps"].append(recap)
 
         sent = 0
@@ -251,9 +247,10 @@ class Command(BaseCommand):
 
             # Idempotency: once a recap for this (user, week) was sent, don't
             # re-send on a same-week re-run. Checked before building the email.
-            if not dry_run and WeeklyRecapLog.objects.filter(
-                user=user, week_start=date_from
-            ).exists():
+            if (
+                not dry_run
+                and WeeklyRecapLog.objects.filter(user=user, week_start=date_from).exists()
+            ):
                 skipped += 1
                 continue
 
@@ -263,9 +260,7 @@ class Command(BaseCommand):
                 body = build_email_body(user, recaps, date_from, date_to)
 
             if dry_run:
-                logger.info(
-                    "[dry-run] would email %s (%d team(s))", user.email, len(recaps)
-                )
+                logger.info("[dry-run] would email user %s (%d team(s))", user.pk, len(recaps))
                 continue
 
             try:
@@ -281,7 +276,7 @@ class Command(BaseCommand):
                 WeeklyRecapLog.objects.get_or_create(user=user, week_start=date_from)
                 sent += 1
             except Exception:
-                logger.exception("Failed to send weekly recap to %s", user.email)
+                logger.exception("Failed to send weekly recap to user %s", user.pk)
 
         if dry_run:
             logger.info(

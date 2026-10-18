@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     continue
 
                 if dry_run:
-                    logger.info("[dry-run] would digest %d notif(s) to %s", len(rows), user.email)
+                    logger.info("[dry-run] would digest %d notif(s) to user %s", len(rows), user.pk)
                     continue
 
                 body = _build_digest_body(user, rows)
@@ -84,7 +84,7 @@ class Command(BaseCommand):
                     user.save(update_fields=["last_digest_at"])
                     sent += 1
                 except Exception:
-                    logger.exception("Failed to send digest to %s", user.email)
+                    logger.exception("Failed to send digest to user %s", user.pk)
         finally:
             if connection is not None:
                 try:
@@ -117,7 +117,9 @@ def _build_digest_body(user, rows):
             lines.append(f"  {link}")
         lines.append("")
     lines.append(
-        _("You receive a daily digest instead of per-event emails. Change this in "
-          "your notification preferences.")
+        _(
+            "You receive a daily digest instead of per-event emails. Change this in "
+            "your notification preferences."
+        )
     )
     return "\n".join(lines)

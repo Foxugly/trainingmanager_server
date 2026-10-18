@@ -55,7 +55,7 @@ def send_confirmation_email(user) -> None:
                 fail_silently=False,
             )
         except Exception:
-            logger.exception("Failed to send confirmation email to %s", user.email)
+            logger.exception("Failed to send confirmation email to user %s", user.pk)
 
 
 class RegisterView(APIView):

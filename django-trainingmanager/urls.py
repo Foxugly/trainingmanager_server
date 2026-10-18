@@ -73,5 +73,6 @@ if settings.DEBUG:
             SpectacularSwaggerView.as_view(url_name="schema"),
             name="swagger-ui",
         ),
-        path("__debug__/", include("debug_toolbar.urls")),
     ]
+    if "debug_toolbar" in settings.INSTALLED_APPS:
+        urlpatterns += [path("__debug__/", include("debug_toolbar.urls"))]

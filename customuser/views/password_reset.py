@@ -107,7 +107,7 @@ class PasswordResetRequestView(APIView):
                         fail_silently=False,
                     )
                 except Exception:
-                    logger.exception("Failed to send password reset email to %s", user.email)
+                    logger.exception("Failed to send password reset email to user %s", user.pk)
 
         return Response(
             {

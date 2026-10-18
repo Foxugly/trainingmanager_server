@@ -102,7 +102,8 @@ paths:
     delete:
       operationId: attachments_destroy
       description: 'Delete an attachment: best-effort removal of the S3 object then
-        the row. Caller must be the uploader or able to write the target.'
+        the row. Caller must be able to write the target (being the uploader is not
+        enough).'
       parameters:
       - in: path
         name: id
@@ -127,8 +128,8 @@ paths:
     post:
       operationId: attachments_complete_create
       description: 'Finalize an upload: HEAD the S3 object, record its real size,
-        and flip the Attachment to `ready`. Caller must be the uploader or able to
-        write the target.'
+        and flip the Attachment to `ready`. Caller must be able to write the target
+        (being the uploader is not enough).'
       parameters:
       - in: path
         name: id

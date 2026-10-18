@@ -92,6 +92,19 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
+      # Lint with the ruff pinned in .pre-commit-config.yaml (same version as
+      # the local hook). Lint only: the formatters are not yet clean repo-wide,
+      # pre-commit formats each touched file at commit time.
+      - name: Lint (ruff, pre-commit pinned version)
+        if: matrix.db == 'sqlite'
+        run: pre-commit run ruff --all-files --show-diff-on-failure
+
+      - name: Dependency audit (pip-audit)
+        if: matrix.db == 'sqlite'
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit -r requirements.txt
+
       - name: Run tests (${{ matrix.db }})
         # The settings are fail-loud (no defaults for SECRET_KEY / DEBUG /
         # ALLOWED_HOSTS / FRONTEND_BASE_URL / GRAPH_*). pytest uses the dev settings
@@ -114,7 +127,9 @@ jobs:
           DB_PASSWORD: tm
           DB_HOST: localhost
           DB_PORT: "5432"
-        run: pytest -q
+        # Coverage floor (97% measured on 2026-10-18, tests included): fails on a
+        # large untested addition, not on noise.
+        run: pytest -q --cov=. --cov-report= --cov-fail-under=95
 
       - name: OpenAPI schema drift guard
         # The committed openapi-schema.yaml is the frontend's client contract.

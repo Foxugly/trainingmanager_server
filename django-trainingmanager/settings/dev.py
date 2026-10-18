@@ -8,6 +8,8 @@ ALLOWED_HOSTS = ["*"]
 # would break http://localhost previews (HSTS pin), runserver (SSL_REDIRECT
 # loops), and admin login (Secure cookies refuse the insecure origin).
 
+# django-debug-toolbar is a dev-only app: loaded here, never in prod.
+INSTALLED_APPS = [*INSTALLED_APPS, "debug_toolbar"]  # noqa: F405
 INTERNAL_IPS = ["127.0.0.1"]
 if "debug_toolbar.middleware.DebugToolbarMiddleware" not in MIDDLEWARE:
     MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware"] + list(MIDDLEWARE)

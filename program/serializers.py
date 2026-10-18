@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from team.models import Team
 from team.serializers import TeamMinimalSerializer
+from tools.html_sanitizer import sanitize_html
 
 from .choices import OVERLAP_STRATEGY_CHOICES
 from .models import Program
@@ -61,6 +62,16 @@ class ProgramSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_description(self, value):
+        """Sanitize the rich-text (Quill) HTML description on write.
+
+        The frontend edits and renders it as HTML; every client must get
+        safe markup, not only the Angular one (whose renderer sanitizes).
+        """
+        if not value:
+            return value
+        return sanitize_html(value)
+
 
 ADDITIONAL_PROMPT_MAX_LENGTH = 2000
 
@@ -90,6 +101,16 @@ class GeneratePlanRequestSerializer(serializers.Serializer):
         choices=OVERLAP_STRATEGY_CHOICES,
         default="add_only",
     )
+
+    def validate_description(self, value):
+        """Sanitize the rich-text (Quill) HTML description on write.
+
+        The frontend edits and renders it as HTML; every client must get
+        safe markup, not only the Angular one (whose renderer sanitizes).
+        """
+        if not value:
+            return value
+        return sanitize_html(value)
 
     def validate_additional_prompt(self, value):
         if len(value) > ADDITIONAL_PROMPT_MAX_LENGTH:

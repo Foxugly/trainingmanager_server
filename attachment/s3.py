@@ -73,14 +73,22 @@ def build_key(content_type_label: str, object_id, filename: str) -> str:
     return f"attachments/{content_type_label}/{object_id}/{uuid.uuid4().hex}/{safe}"
 
 
-def presign_put(key: str, content_type: str, expires: int) -> str:
-    """Presigned URL the browser PUTs the file bytes to (with Content-Type)."""
+def presign_put(key: str, content_type: str, expires: int, content_length: int) -> str:
+    """Presigned URL the browser PUTs the file bytes to (with Content-Type).
+
+    ``content_length`` (the size declared at presign, already checked against
+    the cap) is part of the signature: ``content-length`` becomes a signed
+    header, so S3 rejects a PUT whose body is not exactly that many bytes. The
+    client cannot push an oversized object on a URL minted for a small one.
+    Browsers and HTTP clients set Content-Length from the body themselves.
+    """
     return _client().generate_presigned_url(
         "put_object",
         Params={
             "Bucket": settings.ATTACHMENTS_S3_BUCKET,
             "Key": key,
             "ContentType": content_type,
+            "ContentLength": content_length,
         },
         ExpiresIn=expires,
     )

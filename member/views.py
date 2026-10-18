@@ -1,9 +1,12 @@
 from django.db import transaction
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from team.queries import managed_teams, user_member_teams
@@ -12,11 +15,41 @@ from .models import Member
 from .serializers import MemberSerializer
 
 
+class MemberSearchFilter(SearchFilter):
+    """``?search=`` on names for everyone, on e-mail only where it is visible.
+
+    The serializer hides a member's e-mail from mere teammates, so matching on
+    it unconditionally turned ``?search=<email>`` into an oracle ("is this
+    address in my team?"). E-mail terms now only match members whose e-mail
+    the caller may read: their own member record, or members of a team they
+    manage (same rule as ``MemberSerializer._requester_may_see_pii``).
+    """
+
+    def filter_queryset(self, request, queryset, view):
+        terms = self.get_search_terms(request)
+        if not terms:
+            return queryset
+        user = request.user
+        email_visible = Q(user=user) | Q(
+            pk__in=Member.objects.filter(memberships__team__in=managed_teams(user)).values("pk")
+        )
+        for term in terms:
+            queryset = queryset.filter(
+                Q(firstname__icontains=term)
+                | Q(lastname__icontains=term)
+                | (Q(email__icontains=term) & email_visible)
+            )
+        return queryset.distinct()
+
+
 class MemberViewSet(viewsets.ModelViewSet):
     """CRUD complet pour Member, scopé par teams du Member."""
 
     serializer_class = MemberSerializer
     filterset_fields = ["lastname", "firstname"]
+    filter_backends = [DjangoFilterBackend, MemberSearchFilter, OrderingFilter]
+    # Documents ?search= in the schema; MemberSearchFilter applies it (e-mail
+    # only where the caller may read it).
     search_fields = ["firstname", "lastname", "email"]
     ordering_fields = ["lastname", "firstname", "id"]
     ordering = ["lastname", "firstname"]

@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.sites",
-    "debug_toolbar",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -242,6 +241,27 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 from corsheaders.defaults import default_headers  # noqa: E402
 
 CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage")
+
+# Cache. DRF throttles (login 10/min, reset 3/h, magic link 5/h, ...) keep
+# their counters in the default cache. The local-memory default is per process:
+# with several gunicorn workers each one counts on its own, and every restart or
+# deploy resets the counters. Set CACHE_URL to a Redis URL (prod: a dedicated db,
+# e.g. redis://127.0.0.1:6379/9) to share them; unset = local memory (dev, tests).
+CACHE_URL = env("CACHE_URL", default="")
+if CACHE_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": CACHE_URL,
+            "KEY_PREFIX": "tm",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 # Number of trusted reverse proxies in front of the app (nginx = 1). DRF's
 # throttles and our get_remote_ip take the client IP at this depth from the END

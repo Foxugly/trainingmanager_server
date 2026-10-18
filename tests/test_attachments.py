@@ -37,6 +37,7 @@ def configured_bucket(settings):
     """Force the feature 'configured' for the whole module (overridable per-test)."""
     settings.ATTACHMENTS_S3_BUCKET = "test-bucket"
 
+
 PRESIGN_URL = "https://test-bucket.s3.amazonaws.com/signed-put"
 GET_URL = "https://test-bucket.s3.amazonaws.com/signed-get"
 
@@ -91,7 +92,10 @@ def event(team):
 @pytest.fixture
 def topic(team, manager_user):
     return Topic.objects.create(
-        team=team, author=manager_user, title="T", audience=TopicAudience.TEAM,
+        team=team,
+        author=manager_user,
+        title="T",
+        audience=TopicAudience.TEAM,
         allow_athlete_replies=True,
     )
 
@@ -104,13 +108,12 @@ def message(topic, manager_user):
 @pytest.fixture(autouse=True)
 def mock_s3():
     """Patch S3 helpers so no AWS call is ever made."""
-    with mock.patch("attachment.s3.presign_put", return_value=PRESIGN_URL) as put, mock.patch(
-        "attachment.s3.presign_get", return_value=GET_URL
-    ) as get, mock.patch(
-        "attachment.s3.head_object", return_value={"ContentLength": 4321}
-    ) as head, mock.patch(
-        "attachment.s3.delete_object", return_value=None
-    ) as delete:
+    with (
+        mock.patch("attachment.s3.presign_put", return_value=PRESIGN_URL) as put,
+        mock.patch("attachment.s3.presign_get", return_value=GET_URL) as get,
+        mock.patch("attachment.s3.head_object", return_value={"ContentLength": 4321}) as head,
+        mock.patch("attachment.s3.delete_object", return_value=None) as delete,
+    ):
         yield {"put": put, "get": get, "head": head, "delete": delete}
 
 
@@ -158,9 +161,7 @@ def test_presign_disallowed_mime(api_client, manager_user, event):
 def test_presign_too_large(api_client, manager_user, event, settings):
     settings.ATTACHMENTS_MAX_BYTES = 1000
     api_client.force_authenticate(user=manager_user)
-    resp = api_client.post(
-        PRESIGN_PATH, _presign_body("event", event.pk, size=5000), format="json"
-    )
+    resp = api_client.post(PRESIGN_PATH, _presign_body("event", event.pk, size=5000), format="json")
     assert resp.status_code == 400
     assert resp.json()["code"] == "file_too_large"
 
@@ -393,21 +394,102 @@ def test_presign_program_as_outsider_forbidden(api_client, outsider_user, progra
     assert not Attachment.objects.exists()
 
 
-def test_presign_performance_as_owning_athlete(api_client, athlete_user, performance, athlete_member):
+def test_presign_performance_as_owning_athlete(
+    api_client, athlete_user, performance, athlete_member
+):
     api_client.force_authenticate(user=athlete_user)
-    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    resp = api_client.post(
+        PRESIGN_PATH, _presign_body("performance", performance.pk), format="json"
+    )
     assert resp.status_code == 201, resp.content
     assert Attachment.objects.get(pk=resp.json()["attachment_id"]).object_id == performance.pk
 
 
 def test_presign_performance_as_coach(api_client, manager_user, performance):
     api_client.force_authenticate(user=manager_user)
-    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    resp = api_client.post(
+        PRESIGN_PATH, _presign_body("performance", performance.pk), format="json"
+    )
     assert resp.status_code == 201, resp.content
 
 
 def test_presign_performance_as_outsider_forbidden(api_client, outsider_user, performance):
     api_client.force_authenticate(user=outsider_user)
-    resp = api_client.post(PRESIGN_PATH, _presign_body("performance", performance.pk), format="json")
+    resp = api_client.post(
+        PRESIGN_PATH, _presign_body("performance", performance.pk), format="json"
+    )
     assert resp.status_code == 403
     assert not Attachment.objects.exists()
+
+
+# ---------------------------------------------------------------------------
+# audit 2026-10-18 S-M4: size bound in the signature, rights re-checked,
+# abandoned uploads purged
+# ---------------------------------------------------------------------------
+
+
+def test_presign_binds_declared_size(api_client, manager_user, event, mock_s3):
+    api_client.force_authenticate(user=manager_user)
+    resp = api_client.post(PRESIGN_PATH, _presign_body("event", event.pk, size=2048), format="json")
+    assert resp.status_code == 201, resp.content
+    assert mock_s3["put"].call_args.kwargs["content_length"] == 2048
+
+
+@pytest.fixture
+def former_manager(team):
+    user = UserFactory(email="former@local.test", language="en")
+    team.managers.add(user)
+    return user
+
+
+def test_uploader_who_lost_write_access_cannot_complete(
+    api_client, team, former_manager, event, mock_s3
+):
+    att = _make_attachment(event, former_manager)
+    team.managers.remove(former_manager)
+    api_client.force_authenticate(user=former_manager)
+    resp = api_client.post(_detail(att.pk, "complete/"))
+    assert resp.status_code == 403
+    att.refresh_from_db()
+    assert att.status == "pending"
+
+
+def test_uploader_who_lost_write_access_cannot_delete(
+    api_client, team, former_manager, event, mock_s3
+):
+    att = _make_attachment(event, former_manager, status="ready")
+    team.managers.remove(former_manager)
+    api_client.force_authenticate(user=former_manager)
+    resp = api_client.delete(_detail(att.pk))
+    assert resp.status_code == 403
+    assert Attachment.objects.filter(pk=att.pk).exists()
+
+
+def test_uploader_can_delete_orphan_attachment(api_client, manager_user, message, mock_s3):
+    att = _make_message_attachment(message, manager_user)
+    message.delete()
+    api_client.force_authenticate(user=manager_user)
+    resp = api_client.delete(_detail(att.pk))
+    assert resp.status_code == 204
+    assert not Attachment.objects.filter(pk=att.pk).exists()
+
+
+def test_purge_pending_attachments(manager_user, event, mock_s3):
+    from datetime import timedelta
+
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    stale = _make_attachment(event, manager_user)
+    fresh = _make_attachment(event, manager_user)
+    old_ready = _make_attachment(event, manager_user, status="ready")
+    long_ago = timezone.now() - timedelta(hours=25)
+    Attachment.objects.filter(pk__in=[stale.pk, old_ready.pk]).update(created_at=long_ago)
+
+    call_command("purge_pending_attachments", "--dry-run")
+    assert Attachment.objects.filter(pk=stale.pk).exists()
+
+    call_command("purge_pending_attachments")
+    assert not Attachment.objects.filter(pk=stale.pk).exists()
+    assert Attachment.objects.filter(pk__in=[fresh.pk, old_ready.pk]).count() == 2
+    mock_s3["delete"].assert_called_once_with(stale.s3_key)
