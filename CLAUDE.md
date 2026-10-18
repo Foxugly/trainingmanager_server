@@ -20,7 +20,7 @@ Beyond that core, the project has grown a number of apps — keep this list in m
 - **audit** — audit log. **level** — team skill levels referential.
 - Team config also carries weekly **training slots** (`TrainingSlot`, per-slot CRUD under `teams/{id}/training-slots/`) and a read-only **`dashboard/summary/`** aggregate endpoint.
 
-Auth uses a custom user model `customuser.CustomUser` with `language` + `is_staff` and a few `is_*_admin` fields. JWT (simplejwt) for the API; allauth (headless) for signup/email confirmation/password reset. The team-join **magic-link** (`/api/v1/join-magic/{token}/`) is **single-use AND 15-min expiring** (consumed on first use, rejected past TTL). `/me/` intentionally exposes **read-only `is_staff` + `is_superuser`** so the SPA can gate the admin area / admin link (superuser-gated) without a second call — do not re-hide them.
+Auth uses a custom user model `customuser.CustomUser` with `language` + `is_staff` and a few `is_*_admin` fields. JWT (simplejwt) for the API; signup / email confirmation / password reset are in-house (`customuser/views/`, tokens in `customuser/email_tokens.py`: a dedicated single-use generator for confirmation, Django's `default_token_generator` for reset; allauth was removed). The login **magic link** (`customuser/magic_link.py`) is signed, 15-min, with an atomically consumed nonce (single use). The team-join **magic-action** link (`/api/v1/join-magic/{token}/`, `team/magic_action.py`) is different: an HMAC-signed `(join_request, accept|reject)` token valid **48 h**, usable only by an **authenticated manager** of the team, and **reversible** (accept after reject and vice versa; GET previews, POST executes) — not single-use. `/me/` intentionally exposes **read-only `is_staff` + `is_superuser`** so the SPA can gate the admin area / admin link (superuser-gated) without a second call — do not re-hide them.
 
 ## Common commands
 
@@ -132,7 +132,7 @@ Two AI-driven endpoints: `POST /api/v1/programs/{id}/generate-events/` (Claude g
 - All tests live in the root `tests/` directory (not per-app). Fixtures in `tests/conftest.py`, factories in `tests/factories.py`.
 - `pytest.ini`: `--reuse-db --no-cov-on-fail`, settings `django-trainingmanager.settings.dev`.
 - Available client fixtures: `auth_client`, `auth_client_trainer`, `auth_client_non_trainer`, `admin_client`, `api_client`. Defined in `conftest.py`.
-- Throttle counters are reset between tests by the autouse `reset_throttle_cache` fixture (DRF throttles persist in the local-memory cache otherwise).
+- Throttle counters are reset between tests by the autouse `reset_throttle_cache` fixture (DRF throttles persist in the local-memory cache otherwise). Tests always use local memory; prod shares the counters across gunicorn workers through Redis when `CACHE_URL` is set (`settings/base.py`).
 - `EMAIL_BACKEND` is forced to `locmem` by an autouse fixture (no real Graph sends in tests).
 
 ## Pre-commit

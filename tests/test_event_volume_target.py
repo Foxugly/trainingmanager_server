@@ -10,7 +10,6 @@ import datetime
 
 import pytest
 
-from event.models import Event
 from tests.factories import EventFactory, ProgramFactory
 
 pytestmark = pytest.mark.django_db

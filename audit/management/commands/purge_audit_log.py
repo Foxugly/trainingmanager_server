@@ -26,7 +26,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from audit.models import AuditLogEntry, NON_PURGEABLE_ACTIONS
+from audit.models import NON_PURGEABLE_ACTIONS, AuditLogEntry
 
 logger = logging.getLogger(__name__)
 
