@@ -511,7 +511,9 @@ paths:
         Body: {current_password}. The caller must prove they still know their
         password before the account is irreversibly removed. On success the user
         row is deleted (memberships, athlete links, join requests, etc. cascade
-        per their FK on_delete) and 204 No Content is returned.
+        per their FK on_delete), the linked Member record is anonymized (RGPD:
+        names, email and phone erased, team history kept) and 204 No Content is
+        returned.
 
         Safety guard: a user who still OWNS one or more teams (Team.owner ==
         user) is REFUSED with 409 (code owns_teams). Team.owner is
@@ -616,7 +618,8 @@ paths:
                 $ref: '#/components/schemas/EmailConfirmResponse'
           description: Email verified. Returns {access, refresh, user}.
         '400':
-          description: Token invalid or expired. code=invalid_or_expired_token.
+          description: Token invalid, expired or already used (confirmation links
+            are single-use and never valid for a password reset). code=invalid_or_expired_token.
   /api/v1/auth/email/resend/:
     post:
       operationId: auth_email_resend_create
@@ -796,11 +799,11 @@ paths:
         Body: {current_password, new_password}. The caller must prove they
         still know `current_password`; `new_password` is validated against
         Django's configured password validators (with the user as context) and
-        must differ from the current one. On success the password is updated
-        and a localized {detail} body is returned — NO tokens are issued. The
-        short-lived access token (and any outstanding refresh) remain valid
-        until they expire; this keeps the flow minimal for a user who is
-        already authenticated and merely rotating their password.
+        must differ from the current one. On success the password is updated,
+        every outstanding refresh token of the user is blacklisted (other
+        sessions must sign in again) and a fresh {access, refresh} pair is
+        returned next to the localized {detail} so the calling session carries
+        on. Already-issued access tokens stay valid until their short expiry.
       tags:
       - auth
       requestBody:
@@ -823,7 +826,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PasswordChangeResponse'
-          description: Password updated. Returns {detail}. No tokens are issued.
+          description: 'Password updated. Returns {detail, access, refresh}: every
+            previously issued refresh token is revoked, so the client must store this
+            new pair.'
         '400':
           description: current_password wrong (code=current_password_invalid), new_password
             equal to current (code=password_unchanged), or new_password rejected by
@@ -2997,10 +3002,11 @@ paths:
           description: ''
     post:
       operationId: invitations_create
-      description: Trainer pre-registers an athlete on a managed team by sending an
-        invitation email. Refused with code=user_already_registered if the email matches
-        an existing user account; the trainer must use a different flow (e.g. ask
-        the user to issue a TeamJoinRequest) for registered users.
+      description: 'Trainer pre-registers an athlete on a managed team by sending
+        an invitation email. The response is the same whether or not the email already
+        has an account: an existing account is never enrolled directly — its owner
+        receives a notice inviting them to sign in and request to join the team, and
+        the pending invitation simply expires.'
       tags:
       - invitations
       requestBody:
@@ -3025,9 +3031,10 @@ paths:
                 $ref: '#/components/schemas/TeamInvitation'
           description: ''
         '400':
-          description: 'Validation error. Possible codes include: `user_already_registered`
-            when the email matches an existing user account (direct enrolment is refused
-            for existing users); `email_already_invited`, `not_a_manager`, `team_not_active`.'
+          description: 'Validation error. Possible codes include: `email_already_invited`,
+            `not_a_manager`, `team_not_active`.'
+        '429':
+          description: Too many invitations sent (per-user throttle).
   /api/v1/invitations/{id}/:
     get:
       operationId: invitations_retrieve
@@ -10905,8 +10912,14 @@ components:
       properties:
         detail:
           type: string
+        access:
+          type: string
+        refresh:
+          type: string
       required:
+      - access
       - detail
+      - refresh
     PasswordResetConfirmRequest:
       type: object
       description: |-
