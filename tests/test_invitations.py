@@ -54,38 +54,47 @@ def test_POST_create_invitation_as_non_trainer_returns_403(auth_client_non_train
     assert response.status_code == 403
 
 
-def test_POST_create_invitation_existing_user_returns_400_no_db_changes(
+def test_POST_create_invitation_existing_user_gets_neutral_response_and_notice(
     auth_client_trainer, trainer_user
 ):
-    """C1 fix: refuse direct invitation when the email matches an existing user.
-
-    Auto-creating Member + TeamMembership for an existing user without their
-    consent was a hijack vector — any trainer could enrol any registered user
-    in their team simply by knowing the email. We now require the trainer to
-    use an alternate flow (e.g. ask the user to file a TeamJoinRequest)."""
+    """An existing account is never enrolled (C1: no TeamMembership without the
+    user's consent) and the response is indistinguishable from the unknown-email
+    branch, so the endpoint does not reveal which addresses have an account.
+    The existing user is notified instead and must sign in / request to join."""
     UserFactory(email="existing@local.test")
     team = trainer_user.owned_teams.first()
     mail.outbox = []
-    response = auth_client_trainer.post(
-        "/api/v1/invitations/",
-        {
-            "team": team.pk,
-            "email": "existing@local.test",
-            "firstname": "Exi",
-            "lastname": "Sting",
-        },
-        format="json",
+    payload = {"team": team.pk, "firstname": "Exi", "lastname": "Sting"}
+    known = auth_client_trainer.post(
+        "/api/v1/invitations/", {**payload, "email": "existing@local.test"}, format="json"
     )
-    assert response.status_code == 400
-    body = response.json()
-    assert body.get("code") == "user_already_registered", body
-    # No DB side effects on this branch: no Member, no TeamMembership, no Invitation.
-    assert not Member.objects.filter(email="existing@local.test").exists()
+    unknown = auth_client_trainer.post(
+        "/api/v1/invitations/", {**payload, "email": "nobody@local.test"}, format="json"
+    )
+
+    assert known.status_code == unknown.status_code == 201
+    assert set(known.json()) == set(unknown.json())
+    assert known.json()["status"] == unknown.json()["status"] == "pending"
+    # Never enrolled without consent.
     assert not TeamMembership.objects.filter(member__email="existing@local.test").exists()
-    assert not TeamInvitation.objects.filter(email="existing@local.test").exists()
-    # No email sent either (neither the signup link nor the legacy "you were
-    # added" notification, which has been removed).
-    assert mail.outbox == []
+    # One email each; the existing account gets a sign-in notice, not a signup link.
+    notice = next(m for m in mail.outbox if m.to == ["existing@local.test"])
+    assert "/invitation/" not in notice.body
+    assert len(mail.outbox) == 2
+
+
+def test_POST_create_invitation_is_throttled(auth_client_trainer, trainer_user, set_throttle_rate):
+    set_throttle_rate("team_invitation", "2/hour")
+    team = trainer_user.owned_teams.first()
+    codes = [
+        auth_client_trainer.post(
+            "/api/v1/invitations/",
+            {"team": team.pk, "email": f"a{i}@local.test", "firstname": "A", "lastname": "B"},
+            format="json",
+        ).status_code
+        for i in range(3)
+    ]
+    assert codes == [201, 201, 429]
 
 
 def test_POST_create_invitation_new_email_still_creates_invitation(
