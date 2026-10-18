@@ -86,6 +86,7 @@ sudo -u "$APP_USER" bash "$APP_DIR/deploy/deploy.sh"
 echo "=== 8/8 nginx vhost (wildcard TLS, no certbot) ==="
 # TLS = existing *.foxugly.com wildcard cert (referenced in tm-api.conf). No
 # per-domain certbot — the vhost already has its 443 block.
+sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-limits.conf" /etc/nginx/conf.d/tm-limits.conf
 sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-api.conf" /etc/nginx/sites-available/tm-api.conf
 sudo ln -sf /etc/nginx/sites-available/tm-api.conf /etc/nginx/sites-enabled/tm-api.conf
 sudo nginx -t
