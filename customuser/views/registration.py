@@ -17,7 +17,7 @@ from tools.exceptions import CaptchaFailed
 from tools.throttling import RegisterThrottle, ResendEmailThrottle
 from tools.turnstile import get_remote_ip, verify_turnstile_token
 
-from ..email_tokens import make_key, parse_key, token_is_valid
+from ..email_tokens import confirmation_token_is_valid, make_confirmation_key, parse_key
 from ..frontend_urls import get_email_confirmation_url
 from ..models import CustomUser
 from ..serializers import (
@@ -31,11 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 def send_confirmation_email(user) -> None:
-    """Mail the user a confirmation link (Django default_token_generator + uid,
-    mirroring QuizOnline). Best-effort: a delivery failure is logged, not raised
+    """Mail the user a single-use confirmation link (dedicated token generator +
+    uid, see ``email_tokens.EmailConfirmationTokenGenerator``). Best-effort: a delivery failure is logged, not raised
     — the account still exists with email_confirmed=False so /auth/email/resend/
     works rather than leaving a half-registered state."""
-    key = make_key(user)
+    key = make_confirmation_key(user)
     url = get_email_confirmation_url(key)
     with translation.override(user.language or "en"):
         subject = f"[TrainingManager] {_('Confirm your registration')}"
@@ -169,7 +169,11 @@ class ConfirmEmailView(APIView):
                 description="Email verified. Returns {access, refresh, user}.",
             ),
             400: OpenApiResponse(
-                description="Token invalid or expired. code=invalid_or_expired_token."
+                description=(
+                    "Token invalid, expired or already used (confirmation links are "
+                    "single-use and never valid for a password reset). "
+                    "code=invalid_or_expired_token."
+                )
             ),
         },
     )
@@ -178,7 +182,7 @@ class ConfirmEmailView(APIView):
         serializer.is_valid(raise_exception=True)
         key = serializer.validated_data["key"]
 
-        # key shape: "<uid>-<token>" (Django default_token_generator).
+        # key shape: "<uid>-<token>" (EmailConfirmationTokenGenerator).
         parsed = parse_key(key)
         if parsed is None:
             raise drf_serializers.ValidationError(
@@ -186,15 +190,17 @@ class ConfirmEmailView(APIView):
                 code="invalid_or_expired_token",
             )
         user, token = parsed
-        if not token_is_valid(user, token):
+        # The confirmation token hashes email_confirmed, so it is single-use:
+        # once the account is confirmed the link no longer validates and no
+        # JWT pair is ever minted from it again.
+        if user is None or user.email_confirmed or not confirmation_token_is_valid(user, token):
             raise drf_serializers.ValidationError(
                 {"detail": _("Invalid or expired confirmation token.")},
                 code="invalid_or_expired_token",
             )
 
-        if not user.email_confirmed:
-            user.email_confirmed = True
-            user.save(update_fields=["email_confirmed"])
+        user.email_confirmed = True
+        user.save(update_fields=["email_confirmed"])
 
         return Response({**_jwt_pair(user), "user": _user_payload(user)})
 
@@ -242,9 +248,7 @@ class ResendEmailView(APIView):
 
         # Anti-leak: only (re)send to a known, still-unconfirmed account;
         # silently no-op otherwise. ``.filter().first()`` never raises.
-        user = CustomUser.objects.filter(
-            email__iexact=email, email_confirmed=False
-        ).first()
+        user = CustomUser.objects.filter(email__iexact=email, email_confirmed=False).first()
         if user is not None:
             send_confirmation_email(user)
 

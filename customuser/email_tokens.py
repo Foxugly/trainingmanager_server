@@ -10,18 +10,44 @@ dashes, so callers must split on the FIRST dash only.
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.tokens import PasswordResetTokenGenerator, default_token_generator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 User = get_user_model()
 
 
-def make_key(user) -> str:
-    """Build the ``"<uid>-<token>"`` key for an email link."""
+class EmailConfirmationTokenGenerator(PasswordResetTokenGenerator):
+    """Token generator dedicated to email-confirmation links.
+
+    A distinct ``key_salt`` keeps confirmation and password-reset tokens
+    non-interchangeable, and hashing ``email_confirmed`` makes a confirmation
+    link single-use: it stops validating as soon as the account is confirmed.
+    """
+
+    key_salt = "customuser.email_tokens.EmailConfirmationTokenGenerator"
+
+    def _make_hash_value(self, user, timestamp):
+        return f"{super()._make_hash_value(user, timestamp)}{user.email_confirmed}{user.email}"
+
+
+email_confirmation_token_generator = EmailConfirmationTokenGenerator()
+
+
+def make_key(user, generator=default_token_generator) -> str:
+    """Build the ``"<uid>-<token>"`` key for an email link.
+
+    Defaults to the password-reset generator; confirmation links go through
+    :func:`make_confirmation_key`.
+    """
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
+    token = generator.make_token(user)
     return f"{uid}-{token}"
+
+
+def make_confirmation_key(user) -> str:
+    """Build a single-use email-confirmation key (never valid for a reset)."""
+    return make_key(user, generator=email_confirmation_token_generator)
 
 
 def resolve_user_from_uid(uid: str):
@@ -45,5 +71,9 @@ def parse_key(key: str):
     return resolve_user_from_uid(uid), token
 
 
-def token_is_valid(user, token: str) -> bool:
-    return bool(user) and default_token_generator.check_token(user, token)
+def token_is_valid(user, token: str, generator=default_token_generator) -> bool:
+    return bool(user) and generator.check_token(user, token)
+
+
+def confirmation_token_is_valid(user, token: str) -> bool:
+    return token_is_valid(user, token, generator=email_confirmation_token_generator)
