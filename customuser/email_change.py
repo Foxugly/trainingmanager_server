@@ -68,4 +68,4 @@ def send_email_change_email(user, new_email: str) -> None:
                 fail_silently=False,
             )
         except Exception:  # noqa: BLE001 - delivery failure must not 500 the request
-            logger.exception("Failed to send email-change confirmation to %s", new_email)
+            logger.exception("Failed to send email-change confirmation for user %s", user.pk)

@@ -51,9 +51,7 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
         # (user.email/first_name/last_name + responded_by.email) to avoid
         # an N+1 across the manager's join-request list.
         return (
-            TeamJoinRequest.objects.filter(
-                Q(user=user) | Q(team__in=managed_teams(user))
-            )
+            TeamJoinRequest.objects.filter(Q(user=user) | Q(team__in=managed_teams(user)))
             .select_related("user", "responded_by")
             .distinct()
         )
@@ -132,7 +130,9 @@ class TeamJoinRequestViewSet(viewsets.ModelViewSet):
                         fail_silently=False,
                     )
                 except Exception:
-                    logger.exception("Failed to send join-request notification to %s", email)
+                    logger.exception(
+                        "Failed to send join-request notification for team %s", team.pk
+                    )
 
     def perform_update(self, serializer):
         instance = serializer.instance

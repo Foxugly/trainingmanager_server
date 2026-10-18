@@ -77,7 +77,7 @@ def send_magic_link_email(user) -> None:
                 fail_silently=False,
             )
         except Exception:
-            logger.exception("Failed to send magic-link email to %s", user.email)
+            logger.exception("Failed to send magic-link email to user %s", user.pk)
 
 
 def request_magic_link(email: str) -> None:
@@ -115,9 +115,7 @@ def exchange_magic_link(user_id: int, nonce: str):
         return None
     if not nonce:
         return None
-    consumed = User.objects.filter(pk=user_id, magic_link_nonce=nonce).update(
-        magic_link_nonce=None
-    )
+    consumed = User.objects.filter(pk=user_id, magic_link_nonce=nonce).update(magic_link_nonce=None)
     if consumed != 1:
         # Already used, or the nonce was rotated by a newer request.
         return None

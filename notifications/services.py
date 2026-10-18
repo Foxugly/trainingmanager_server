@@ -22,6 +22,7 @@ from django.db.models import F
 from django.utils import timezone, translation
 
 from devices.models import DeviceTokenStatus
+
 from .models import Notification, NotificationPreference, NotificationType
 from .push import InvalidPushTokenError, PushProviderError, send_push_to_device
 
@@ -74,9 +75,7 @@ def _push_to_user_devices(recipient, title, body, data):
     """
     for device in recipient.devices.filter(status=DeviceTokenStatus.ACTIVE):
         try:
-            send_push_to_device(
-                device.push_token, title, body, data=data, platform=device.platform
-            )
+            send_push_to_device(device.push_token, title, body, data=data, platform=device.platform)
             device.last_seen_at = timezone.now()
             device.failure_count = 0
             device.save(update_fields=["last_seen_at", "failure_count"])
@@ -84,9 +83,7 @@ def _push_to_user_devices(recipient, title, body, data):
             device.status = DeviceTokenStatus.INVALID
             device.save(update_fields=["status"])
         except PushProviderError:
-            type(device).objects.filter(pk=device.pk).update(
-                failure_count=F("failure_count") + 1
-            )
+            type(device).objects.filter(pk=device.pk).update(failure_count=F("failure_count") + 1)
         except Exception:
             logger.exception("Failed to push to device %s", device.pk)
 
@@ -200,9 +197,7 @@ def notify_many(recipients, type, title, body="", url="", *, actor=None, email_e
     in_app_push_flags = []
     email_recipients = []
     for recipient in targets:
-        in_app, email, push = prefs.get(
-            recipient.pk, (DEFAULT_IN_APP, DEFAULT_EMAIL, DEFAULT_PUSH)
-        )
+        in_app, email, push = prefs.get(recipient.pk, (DEFAULT_IN_APP, DEFAULT_EMAIL, DEFAULT_PUSH))
         if in_app:
             # Resolve the (possibly lazy) strings in the recipient's language,
             # mirroring notify(): the stored row keeps a concrete string.
@@ -296,4 +291,4 @@ def _send_email(recipient, title, body, url, email_extra="", connection=None):
                 connection=connection,
             )
     except Exception:
-        logger.exception("Failed to send notification email to %s", recipient.email)
+        logger.exception("Failed to send notification email to user %s", recipient.pk)
