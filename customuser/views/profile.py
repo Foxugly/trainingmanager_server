@@ -22,7 +22,9 @@ from tools.throttling import (
     PasswordChangeThrottle,
 )
 
+from .. import refresh_cookie
 from ..models import CustomUser
+from ..refresh_cookie import AUTH_MODE_PARAMETER, ORIGIN_REJECTED_RESPONSE, REFRESH_COOKIE_NOTE
 from ..serializers import (
     AccountDeleteSerializer,
     CalendarTokenSerializer,
@@ -181,6 +183,7 @@ class PasswordChangeView(APIView):
 
     @extend_schema(
         request=PasswordChangeSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
             200: OpenApiResponse(
                 response=inline_serializer(
@@ -188,7 +191,10 @@ class PasswordChangeView(APIView):
                     fields={
                         "detail": drf_serializers.CharField(),
                         "access": drf_serializers.CharField(),
-                        "refresh": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(
+                            required=False,
+                            help_text="Fresh refresh token." + REFRESH_COOKIE_NOTE,
+                        ),
                     },
                 ),
                 description=(
@@ -205,9 +211,12 @@ class PasswordChangeView(APIView):
                 )
             ),
             401: OpenApiResponse(description="Access token missing or invalid."),
+            403: ORIGIN_REJECTED_RESPONSE,
         },
     )
     def post(self, request):
+        if (rejected := refresh_cookie.cookie_origin_guard(request)) is not None:
+            return rejected
         serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         current_password = serializer.validated_data["current_password"]
@@ -239,7 +248,9 @@ class PasswordChangeView(APIView):
         for token in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=token)
 
-        return Response({"detail": _("Password updated."), **_jwt_pair(user)})
+        return refresh_cookie.deliver_tokens(
+            request, Response({"detail": _("Password updated."), **_jwt_pair(user)})
+        )
 
 
 class EmailChangeRequestView(APIView):
@@ -399,8 +410,13 @@ class AccountDeleteView(APIView):
     @extend_schema(
         operation_id="auth_account_delete_create",
         request=AccountDeleteSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
-            204: OpenApiResponse(description="Account deleted. No content."),
+            204: OpenApiResponse(
+                description=(
+                    "Account deleted. No content. In cookie mode the refresh cookie is cleared."
+                )
+            ),
             400: OpenApiResponse(
                 description=(
                     "current_password missing (fields.current_password) or "
@@ -457,4 +473,7 @@ class AccountDeleteView(APIView):
             if member is not None:
                 member.anonymize()
             user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        if refresh_cookie.wants_cookie(request):
+            refresh_cookie.clear_refresh_cookie(response)
+        return response

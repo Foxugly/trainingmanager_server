@@ -14,6 +14,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from customuser.refresh_cookie import (
+    AUTH_MODE_PARAMETER,
+    ORIGIN_REJECTED_RESPONSE,
+    REFRESH_COOKIE_NOTE,
+    cookie_origin_guard,
+    deliver_tokens,
+)
 from tools.throttling import InvitationThrottle
 
 from ..models import TeamInvitation
@@ -215,6 +222,7 @@ class InvitationLookupView(APIView):
 
     @extend_schema(
         request=CompleteInvitationSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
             201: OpenApiResponse(
                 response=inline_serializer(
@@ -223,7 +231,10 @@ class InvitationLookupView(APIView):
                         "detail": drf_serializers.CharField(),
                         "email": drf_serializers.EmailField(),
                         "access": drf_serializers.CharField(),
-                        "refresh": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(
+                            required=False,
+                            help_text="Refresh token." + REFRESH_COOKIE_NOTE,
+                        ),
                     },
                 ),
                 description="User created and JWT issued",
@@ -237,6 +248,7 @@ class InvitationLookupView(APIView):
                     "An account already exists for the invitation email (code=email_taken)."
                 )
             ),
+            403: ORIGIN_REJECTED_RESPONSE,
         },
         description="Finalize invitation: create the user, link Member, return JWT.",
     )
@@ -246,6 +258,8 @@ class InvitationLookupView(APIView):
 
         from ..models import TeamMembership
 
+        if (rejected := cookie_origin_guard(request)) is not None:
+            return rejected
         invitation = get_object_or_404(TeamInvitation, token=token)
         if not invitation.is_valid():
             return Response(
@@ -315,12 +329,15 @@ class InvitationLookupView(APIView):
             invitation.save()
 
         refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                "detail": _("Account created and invitation finalized."),
-                "email": user.email,
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-            },
-            status=status.HTTP_201_CREATED,
+        return deliver_tokens(
+            request,
+            Response(
+                {
+                    "detail": _("Account created and invitation finalized."),
+                    "email": user.email,
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                },
+                status=status.HTTP_201_CREATED,
+            ),
         )

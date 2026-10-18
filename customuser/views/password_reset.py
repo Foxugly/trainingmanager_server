@@ -18,6 +18,13 @@ from tools.throttling import PasswordResetThrottle
 from tools.turnstile import get_remote_ip, verify_turnstile_token
 
 from ..models import CustomUser
+from ..refresh_cookie import (
+    AUTH_MODE_PARAMETER,
+    ORIGIN_REJECTED_RESPONSE,
+    REFRESH_COOKIE_NOTE,
+    cookie_origin_guard,
+    deliver_tokens,
+)
 from ..serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -129,13 +136,16 @@ class PasswordResetConfirmView(APIView):
 
     @extend_schema(
         request=PasswordResetConfirmSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
             200: OpenApiResponse(
                 response=inline_serializer(
                     name="PasswordResetConfirmResponse",
                     fields={
                         "access": drf_serializers.CharField(),
-                        "refresh": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(
+                            required=False, help_text="Refresh token." + REFRESH_COOKIE_NOTE
+                        ),
                         "user": inline_serializer(
                             name="PasswordResetConfirmUser",
                             fields={
@@ -159,10 +169,14 @@ class PasswordResetConfirmView(APIView):
                     "or new_password rejected by validators (fields.new_password)."
                 )
             ),
+            403: ORIGIN_REJECTED_RESPONSE,
         },
     )
     def post(self, request):
         from django.contrib.auth.password_validation import validate_password
+
+        if (rejected := cookie_origin_guard(request)) is not None:
+            return rejected
 
         from customuser.email_tokens import parse_key, token_is_valid
 
@@ -227,4 +241,4 @@ class PasswordResetConfirmView(APIView):
         # secret-version stamped into the link and checked on use — deliberately
         # not implemented here. The short TTL bounds the exposure and the reset
         # already neutralises the higher-value refresh tokens.
-        return Response({**_jwt_pair(user), "user": _user_payload(user)})
+        return deliver_tokens(request, Response({**_jwt_pair(user), "user": _user_payload(user)}))

@@ -14,6 +14,7 @@ urls.py and the project URLconf.
 """
 
 from .login import (
+    CookieAwareTokenRefreshView,
     LogoutView,
     MagicLinkExchangeView,
     MagicLinkRequestView,
@@ -38,6 +39,7 @@ __all__ = [
     "CalendarFeedView",
     "CalendarTokenRotateView",
     "ConfirmEmailView",
+    "CookieAwareTokenRefreshView",
     "DataExportView",
     "EmailChangeConfirmView",
     "EmailChangeRequestView",

@@ -2,9 +2,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenRefreshView
 
-from customuser.views import VerifiedTokenObtainPairView
+from customuser.views import CookieAwareTokenRefreshView, VerifiedTokenObtainPairView
 from customuser.views.turnstile_page import turnstile_page
 from event.public_views import PublicEventView
 from tools.health import HealthCheckAliasView, HealthCheckView
@@ -24,7 +23,11 @@ urlpatterns = [
         VerifiedTokenObtainPairView.as_view(),
         name="token_obtain_pair",
     ),
-    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path(
+        "api/v1/auth/token/refresh/",
+        CookieAwareTokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
     # CustomUser (/me/)
     path("api/v1/", include("customuser.urls")),
     # Teams
