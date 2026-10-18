@@ -11,7 +11,11 @@ from exercise.models import Exercise
 from exercise.serializers import ExerciseSerializer
 from team.permissions import IsTrainer
 from team.queries import managed_teams, user_member_teams
-from team.utils import scope_by_sport_language
+from team.utils import (
+    scope_by_sport_language,
+    scope_exercises_to_user_teams,
+    scope_rounds_to_user_teams,
+)
 from tools.exceptions import NotAuthorizedRoundDenied
 from tools.validators import validate_reorder_ids
 
@@ -31,8 +35,7 @@ class RoundViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = (
-            Round.objects.select_related("sport")
-            .prefetch_related(
+            Round.objects.select_related("sport").prefetch_related(
                 "exercises__modality__sport",
                 "exercises__energysegment__energysystem",
             )
@@ -40,6 +43,9 @@ class RoundViewSet(viewsets.ModelViewSet):
             .annotate(_usage_count=Count("event", distinct=True))
         )
         qs = scope_by_sport_language(qs, self.request.user, sport_field="sport_id")
+        # Sport + language sharing only covers library rounds: a round linked
+        # to another team's event / template stays private to that team.
+        qs = scope_rounds_to_user_teams(qs, self.request.user)
         return _gate_rounds_by_event_visibility(qs, self.request.user)
 
     def _require_may_mutate(self, round_obj):
@@ -115,9 +121,12 @@ class RoundViewSet(viewsets.ModelViewSet):
                 {"code": "exercise_id_required", "detail": _("exercise_id is required.")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        scoped_qs = Exercise.objects.filter(
-            modality__sport_id=round_obj.sport_id,
-            language=round_obj.language,
+        scoped_qs = scope_exercises_to_user_teams(
+            Exercise.objects.filter(
+                modality__sport_id=round_obj.sport_id,
+                language=round_obj.language,
+            ),
+            request.user,
         )
         try:
             original = scoped_qs.get(pk=exercise_id)

@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from team.permissions import IsTrainer
-from team.utils import scope_by_sport_language
+from team.utils import scope_by_sport_language, scope_exercises_to_user_teams
 from tools.exceptions import NotAuthorizedRoundDenied
 from tools.mixins import AdminFlavoredReferentialViewSet
 from tools.openapi import INCLUDE_INACTIVE_PARAM
@@ -182,7 +182,10 @@ class ExerciseViewSet(viewsets.ModelViewSet):
             "energysegment__energysystem",
             # Annotate the round-usage so the serializer avoids one COUNT per row.
         ).annotate(_usage_count=Count("round", distinct=True))
-        return scope_by_sport_language(qs, self.request.user, sport_field="modality__sport_id")
+        qs = scope_by_sport_language(qs, self.request.user, sport_field="modality__sport_id")
+        # Library exercises stay shared by sport + language; those only held by
+        # another team's session rounds stay private to that team.
+        return scope_exercises_to_user_teams(qs, self.request.user)
 
     def _require_may_mutate(self, exercise):
         # An exercise attached to a round linked to an event must belong to a team
