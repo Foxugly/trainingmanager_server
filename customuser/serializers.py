@@ -293,10 +293,10 @@ class MagicLinkRequestSerializer(serializers.Serializer):
     regardless of whether `email` matches a confirmed user. Validation
     here only enforces the field shape.
 
-    `turnstile_token` is optional for now (backward compatibility with
-    frontends deployed before the widget was added): when present and
-    Turnstile is configured, the view verifies it; when absent the request
-    is still accepted. A follow-up change can make it required."""
+    `turnstile_token` is required whenever Turnstile is configured
+    server-side: the view verifies it and a missing, blank or invalid token
+    yields 400 `captcha_failed` (fail-closed). It is declared optional here
+    only so dev/test setups without a Turnstile secret keep working."""
 
     email = serializers.EmailField()
     turnstile_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -340,7 +340,12 @@ class StaffUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            "id", "email", "first_name", "last_name",
-            "subscription_bypass", "bypass_note", "bypass_granted_at",
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "subscription_bypass",
+            "bypass_note",
+            "bypass_granted_at",
         ]
         read_only_fields = ["id", "email", "first_name", "last_name", "bypass_granted_at"]

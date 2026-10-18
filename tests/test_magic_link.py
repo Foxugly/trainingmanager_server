@@ -151,10 +151,29 @@ def test_request_with_invalid_turnstile_token_returns_400(api_client, settings, 
     assert mail.outbox == []
 
 
-def test_request_without_turnstile_token_still_accepted(api_client, settings):
-    """Backward compatibility: an older frontend sends no token."""
+@pytest.mark.parametrize("payload_extra", [{}, {"turnstile_token": ""}])
+def test_request_without_turnstile_token_rejected_when_configured(
+    api_client, settings, monkeypatch, payload_extra
+):
+    """Fail-closed: with a Turnstile secret set, a missing or blank token is a
+    captcha failure, and siteverify is never called for it."""
     settings.TURNSTILE_SECRET_KEY = "secret"
+    calls = []
+    monkeypatch.setattr("tools.turnstile.httpx.post", lambda *a, **k: calls.append(a))
     user = _user("magic_ts_none")
+    payload = {"email": user.email, **payload_extra}
+    response = api_client.post(REQUEST_URL, payload, format="json")
+    assert response.status_code == 400
+    assert response.json()["code"] == "captcha_failed"
+    assert mail.outbox == []
+    assert calls == []
+
+
+def test_request_without_turnstile_token_accepted_when_not_configured(api_client, settings):
+    """Dev/tests: no Turnstile secret -> the token is not required."""
+    settings.TURNSTILE_SECRET_KEY = ""
+    settings.TURNSTILE_SECRET_KEY_MOBILE = ""
+    user = _user("magic_ts_dev")
     response = api_client.post(REQUEST_URL, {"email": user.email}, format="json")
     assert response.status_code == 200
     assert len(mail.outbox) == 1
@@ -164,9 +183,7 @@ def test_request_throttled_after_limit(api_client, set_throttle_rate):
     """5/hour by default. Reduce to 2/min for the test budget."""
     set_throttle_rate("auth_magic_link_request", "2/min")
     payload = {"email": "spam@local.test"}
-    statuses = [
-        api_client.post(REQUEST_URL, payload, format="json").status_code for _ in range(3)
-    ]
+    statuses = [api_client.post(REQUEST_URL, payload, format="json").status_code for _ in range(3)]
     assert statuses[:2] == [200, 200]
     assert statuses[2] == 429
 
@@ -195,9 +212,7 @@ def test_exchange_valid_token_returns_jwt_pair(api_client):
 
 
 def test_exchange_garbage_token_returns_400_token_invalid(api_client):
-    response = api_client.post(
-        EXCHANGE_URL, {"token": "totally.garbage.token"}, format="json"
-    )
+    response = api_client.post(EXCHANGE_URL, {"token": "totally.garbage.token"}, format="json")
     assert response.status_code == 400
     assert response.json() == {"detail": "token_invalid"}
 
@@ -221,9 +236,7 @@ def test_exchange_expired_token_returns_410_token_expired(api_client, monkeypatc
 
     # The view imports TOKEN_MAX_AGE_SECONDS from magic_link_token at call
     # time; patch the source constant to a negative value to force expiry.
-    monkeypatch.setattr(
-        "customuser.magic_link_token.TOKEN_MAX_AGE_SECONDS", -1, raising=True
-    )
+    monkeypatch.setattr("customuser.magic_link_token.TOKEN_MAX_AGE_SECONDS", -1, raising=True)
     assert views_mod  # imported for clarity; view re-imports the constant
 
     response = api_client.post(EXCHANGE_URL, {"token": token}, format="json")
