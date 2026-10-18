@@ -16,6 +16,8 @@ tree into `/etc/systemd/system`, copy them).
 | `tm-audit-purge.timer` | runs the purge service Sunday 03:30 (`Persistent=true`); deletes audit rows older than the retention window |
 | `tm-digest.service` | oneshot: `manage.py send_digests`, `User=django` |
 | `tm-digest.timer` | runs the digest service daily 07:30 (`Persistent=true`); one summary of the prior day's notifications for digest users |
+| `tm-attachment-purge.service` | oneshot: `manage.py purge_pending_attachments`, `User=django` |
+| `tm-attachment-purge.timer` | runs the purge daily 04:00 (`Persistent=true`); deletes `pending` uploads older than 24 h (row + S3 object) |
 
 The deploy pipeline does **not** install units (restart-only model,
 `OPERATIONS.md §3.11`): every unit added here must be installed on the box
@@ -121,4 +123,19 @@ sudo install -o root -g root -m 0644   /var/www/django_websites/trainingmanager_
 sudo systemctl daemon-reload
 sudo systemctl enable --now tm-digest.timer
 systemctl list-timers tm-digest.timer
+```
+
+## Installing the abandoned-upload purge (root, on the box)
+
+Same pattern. Deletes attachment rows still `pending` 24 h after their presign
+(the upload was never completed) and their S3 object, daily at 04:00.
+
+```bash
+sudo install -o root -g root -m 0644   /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-attachment-purge.service   /etc/systemd/system/tm-attachment-purge.service
+sudo install -o root -g root -m 0644   /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-attachment-purge.timer   /etc/systemd/system/tm-attachment-purge.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now tm-attachment-purge.timer
+systemctl list-timers tm-attachment-purge.timer
+sudo -u django env DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod   /var/www/django_websites/trainingmanager_server/.venv/bin/python   /var/www/django_websites/trainingmanager_server/manage.py purge_pending_attachments --dry-run
 ```

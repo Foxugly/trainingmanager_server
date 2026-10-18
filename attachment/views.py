@@ -52,9 +52,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
     # ---- helpers ----------------------------------------------------------
 
     def _get_attachment(self, pk) -> Attachment:
-        attachment = Attachment.objects.filter(pk=pk).select_related(
-            "content_type", "uploaded_by"
-        ).first()
+        attachment = (
+            Attachment.objects.filter(pk=pk).select_related("content_type", "uploaded_by").first()
+        )
         if attachment is None:
             raise NotFound(_("Attachment not found."))
         return attachment
@@ -87,7 +87,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
             ),
             403: OpenApiResponse(description="You may not attach files to this target."),
             404: OpenApiResponse(description="Target not found."),
-            503: OpenApiResponse(description="Attachments unconfigured (`attachments_unconfigured`)."),
+            503: OpenApiResponse(
+                description="Attachments unconfigured (`attachments_unconfigured`)."
+            ),
         },
         description=(
             "Request a presigned S3 PUT URL to upload a file and create a "
@@ -137,7 +139,10 @@ class AttachmentViewSet(viewsets.GenericViewSet):
         )
 
         upload_url = s3.presign_put(
-            key, data["content_type"], settings.ATTACHMENTS_PRESIGN_EXPIRY
+            key,
+            data["content_type"],
+            settings.ATTACHMENTS_PRESIGN_EXPIRY,
+            content_length=data["size"],
         )
         return Response(
             {
@@ -158,12 +163,14 @@ class AttachmentViewSet(viewsets.GenericViewSet):
             400: OpenApiResponse(description="Upload not found in S3 (`upload_not_found`)."),
             403: OpenApiResponse(description="Not allowed to complete this attachment."),
             404: OpenApiResponse(description="Attachment not found."),
-            503: OpenApiResponse(description="Attachments unconfigured (`attachments_unconfigured`)."),
+            503: OpenApiResponse(
+                description="Attachments unconfigured (`attachments_unconfigured`)."
+            ),
         },
         description=(
             "Finalize an upload: HEAD the S3 object, record its real size, and "
-            "flip the Attachment to `ready`. Caller must be the uploader or able "
-            "to write the target."
+            "flip the Attachment to `ready`. Caller must be able to write the "
+            "target (being the uploader is not enough)."
         ),
     )
     @action(detail=True, methods=["post"], url_path="complete")
@@ -173,10 +180,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
 
         attachment = self._get_attachment(pk)
         target = attachment.content_object
-        if not (
-            attachment.uploaded_by_id == request.user.pk
-            or can_write_target(request.user, target)
-        ):
+        # Write access to the target is required even for the uploader: someone
+        # who has left the team (or lost the message) keeps no hold on its files.
+        if not can_write_target(request.user, target):
             raise PermissionDenied(_("You may not complete this attachment."))
 
         head = s3.head_object(attachment.s3_key)
@@ -199,23 +205,19 @@ class AttachmentViewSet(viewsets.GenericViewSet):
             raise ValidationError({"code": code, "detail": detail})
 
         real_size = int(head.get("ContentLength", attachment.size_bytes))
-        # Re-check the size cap against the REAL object: the presigned PUT does
-        # not constrain the uploaded length, so a client can ignore the size it
-        # declared at presign. Reject (best-effort delete the object first,
+        # Re-check the size cap against the REAL object. The presigned PUT now
+        # signs Content-Length, but URLs minted before that change (and any other
+        # write path) are not bound to it. Reject (best-effort delete the object first,
         # mirroring destroy) instead of flipping to READY.
         if real_size > settings.ATTACHMENTS_MAX_BYTES:
-            _reject_and_cleanup(
-                "file_too_large", _("File exceeds the maximum allowed size.")
-            )
+            _reject_and_cleanup("file_too_large", _("File exceeds the maximum allowed size."))
 
         # Re-validate the REAL stored MIME against the allow-list: the presigned
         # PUT pins Content-Type, but defence-in-depth against a stored object
         # whose type drifted from / was never in the allow-list.
         real_mime = head.get("ContentType")
         if real_mime and real_mime not in settings.ATTACHMENTS_ALLOWED_MIME:
-            _reject_and_cleanup(
-                "mime_not_allowed", _("This file type is not allowed.")
-            )
+            _reject_and_cleanup("mime_not_allowed", _("This file type is not allowed."))
 
         attachment.size_bytes = real_size
         attachment.status = Attachment.READY
@@ -237,7 +239,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
             403: OpenApiResponse(description="No read access to this attachment's target."),
             404: OpenApiResponse(description="Attachment not found."),
             409: OpenApiResponse(description="Attachment not ready yet."),
-            503: OpenApiResponse(description="Attachments unconfigured (`attachments_unconfigured`)."),
+            503: OpenApiResponse(
+                description="Attachments unconfigured (`attachments_unconfigured`)."
+            ),
         },
         description=(
             "Mint a short-lived presigned GET URL to download a ready "
@@ -281,9 +285,7 @@ class AttachmentViewSet(viewsets.GenericViewSet):
                 required=True,
                 enum=["event", "message", "program", "performance"],
             ),
-            OpenApiParameter(
-                "target_id", OpenApiTypes.INT, OpenApiParameter.QUERY, required=True
-            ),
+            OpenApiParameter("target_id", OpenApiTypes.INT, OpenApiParameter.QUERY, required=True),
         ],
         responses={
             200: AttachmentSerializer(many=True),
@@ -344,11 +346,14 @@ class AttachmentViewSet(viewsets.GenericViewSet):
             204: OpenApiResponse(description="Attachment deleted."),
             403: OpenApiResponse(description="Not allowed to delete this attachment."),
             404: OpenApiResponse(description="Attachment not found."),
-            503: OpenApiResponse(description="Attachments unconfigured (`attachments_unconfigured`)."),
+            503: OpenApiResponse(
+                description="Attachments unconfigured (`attachments_unconfigured`)."
+            ),
         },
         description=(
             "Delete an attachment: best-effort removal of the S3 object then the "
-            "row. Caller must be the uploader or able to write the target."
+            "row. Caller must be able to write the target (being the uploader is "
+            "not enough)."
         ),
     )
     def destroy(self, request, pk=None):
@@ -357,10 +362,14 @@ class AttachmentViewSet(viewsets.GenericViewSet):
 
         attachment = self._get_attachment(pk)
         target = attachment.content_object
-        if not (
-            attachment.uploaded_by_id == request.user.pk
-            or can_write_target(request.user, target)
-        ):
+        # Write access to the target is required even for the uploader: someone
+        # who has left the team keeps no hold on its files. Only an orphan (its
+        # target is gone) stays deletable by its uploader, so it can be cleaned.
+        if target is None:
+            allowed = attachment.uploaded_by_id == request.user.pk
+        else:
+            allowed = can_write_target(request.user, target)
+        if not allowed:
             raise PermissionDenied(_("You may not delete this attachment."))
 
         # Best-effort S3 delete: if it fails we still drop the row (and log) so a
@@ -369,7 +378,9 @@ class AttachmentViewSet(viewsets.GenericViewSet):
         try:
             s3.delete_object(attachment.s3_key)
         except Exception:  # noqa: BLE001 - best-effort cleanup
-            logger.exception("S3 delete failed for attachment %s (key=%s)", attachment.pk, attachment.s3_key)
+            logger.exception(
+                "S3 delete failed for attachment %s (key=%s)", attachment.pk, attachment.s3_key
+            )
 
         # Derive the target's team defensively for audit scoping; fall back to
         # None if the target shape is unexpected.

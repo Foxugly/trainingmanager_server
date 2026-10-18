@@ -1,0 +1,13 @@
+[Unit]
+Description=Training Manager — abandoned attachment upload purge schedule (daily 04:00)
+
+[Timer]
+# Daily at 04:00 local time. The command deletes pending uploads older than
+# 24 h, so the exact time is not load-bearing.
+OnCalendar=*-*-* 04:00:00
+# Catch up if the box was down at the scheduled time.
+Persistent=true
+Unit=tm-attachment-purge.service
+
+[Install]
+WantedBy=timers.target
