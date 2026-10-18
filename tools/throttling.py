@@ -86,3 +86,23 @@ class ChangeEmailRequestThrottle(UserRateThrottle):
     confirmation email sent to a user-supplied new address."""
 
     scope = "change_email_request"
+
+
+class PasswordChangeThrottle(UserRateThrottle):
+    """Per-user throttle on /auth/password/change/ — bounds guessing of
+    ``current_password`` with a stolen access token."""
+
+    scope = "auth_password_change"
+
+
+class AccountDeleteThrottle(UserRateThrottle):
+    """Per-user throttle on /auth/account/delete/ — same ``current_password``
+    check as the password change."""
+
+    scope = "auth_account_delete"
+
+
+class InvitationThrottle(UserRateThrottle):
+    """Per-user throttle on team invitations (each one sends an email)."""
+
+    scope = "team_invitation"

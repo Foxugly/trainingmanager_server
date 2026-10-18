@@ -1567,3 +1567,7 @@ msgstr "{field} bevat ID's die niet aan deze {container} zijn gekoppeld: {ids}"
 msgid "{field} is missing IDs attached to this {container}: {ids}"
 msgstr ""
 "In {field} ontbreken ID's die aan deze {container} zijn gekoppeld: {ids}"
+
+#: team/views/invitations.py
+msgid "You already have an account: sign in and send a request to join this team."
+msgstr "U hebt al een account: meld u aan en stuur een verzoek om lid te worden van dit team."

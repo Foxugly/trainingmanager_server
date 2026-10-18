@@ -293,6 +293,10 @@ REST_FRAMEWORK = {
         "auth_magic_link_request": "5/hour",
         # Authenticated auth-flow throttles (per user)
         "auth_logout": "30/min",
+        "auth_password_change": "10/hour",
+        "auth_account_delete": "10/hour",
+        # Team invitations (per user) — each one emails a third party.
+        "team_invitation": "20/hour",
     },
     "EXCEPTION_HANDLER": "tools.exceptions.custom_exception_handler",
 }

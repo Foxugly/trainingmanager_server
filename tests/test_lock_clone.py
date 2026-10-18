@@ -149,7 +149,9 @@ def test_POST_round_clone_returns_201_with_m2m_exercises_copied(auth_client_trai
     assert set(body["exercises"]) == {e1.pk, e2.pk, e3.pk}
 
 
-def test_clone_event_linked_round_of_unmanaged_team_is_forbidden(auth_client_trainer, trainer_sport):
+def test_clone_event_linked_round_of_unmanaged_team_is_forbidden(
+    auth_client_trainer, trainer_sport
+):
     """IDOR: a trainer cannot clone a round attached to another team's event,
     even when sport/language put it in their read scope."""
     r = RoundFactory(sport=trainer_sport)  # in the caller's (sport, fr) read scope
@@ -159,7 +161,9 @@ def test_clone_event_linked_round_of_unmanaged_team_is_forbidden(auth_client_tra
     event.rounds.add(r)
 
     response = auth_client_trainer.post(f"/api/v1/rounds/{r.pk}/clone/", {}, format="json")
-    assert response.status_code == 403, response.json()
+    # Another team's session content is outside the read scope (404), not just
+    # write-protected.
+    assert response.status_code == 404, response.json()
 
 
 def test_POST_round_clone_exercise_attaches_to_round(auth_client_trainer, trainer_sport):
@@ -233,9 +237,7 @@ def test_clone_round_as_non_trainer_returns_403(auth_client_non_trainer):
     assert response.status_code == 403
 
 
-def test_PATCH_round_of_unmanaged_team_event_returns_403(
-    auth_client_trainer, trainer_sport
-):
+def test_PATCH_round_of_unmanaged_team_event_returns_403(auth_client_trainer, trainer_sport):
     """IDOR guard: a trainer in the sport scope cannot mutate a round whose only
     linked event belongs to a team they do not manage."""
     foreign_program = ProgramFactory(team=TeamFactory(sport=trainer_sport))
@@ -246,7 +248,9 @@ def test_PATCH_round_of_unmanaged_team_event_returns_403(
         {"count": 7},
         format="json",
     )
-    assert response.status_code == 403
+    # Another team's session content is outside the read scope (404), not just
+    # write-protected.
+    assert response.status_code == 404
 
 
 # --------- EXERCISE object-level authorization (IDOR + author) -------
@@ -262,7 +266,9 @@ def test_PATCH_exercise_of_unmanaged_team_event_returns_403(auth_client_trainer,
     response = auth_client_trainer.patch(
         f"/api/v1/exercises/{ex.pk}/", {"notes": "hijack"}, format="json"
     )
-    assert response.status_code == 403
+    # Another team's session content is outside the read scope (404), not just
+    # write-protected.
+    assert response.status_code == 404
 
 
 def test_DELETE_exercise_of_unmanaged_team_event_returns_403(auth_client_trainer, trainer_sport):
@@ -271,7 +277,9 @@ def test_DELETE_exercise_of_unmanaged_team_event_returns_403(auth_client_trainer
     r = RoundFactory(sport=trainer_sport, exercises=[ex])
     EventFactory(rounds=[r], refer_program=ProgramFactory(team=TeamFactory(sport=trainer_sport)))
     response = auth_client_trainer.delete(f"/api/v1/exercises/{ex.pk}/")
-    assert response.status_code == 403
+    # Another team's session content is outside the read scope (404), not just
+    # write-protected.
+    assert response.status_code == 404
     ex.refresh_from_db()  # still there
 
 
@@ -311,7 +319,9 @@ def test_clone_event_linked_exercise_of_unmanaged_team_is_forbidden(
     r = RoundFactory(sport=trainer_sport, exercises=[ex])
     EventFactory(rounds=[r], refer_program=ProgramFactory(team=TeamFactory(sport=trainer_sport)))
     response = auth_client_trainer.post(f"/api/v1/exercises/{ex.pk}/clone/", {}, format="json")
-    assert response.status_code == 403
+    # Another team's session content is outside the read scope (404), not just
+    # write-protected.
+    assert response.status_code == 404
 
 
 def test_PATCH_library_exercise_of_another_author_returns_403(auth_client_trainer, trainer_sport):
@@ -325,9 +335,7 @@ def test_PATCH_library_exercise_of_another_author_returns_403(auth_client_traine
     assert response.status_code == 403
 
 
-def test_PATCH_own_library_exercise_returns_200(
-    auth_client_trainer, trainer_user, trainer_sport
-):
+def test_PATCH_own_library_exercise_returns_200(auth_client_trainer, trainer_user, trainer_sport):
     modality = ModalityFactory(sport=trainer_sport)
     ex = ExerciseFactory(modality=modality, author=trainer_user)
     response = auth_client_trainer.patch(

@@ -1566,3 +1566,7 @@ msgstr "{field} contiene ID non collegati a questo {container}: {ids}"
 #, python-brace-format
 msgid "{field} is missing IDs attached to this {container}: {ids}"
 msgstr "In {field} mancano ID collegati a questo {container}: {ids}"
+
+#: team/views/invitations.py
+msgid "You already have an account: sign in and send a request to join this team."
+msgstr "Hai già un account: accedi e invia una richiesta per unirti a questo team."

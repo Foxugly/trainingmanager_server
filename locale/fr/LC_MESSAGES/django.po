@@ -1587,3 +1587,7 @@ msgstr ""
 msgid "{field} is missing IDs attached to this {container}: {ids}"
 msgstr ""
 "Il manque à {field} des identifiants rattachés à ce {container} : {ids}"
+
+#: team/views/invitations.py
+msgid "You already have an account: sign in and send a request to join this team."
+msgstr "Vous avez déjà un compte : connectez-vous et envoyez une demande pour rejoindre cette équipe."

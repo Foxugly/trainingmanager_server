@@ -17,7 +17,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core import mail
 
-from customuser.email_tokens import make_key
+from customuser.email_tokens import make_confirmation_key, make_key
 
 pytestmark = pytest.mark.django_db
 
@@ -96,7 +96,7 @@ def _register_and_get_key(api_client):
     """Helper: register a user and mint the confirmation key for them."""
     api_client.post(REGISTER_URL, _valid_payload(), format="json")
     user = User.objects.get(email="newcomer@local.test")
-    return make_key(user), user
+    return make_confirmation_key(user), user
 
 
 def test_email_confirm_valid_key_returns_tokens(api_client):
@@ -117,6 +117,45 @@ def test_email_confirm_invalid_key_returns_400(api_client):
     response = api_client.post(CONFIRM_URL, {"key": "totally-bogus-key"}, format="json")
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_or_expired_token"
+
+
+def test_email_confirm_key_is_single_use(api_client):
+    key, _user = _register_and_get_key(api_client)
+    assert api_client.post(CONFIRM_URL, {"key": key}, format="json").status_code == 200
+
+    replay = api_client.post(CONFIRM_URL, {"key": key}, format="json")
+    assert replay.status_code == 400
+    assert replay.json()["code"] == "invalid_or_expired_token"
+    assert "access" not in replay.json()
+
+
+def test_email_confirm_key_is_not_a_password_reset_key(api_client):
+    key, _user = _register_and_get_key(api_client)
+    response = api_client.post(
+        "/api/v1/auth/password/reset/confirm/",
+        {"key": key, "new_password": "An0ther-Str0ng-Pass!"},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "invalid_or_expired_token"
+
+
+def test_password_reset_key_is_not_a_confirmation_key(api_client):
+    _key, user = _register_and_get_key(api_client)
+    response = api_client.post(CONFIRM_URL, {"key": make_key(user)}, format="json")
+    assert response.status_code == 400
+    user.refresh_from_db()
+    assert user.email_confirmed is False
+
+
+def test_email_confirm_on_already_confirmed_account_issues_no_tokens(api_client):
+    key, user = _register_and_get_key(api_client)
+    user.email_confirmed = True
+    user.save(update_fields=["email_confirmed"])
+
+    response = api_client.post(CONFIRM_URL, {"key": key}, format="json")
+    assert response.status_code == 400
+    assert "access" not in response.json()
 
 
 # =====================================================================

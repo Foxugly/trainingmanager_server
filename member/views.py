@@ -89,14 +89,11 @@ class MemberViewSet(viewsets.ModelViewSet):
         responses={
             200: OpenApiResponse(
                 response=MemberSerializer,
-                description=(
-                    "PII irreversibly blanked. Returns the anonymized member."
-                ),
+                description=("PII irreversibly blanked. Returns the anonymized member."),
             ),
             403: OpenApiResponse(
                 description=(
-                    "The caller is not a coach (owner/manager) of any team this "
-                    "member belongs to."
+                    "The caller is not a coach (owner/manager) of any team this member belongs to."
                 )
             ),
             404: OpenApiResponse(description="No such member in a team you manage."),
@@ -120,28 +117,7 @@ class MemberViewSet(viewsets.ModelViewSet):
         member, audit_team = self._get_member_for_anonymize(request, pk)
 
         with transaction.atomic():
-            # Delete coach notes about this member first (may contain PII).
-            try:
-                member.notes.all().delete()
-            except Exception:  # pragma: no cover - note app may be absent
-                pass
-
-            member.firstname = "Athlète"
-            member.lastname = f"anonymisé #{member.id}"
-            member.email = ""
-            member.phonenumber = ""
-            # Unlink any user account without touching/deleting it.
-            member.user = None
-            member.save(
-                update_fields=[
-                    "firstname",
-                    "lastname",
-                    "email",
-                    "phonenumber",
-                    "user",
-                    "updated_at",
-                ]
-            )
+            member.anonymize()
 
             # Audit the erasure (best-effort; never breaks the action).
             from audit.models import AuditAction
@@ -174,12 +150,8 @@ class MemberViewSet(viewsets.ModelViewSet):
         except Member.DoesNotExist:
             raise NotFound(_("No such member."))
 
-        coach_team_ids = set(
-            managed_teams(request.user).values_list("pk", flat=True)
-        )
-        member_team_ids = set(
-            member.memberships.values_list("team_id", flat=True)
-        )
+        coach_team_ids = set(managed_teams(request.user).values_list("pk", flat=True))
+        member_team_ids = set(member.memberships.values_list("team_id", flat=True))
         shared_team_ids = coach_team_ids & member_team_ids
         if not shared_team_ids:
             raise NotFound(_("No such member in a team you manage."))

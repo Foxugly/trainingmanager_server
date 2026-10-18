@@ -34,6 +34,25 @@ class Member(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def anonymize(self):
+        """Irreversibly blank this member's PII (RGPD erasure).
+
+        Names become a neutral placeholder, email and phone are cleared, the
+        user account is unlinked and coach notes about the member (which may
+        contain PII) are deleted. Training history (memberships, performances,
+        rsvp, roti) stays attached to the anonymized row so team stats survive.
+        Callers wrap this in a transaction.
+        """
+        self.notes.all().delete()
+        self.firstname = "Athlète"
+        self.lastname = f"anonymisé #{self.id}"
+        self.email = ""
+        self.phonenumber = ""
+        self.user = None
+        self.save(
+            update_fields=["firstname", "lastname", "email", "phonenumber", "user", "updated_at"]
+        )
+
     def get_fullname(self):
         return "%s %s" % (self.firstname, self.lastname)
 

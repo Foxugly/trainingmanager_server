@@ -14,6 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from tools.throttling import InvitationThrottle
+
 from ..models import TeamInvitation
 from ..permissions import IsTrainer
 from ..queries import managed_teams
@@ -32,6 +34,8 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated, IsTrainer]
     filterset_fields = ["status", "team"]
+    # Invitation creation is throttled per user (each one emails a third
+    # party); see get_throttles.
     ordering_fields = ["created_at", "expires_at"]
     ordering = ["-created_at"]
     http_method_names = ["get", "post", "delete", "head", "options"]
@@ -40,6 +44,12 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
         if self.action == "create":
             return CreateInvitationSerializer
         return TeamInvitationSerializer
+
+    def get_throttles(self):
+        throttles = super().get_throttles()
+        if self.action == "create":
+            throttles.append(InvitationThrottle())
+        return throttles
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
@@ -54,18 +64,18 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
             400: OpenApiResponse(
                 description=(
                     "Validation error. Possible codes include: "
-                    "`user_already_registered` when the email matches an existing "
-                    "user account (direct enrolment is refused for existing users); "
                     "`email_already_invited`, `not_a_manager`, `team_not_active`."
                 ),
             ),
+            429: OpenApiResponse(description="Too many invitations sent (per-user throttle)."),
         },
         description=(
             "Trainer pre-registers an athlete on a managed team by sending an "
-            "invitation email. Refused with code=user_already_registered if the "
-            "email matches an existing user account; the trainer must use a "
-            "different flow (e.g. ask the user to issue a TeamJoinRequest) for "
-            "registered users."
+            "invitation email. The response is the same whether or not the "
+            "email already has an account: an existing account is never "
+            "enrolled directly — its owner receives a notice inviting them to "
+            "sign in and request to join the team, and the pending invitation "
+            "simply expires."
         ),
     )
     def create(self, request, *args, **kwargs):
@@ -76,16 +86,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         User = get_user_model()
-        if User.objects.filter(email=data["email"]).exists():
-            raise drf_serializers.ValidationError(
-                {
-                    "detail": _(
-                        "Cet utilisateur est déjà enregistré. Une invitation "
-                        "directe n'est pas possible pour les comptes existants."
-                    ),
-                },
-                code="user_already_registered",
-            )
+        existing_user = User.objects.filter(email__iexact=data["email"]).first()
 
         member = Member.objects.create(
             firstname=data["firstname"],
@@ -99,7 +100,14 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
             member=member,
             email=data["email"],
         )
-        self._send_invitation_email(invitation)
+        # Same response either way so the endpoint does not reveal which
+        # addresses have an account. An existing account is never enrolled
+        # without consent: its owner only gets a notice to sign in and ask to
+        # join (the invitation itself cannot be completed for that email).
+        if existing_user is not None:
+            self._send_existing_account_notice(invitation, existing_user)
+        else:
+            self._send_invitation_email(invitation)
         return Response(
             TeamInvitationSerializer(invitation, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -132,6 +140,34 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
                 )
             except Exception:
                 logger.exception("Failed to send invitation email")
+
+    def _send_existing_account_notice(self, invitation, user):
+        """The invitee already has an account: tell them who invited them and
+        to sign in and request to join — no signup link."""
+        frontend_url = dj_settings.FRONTEND_URL.rstrip("/")
+        with translation.override(user.language or invitation.team.language or "en"):
+            subject = f"[TrainingManager] {_('You are invited to')} {invitation.team.name}"
+            account_hint = _(
+                "You already have an account: sign in and send a request to join this team."
+            )
+            body = (
+                f"{_('Hello')} {user.first_name or invitation.member.firstname},\n\n"
+                f"{invitation.invited_by.get_full_name() or invitation.invited_by.email} "
+                f"{_('has invited you to join the team')} "
+                f'"{invitation.team.name}".\n\n'
+                f"{account_hint}\n"
+                f"{frontend_url}/login\n"
+            )
+            try:
+                send_mail(
+                    subject=str(subject),
+                    message=str(body),
+                    from_email=dj_settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[invitation.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception("Failed to send invitation notice email")
 
     def perform_destroy(self, instance):
         if instance.status != "pending":
@@ -198,8 +234,7 @@ class InvitationLookupView(APIView):
             404: OpenApiResponse(description="Token not found"),
             409: OpenApiResponse(
                 description=(
-                    "An account already exists for the invitation email "
-                    "(code=email_taken)."
+                    "An account already exists for the invitation email (code=email_taken)."
                 )
             ),
         },
@@ -238,8 +273,7 @@ class InvitationLookupView(APIView):
                 {
                     "code": "email_taken",
                     "detail": _(
-                        "An account already exists for this email address. "
-                        "Please log in instead."
+                        "An account already exists for this email address. Please log in instead."
                     ),
                 },
                 status=status.HTTP_409_CONFLICT,

@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 
 from .models import Team
 
@@ -41,3 +41,44 @@ def scope_by_sport_language(queryset, user, sport_field="sport_id"):
     for sport_id, lang in pairs:
         query |= Q(**{sport_field: sport_id, "language": lang})
     return queryset.filter(query)
+
+
+def scope_rounds_to_user_teams(queryset, user):
+    """Restrict Rounds to library rounds + rounds of the caller's own teams.
+
+    A round is *team content* when an Event or a session EventTemplate links
+    it; everything else is shared library content. A round linked only to
+    events / templates of teams the user does not belong to (owner, manager,
+    active member) is hidden, even when sport and language match. Combine
+    with `scope_by_sport_language`.
+    """
+    from event.models import Event, EventTemplate
+
+    from .queries import user_member_teams
+
+    teams = user_member_teams(user)
+    event_links = Event.rounds.through.objects.filter(round_id=OuterRef("pk"))
+    template_links = EventTemplate.rounds.through.objects.filter(round_id=OuterRef("pk"))
+    return queryset.filter(
+        (~Exists(event_links) & ~Exists(template_links))
+        | Exists(event_links.filter(event__refer_program__team__in=teams))
+        | Exists(template_links.filter(eventtemplate__team__in=teams))
+    )
+
+
+def scope_exercises_to_user_teams(queryset, user):
+    """Restrict Exercises to those held by no round, or by at least one round
+    the caller may read (see `scope_rounds_to_user_teams`).
+
+    Exercises form a shared library (session rounds re-link them), so an
+    exercise is hidden only when every round holding it is team content of
+    teams the user does not belong to.
+    """
+    from round.models import Round
+
+    holdings = Round.exercises.through.objects
+    readable_rounds = scope_rounds_to_user_teams(Round.objects.all(), user)
+    return queryset.filter(
+        Exists(holdings.filter(exercise_id=OuterRef("pk"), round__in=readable_rounds))
+        | ~Exists(holdings.filter(exercise_id=OuterRef("pk")))
+    )

@@ -14,6 +14,13 @@ tree into `/etc/systemd/system`, copy them).
 | `tm-session-reminder.timer` | runs the reminder service daily 07:00 (`Persistent=true`); notifies athletes of tomorrow's sessions |
 | `tm-audit-purge.service` | oneshot: `manage.py purge_audit_log`, `User=django` |
 | `tm-audit-purge.timer` | runs the purge service Sunday 03:30 (`Persistent=true`); deletes audit rows older than the retention window |
+| `tm-digest.service` | oneshot: `manage.py send_digests`, `User=django` |
+| `tm-digest.timer` | runs the digest service daily 07:30 (`Persistent=true`); one summary of the prior day's notifications for digest users |
+
+The deploy pipeline does **not** install units (restart-only model,
+`OPERATIONS.md §3.11`): every unit added here must be installed on the box
+by root, out-of-band, with the commands below. Check with
+`systemctl list-timers 'tm-*'` that each `*.timer` in this directory is listed.
 
 ## Installing the weekly recap (root, on the box)
 
@@ -101,3 +108,17 @@ sudo -u django env DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod \
 Tune retention with `--days N` in the service `ExecStart`, or set
 `AUDIT_RETENTION_DAYS` in SSM (`/run/tm/.env`) and let the command's default
 pick it up.
+
+## Installing the daily notification digest (root, on the box)
+
+Same pattern. Sends one summary of the prior day's notifications to users who
+opted for the digest, daily at 07:30.
+
+```bash
+sudo install -o root -g root -m 0644   /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-digest.service   /etc/systemd/system/tm-digest.service
+sudo install -o root -g root -m 0644   /var/www/django_websites/trainingmanager_server/deploy/systemd/tm-digest.timer   /etc/systemd/system/tm-digest.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now tm-digest.timer
+systemctl list-timers tm-digest.timer
+```
