@@ -22,9 +22,7 @@ User = get_user_model()
 
 @pytest.fixture
 def coach_user(db):
-    return User.objects.create_user(
-        email="pii_coach@local.test", password="pass"
-    )
+    return User.objects.create_user(email="pii_coach@local.test", password="pass")
 
 
 @pytest.fixture
@@ -34,17 +32,18 @@ def team(coach_user):
 
 @pytest.fixture
 def athlete_user(db):
-    return User.objects.create_user(
-        email="pii_athlete@local.test", password="pass"
-    )
+    return User.objects.create_user(email="pii_athlete@local.test", password="pass")
 
 
 @pytest.fixture
 def athlete_member(team, athlete_user):
     """The requesting athlete's OWN linked member."""
     m = Member.objects.create(
-        firstname="Al", lastname="Ete", email="al@local.test",
-        phonenumber="+32111111111", user=athlete_user,
+        firstname="Al",
+        lastname="Ete",
+        email="al@local.test",
+        phonenumber="+32111111111",
+        user=athlete_user,
     )
     TeamMembership.objects.create(team=team, member=m)
     return m
@@ -54,7 +53,9 @@ def athlete_member(team, athlete_user):
 def teammate_member(team):
     """A different member on the same team (the PII target)."""
     m = Member.objects.create(
-        firstname="Tea", lastname="Mmate", email="teammate@local.test",
+        firstname="Tea",
+        lastname="Mmate",
+        email="teammate@local.test",
         phonenumber="+32999999999",
     )
     TeamMembership.objects.create(team=team, member=m)
@@ -68,9 +69,7 @@ def _detail(pk):
 LIST_URL = "/api/v1/members/"
 
 
-def test_athlete_cannot_see_teammate_pii(
-    api_client, athlete_user, athlete_member, teammate_member
-):
+def test_athlete_cannot_see_teammate_pii(api_client, athlete_user, athlete_member, teammate_member):
     api_client.force_authenticate(user=athlete_user)
     resp = api_client.get(_detail(teammate_member.pk))
     assert resp.status_code == 200, resp.content
@@ -85,9 +84,7 @@ def test_athlete_cannot_see_teammate_pii(
     assert body["fullname"] == "Tea Mmate"
 
 
-def test_manager_sees_full_teammate_pii(
-    api_client, coach_user, teammate_member
-):
+def test_manager_sees_full_teammate_pii(api_client, coach_user, teammate_member):
     api_client.force_authenticate(user=coach_user)
     resp = api_client.get(_detail(teammate_member.pk))
     assert resp.status_code == 200, resp.content
@@ -96,9 +93,7 @@ def test_manager_sees_full_teammate_pii(
     assert body["phonenumber"] == "+32999999999"
 
 
-def test_user_sees_own_member_full_pii(
-    api_client, athlete_user, athlete_member
-):
+def test_user_sees_own_member_full_pii(api_client, athlete_user, athlete_member):
     api_client.force_authenticate(user=athlete_user)
     resp = api_client.get(_detail(athlete_member.pk))
     assert resp.status_code == 200, resp.content
@@ -123,9 +118,7 @@ def test_list_redacts_teammate_pii_for_athlete(
     assert by_id[teammate_member.pk]["phonenumber"] is None
 
 
-def test_list_shows_full_pii_to_manager(
-    api_client, coach_user, athlete_member, teammate_member
-):
+def test_list_shows_full_pii_to_manager(api_client, coach_user, athlete_member, teammate_member):
     api_client.force_authenticate(user=coach_user)
     resp = api_client.get(LIST_URL)
     assert resp.status_code == 200, resp.content
@@ -133,3 +126,32 @@ def test_list_shows_full_pii_to_manager(
     by_id = {r["id"]: r for r in rows}
     assert by_id[teammate_member.pk]["email"] == "teammate@local.test"
     assert by_id[teammate_member.pk]["phonenumber"] == "+32999999999"
+
+
+# --- ?search= must not be an e-mail oracle (audit 2026-10-18 S-M3) ---------
+
+
+def test_athlete_search_by_teammate_email_finds_nothing(
+    api_client, athlete_user, athlete_member, teammate_member
+):
+    api_client.force_authenticate(user=athlete_user)
+    resp = api_client.get(LIST_URL, {"search": "teammate@local.test"})
+    assert resp.status_code == 200, resp.content
+    assert resp.json()["results"] == []
+
+
+def test_athlete_search_by_name_and_own_email_still_works(
+    api_client, athlete_user, athlete_member, teammate_member
+):
+    api_client.force_authenticate(user=athlete_user)
+    by_name = api_client.get(LIST_URL, {"search": "Mmate"}).json()["results"]
+    assert [r["id"] for r in by_name] == [teammate_member.pk]
+    own = api_client.get(LIST_URL, {"search": "al@local.test"}).json()["results"]
+    assert [r["id"] for r in own] == [athlete_member.pk]
+
+
+def test_manager_search_by_email_matches(api_client, coach_user, athlete_member, teammate_member):
+    api_client.force_authenticate(user=coach_user)
+    resp = api_client.get(LIST_URL, {"search": "teammate@local"})
+    assert resp.status_code == 200, resp.content
+    assert [r["id"] for r in resp.json()["results"]] == [teammate_member.pk]
