@@ -81,9 +81,10 @@ class MagicLinkRequestView(APIView):
     doesn't, the call is a silent no-op — the response is byte-for-byte
     identical (no user enumeration, timing-insensitive wording).
 
-    Rate-limited to 5 requests per hour per IP. An optional Cloudflare
-    Turnstile ``turnstile_token`` is verified when supplied (400
-    ``captcha_failed`` on failure); it is not yet required.
+    Rate-limited to 5 requests per hour per IP. When Cloudflare Turnstile
+    is configured, ``turnstile_token`` is required and verified before any
+    lookup: missing, blank or invalid -> 400 ``captcha_failed``
+    (fail-closed).
     """
 
     permission_classes = [AllowAny]
@@ -100,7 +101,7 @@ class MagicLinkRequestView(APIView):
                     fields={"detail": drf_serializers.CharField()},
                 ),
                 description=(
-                    "Always 200 with {\"detail\": \"ok\"}. If the email matches "
+                    'Always 200 with {"detail": "ok"}. If the email matches '
                     "an active, email-confirmed account, a sign-in link has been "
                     "dispatched; otherwise the response is identical (anti-leak)."
                 ),
@@ -116,10 +117,11 @@ class MagicLinkRequestView(APIView):
 
         serializer = MagicLinkRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Backward compatible: verify only when a token is supplied and
-        # Turnstile is configured; a missing token is not rejected (yet).
-        token = serializer.validated_data.get("turnstile_token")
-        if token and turnstile_configured():
+        # Server-side Turnstile check before any DB lookup. Fail-closed when
+        # Turnstile is configured: a missing/blank token is rejected like an
+        # invalid one (verify_turnstile_token returns False for "").
+        if turnstile_configured():
+            token = serializer.validated_data.get("turnstile_token", "")
             if not verify_turnstile_token(token, remote_ip=get_remote_ip(request)):
                 raise CaptchaFailed()
         request_magic_link(serializer.validated_data["email"])
@@ -153,11 +155,11 @@ class MagicLinkExchangeView(APIView):
                 description=(
                     "Token invalid/tampered, or the user is no longer eligible "
                     "(inactive / email-unconfirmed / deleted). "
-                    "Body: {\"detail\": \"token_invalid\"}."
+                    'Body: {"detail": "token_invalid"}.'
                 )
             ),
             410: OpenApiResponse(
-                description="Token expired. Body: {\"detail\": \"token_expired\"}.",
+                description='Token expired. Body: {"detail": "token_expired"}.',
             ),
         },
     )
@@ -178,37 +180,25 @@ class MagicLinkExchangeView(APIView):
         # Unsign here (rather than via parse_magic_link_token) so we can
         # distinguish an *expired* token (410) from an *invalid* one (400).
         try:
-            raw = TimestampSigner(salt=SIGNER_SALT).unsign(
-                token, max_age=TOKEN_MAX_AGE_SECONDS
-            )
+            raw = TimestampSigner(salt=SIGNER_SALT).unsign(token, max_age=TOKEN_MAX_AGE_SECONDS)
         except SignatureExpired:
-            return Response(
-                {"detail": "token_expired"}, status=status.HTTP_410_GONE
-            )
+            return Response({"detail": "token_expired"}, status=status.HTTP_410_GONE)
         except BadSignature:
-            return Response(
-                {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Payload is "<user_id>:<nonce>" (cf. magic_link_token).
         user_id_str, sep, nonce = raw.partition(":")
         try:
             user_id = int(user_id_str)
         except (ValueError, TypeError):
-            return Response(
-                {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST)
         if not sep or not nonce:
-            return Response(
-                {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
         # exchange consumes the single-use nonce — a replay returns None (400).
         user = exchange_magic_link(user_id, nonce)
         if user is None:
-            return Response(
-                {"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(_jwt_pair(user))
 
