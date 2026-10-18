@@ -4,7 +4,8 @@ Endpoint:
 - POST /api/v1/auth/password/change/ — authenticated self-service password
   change. Body: {current_password, new_password}.
 
-Permission: IsAuthenticated. On success returns 200 + {detail} (no tokens).
+Permission: IsAuthenticated. On success returns 200 + {detail, access, refresh}:
+every other outstanding refresh token is revoked and the caller gets a fresh pair.
 Errors follow the repo's {code, detail} / {fields} convention.
 """
 
@@ -41,8 +42,8 @@ def test_change_with_correct_current_password_returns_200_and_changes_password(a
     assert response.status_code == 200, response.json()
     body = response.json()
     assert "detail" in body
-    # No tokens are issued by design.
-    assert "access" not in body and "refresh" not in body
+    # A fresh pair replaces the revoked sessions.
+    assert body["access"] and body["refresh"]
 
     user.refresh_from_db()
     assert user.check_password("BrandN3wP@ss!")
@@ -103,3 +104,34 @@ def test_change_unauthenticated_is_rejected(api_client):
         format="json",
     )
     assert response.status_code in (401, 403)
+
+
+REFRESH_URL = "/api/v1/auth/token/refresh/"
+
+
+def test_change_revokes_previously_issued_refresh_tokens(api_client):
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    user = _user()
+    stolen = str(RefreshToken.for_user(user))
+    api_client.force_authenticate(user=user)
+    response = api_client.post(
+        CHANGE_URL,
+        {"current_password": CURRENT_PASSWORD, "new_password": "BrandN3wP@ss!"},
+        format="json",
+    )
+    assert response.status_code == 200
+    fresh = response.json()["refresh"]
+
+    api_client.force_authenticate(user=None)
+    assert api_client.post(REFRESH_URL, {"refresh": stolen}, format="json").status_code == 401
+    assert api_client.post(REFRESH_URL, {"refresh": fresh}, format="json").status_code == 200
+
+
+def test_change_is_throttled(api_client, set_throttle_rate):
+    set_throttle_rate("auth_password_change", "2/hour")
+    user = _user()
+    api_client.force_authenticate(user=user)
+    payload = {"current_password": "WrongP@ssw0rd!", "new_password": "BrandN3wP@ss!"}
+    codes = [api_client.post(CHANGE_URL, payload, format="json").status_code for _ in range(3)]
+    assert codes == [400, 400, 429]

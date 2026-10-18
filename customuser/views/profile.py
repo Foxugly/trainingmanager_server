@@ -2,6 +2,7 @@
 iCal calendar feed + token rotation, verified email change, password change,
 and account deletion."""
 
+from django.db import transaction
 from django.http import Http404, HttpResponse
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
@@ -13,8 +14,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from customuser.calendar import build_calendar_for_user
+from member.models import Member
 from tools.exceptions import OwnsTeams
-from tools.throttling import ChangeEmailRequestThrottle
+from tools.throttling import (
+    AccountDeleteThrottle,
+    ChangeEmailRequestThrottle,
+    PasswordChangeThrottle,
+)
 
 from ..models import CustomUser
 from ..serializers import (
@@ -25,6 +31,7 @@ from ..serializers import (
     MeSerializer,
     PasswordChangeSerializer,
 )
+from ._helpers import _jwt_pair
 
 
 class _EmailTaken(Exception):
@@ -162,14 +169,15 @@ class PasswordChangeView(APIView):
     Body: {current_password, new_password}. The caller must prove they
     still know `current_password`; `new_password` is validated against
     Django's configured password validators (with the user as context) and
-    must differ from the current one. On success the password is updated
-    and a localized {detail} body is returned — NO tokens are issued. The
-    short-lived access token (and any outstanding refresh) remain valid
-    until they expire; this keeps the flow minimal for a user who is
-    already authenticated and merely rotating their password.
+    must differ from the current one. On success the password is updated,
+    every outstanding refresh token of the user is blacklisted (other
+    sessions must sign in again) and a fresh {access, refresh} pair is
+    returned next to the localized {detail} so the calling session carries
+    on. Already-issued access tokens stay valid until their short expiry.
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [PasswordChangeThrottle]
 
     @extend_schema(
         request=PasswordChangeSerializer,
@@ -177,9 +185,17 @@ class PasswordChangeView(APIView):
             200: OpenApiResponse(
                 response=inline_serializer(
                     name="PasswordChangeResponse",
-                    fields={"detail": drf_serializers.CharField()},
+                    fields={
+                        "detail": drf_serializers.CharField(),
+                        "access": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(),
+                    },
                 ),
-                description="Password updated. Returns {detail}. No tokens are issued.",
+                description=(
+                    "Password updated. Returns {detail, access, refresh}: every "
+                    "previously issued refresh token is revoked, so the client must "
+                    "store this new pair."
+                ),
             ),
             400: OpenApiResponse(
                 description=(
@@ -192,9 +208,7 @@ class PasswordChangeView(APIView):
         },
     )
     def post(self, request):
-        serializer = PasswordChangeSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         current_password = serializer.validated_data["current_password"]
         new_password = serializer.validated_data["new_password"]
@@ -215,7 +229,17 @@ class PasswordChangeView(APIView):
         user.set_password(new_password)
         user.save(update_fields=["password"])
 
-        return Response({"detail": _("Password updated.")})
+        # Revoke every outstanding refresh token (other devices / a leaked
+        # refresh), then hand the calling session a fresh pair.
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+            OutstandingToken,
+        )
+
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
+
+        return Response({"detail": _("Password updated."), **_jwt_pair(user)})
 
 
 class EmailChangeRequestView(APIView):
@@ -251,9 +275,7 @@ class EmailChangeRequestView(APIView):
     def post(self, request):
         from customuser.email_change import send_email_change_email
 
-        serializer = EmailChangeRequestSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = EmailChangeRequestSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         send_email_change_email(request.user, serializer.validated_data["new_email"])
         return Response(
@@ -294,7 +316,6 @@ class EmailChangeConfirmView(APIView):
     )
     def post(self, request):
         from django.core.signing import SignatureExpired
-        from django.db import transaction
 
         from customuser.email_change import parse_email_change_token
 
@@ -332,9 +353,7 @@ class EmailChangeConfirmView(APIView):
         try:
             with transaction.atomic():
                 taken = (
-                    CustomUser.objects.filter(email__iexact=new_email)
-                    .exclude(pk=user.pk)
-                    .exists()
+                    CustomUser.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists()
                 )
                 if taken:
                     raise _EmailTaken()
@@ -360,7 +379,9 @@ class AccountDeleteView(APIView):
     Body: {current_password}. The caller must prove they still know their
     password before the account is irreversibly removed. On success the user
     row is deleted (memberships, athlete links, join requests, etc. cascade
-    per their FK on_delete) and 204 No Content is returned.
+    per their FK on_delete), the linked Member record is anonymized (RGPD:
+    names, email and phone erased, team history kept) and 204 No Content is
+    returned.
 
     Safety guard: a user who still OWNS one or more teams (Team.owner ==
     user) is REFUSED with 409 (code owns_teams). Team.owner is
@@ -373,6 +394,7 @@ class AccountDeleteView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AccountDeleteThrottle]
 
     @extend_schema(
         operation_id="auth_account_delete_create",
@@ -424,8 +446,15 @@ class AccountDeleteView(APIView):
             request,
             AuditAction.ACCOUNT_DELETED,
             team=None,
-            target_repr=f"User #{user.id} ({user.email})",
+            target_repr=f"User #{user.id}",
         )
 
-        user.delete()
+        with transaction.atomic():
+            # RGPD: the athlete record linked to the account would otherwise
+            # survive (Member.user is SET_NULL) with name, email and phone.
+            # Anonymize it; team history stays tied to the anonymized row.
+            member = Member.objects.filter(user=user).first()
+            if member is not None:
+                member.anonymize()
+            user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

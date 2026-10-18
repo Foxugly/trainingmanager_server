@@ -114,3 +114,46 @@ def test_delete_unauthenticated_is_rejected(api_client):
         format="json",
     )
     assert response.status_code in (401, 403)
+
+
+def test_delete_erases_pii_of_linked_member_and_keeps_history(api_client):
+    from member.models import Member
+    from team.models import TeamMembership
+    from tests.factories import MemberFactory
+
+    user = _user()
+    member = MemberFactory(user=user, email=user.email, phonenumber="+32470000000")
+    team = TeamFactory()
+    TeamMembership.objects.create(team=team, member=member)
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(DELETE_URL, {"current_password": CURRENT_PASSWORD}, format="json")
+    assert response.status_code == 204
+
+    member = Member.objects.get(pk=member.pk)
+    assert member.user is None
+    assert member.email == ""
+    assert member.phonenumber == ""
+    assert "Delete" not in member.firstname and "User" not in member.lastname
+    assert TeamMembership.objects.filter(team=team, member=member).exists()
+
+
+def test_delete_audit_entry_does_not_keep_the_email(api_client):
+    from audit.models import AuditAction, AuditLogEntry
+
+    user = _user()
+    api_client.force_authenticate(user=user)
+    response = api_client.post(DELETE_URL, {"current_password": CURRENT_PASSWORD}, format="json")
+    assert response.status_code == 204
+
+    entry = AuditLogEntry.objects.get(action=AuditAction.ACCOUNT_DELETED)
+    assert "delete_user@local.test" not in entry.target_repr
+
+
+def test_delete_is_throttled(api_client, set_throttle_rate):
+    set_throttle_rate("auth_account_delete", "2/hour")
+    user = _user()
+    api_client.force_authenticate(user=user)
+    payload = {"current_password": "WrongP@ssw0rd!"}
+    codes = [api_client.post(DELETE_URL, payload, format="json").status_code for _ in range(3)]
+    assert codes == [400, 400, 429]
