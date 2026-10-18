@@ -5,35 +5,44 @@ from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
 from rest_framework import serializers as drf_serializers
 from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import (
+    TokenRefreshSerializer as SimpleJWTRefreshSerializer,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from tools.exceptions import CaptchaFailed
 from tools.throttling import LoginThrottle, LogoutThrottle, MagicLinkRequestThrottle
 from tools.turnstile import get_remote_ip, turnstile_configured, verify_turnstile_token
 
+from .. import refresh_cookie
+from ..refresh_cookie import AUTH_MODE_PARAMETER, ORIGIN_REJECTED_RESPONSE, REFRESH_COOKIE_NOTE
 from ..serializers import (
     LogoutSerializer,
     MagicLinkExchangeRequestSerializer,
     MagicLinkExchangeResponseSerializer,
     MagicLinkRequestSerializer,
+    TokenRefreshSerializer,
     VerifiedTokenObtainPairSerializer,
 )
 from ._helpers import _jwt_pair
 
 
 @extend_schema(
+    parameters=[AUTH_MODE_PARAMETER],
     responses={
         200: OpenApiResponse(
             response=inline_serializer(
                 name="TokenObtainPairResponse",
                 fields={
                     "access": drf_serializers.CharField(),
-                    "refresh": drf_serializers.CharField(),
+                    "refresh": drf_serializers.CharField(
+                        required=False, help_text="Refresh token." + REFRESH_COOKIE_NOTE
+                    ),
                 },
             ),
             description=(
@@ -52,6 +61,7 @@ from ._helpers import _jwt_pair
             ),
         ),
         401: OpenApiResponse(description="Invalid username/email or password."),
+        403: ORIGIN_REJECTED_RESPONSE,
     },
 )
 class VerifiedTokenObtainPairView(TokenObtainPairView):
@@ -69,6 +79,11 @@ class VerifiedTokenObtainPairView(TokenObtainPairView):
 
     serializer_class = VerifiedTokenObtainPairSerializer
     throttle_classes = [LoginThrottle]
+
+    def post(self, request, *args, **kwargs):
+        if (rejected := refresh_cookie.cookie_origin_guard(request)) is not None:
+            return rejected
+        return refresh_cookie.deliver_tokens(request, super().post(request, *args, **kwargs))
 
 
 class MagicLinkRequestView(APIView):
@@ -146,6 +161,7 @@ class MagicLinkExchangeView(APIView):
     @extend_schema(
         tags=["auth"],
         request=MagicLinkExchangeRequestSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
             200: OpenApiResponse(
                 response=MagicLinkExchangeResponseSerializer,
@@ -161,6 +177,7 @@ class MagicLinkExchangeView(APIView):
             410: OpenApiResponse(
                 description='Token expired. Body: {"detail": "token_expired"}.',
             ),
+            403: ORIGIN_REJECTED_RESPONSE,
         },
     )
     def post(self, request):
@@ -173,6 +190,8 @@ class MagicLinkExchangeView(APIView):
         from customuser.magic_link import exchange_magic_link
         from customuser.magic_link_token import SIGNER_SALT, TOKEN_MAX_AGE_SECONDS
 
+        if (rejected := refresh_cookie.cookie_origin_guard(request)) is not None:
+            return rejected
         serializer = MagicLinkExchangeRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data["token"]
@@ -200,45 +219,90 @@ class MagicLinkExchangeView(APIView):
         if user is None:
             return Response({"detail": "token_invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(_jwt_pair(user))
+        return refresh_cookie.deliver_tokens(request, Response(_jwt_pair(user)))
+
+
+class IsAuthenticatedOrCookieMode(BasePermission):
+    """Logout: a Bearer token, or the cookie-mode opt-in (origin checked in the view).
+
+    Lets the SPA sign out even when its in-memory access token is gone (expired,
+    tab reloaded): blacklisting the caller's own refresh cookie needs nothing else.
+    """
+
+    def has_permission(self, request, view):
+        if refresh_cookie.wants_cookie(request):
+            return True
+        return bool(request.user and request.user.is_authenticated)
 
 
 class LogoutView(APIView):
     """POST /api/v1/auth/logout/ — revoke a refresh token.
 
-    The caller authenticates with their access token and posts the refresh
-    they want revoked. On success (204), that refresh — and any rotation
-    descendants produced by /auth/token/refresh/ — can no longer be used.
-    The access token itself is short-lived and not invalidated here; it
-    naturally expires within ACCESS_TOKEN_LIFETIME.
+    Body mode (mobile app): the caller authenticates with their access token
+    and posts the refresh they want revoked. On success (204), that refresh —
+    and any rotation descendants produced by /auth/token/refresh/ — can no
+    longer be used. The access token itself is short-lived and not
+    invalidated here; it naturally expires within ACCESS_TOKEN_LIFETIME.
 
     Ownership is verified before blacklisting: a holder of someone else's
     refresh string cannot use this endpoint to revoke it. We respond with
     a generic invalid_token to avoid signalling whether the token exists
     or only doesn't belong to the caller.
+
+    Cookie mode (``X-Auth-Mode: cookie``, web SPA): no Bearer needed. The
+    body token, or else the HttpOnly refresh cookie, is blacklisted (with
+    the same ownership check when a Bearer is present), the cookie is
+    always cleared and the answer is always 204 (idempotent).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrCookieMode]
     throttle_classes = [LogoutThrottle]
 
     @extend_schema(
         request=LogoutSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
+        auth=[{"jwtAuth": []}, {}],
         responses={
-            204: OpenApiResponse(description="Refresh token blacklisted."),
+            204: OpenApiResponse(
+                description="Refresh token blacklisted (cookie mode: refresh cookie cleared)."
+            ),
             400: OpenApiResponse(
                 description=(
-                    "Refresh token missing, malformed, expired, already blacklisted, "
-                    "or not owned by the caller. code=invalid_token."
+                    "Body mode: refresh token missing, malformed, expired, already "
+                    "blacklisted, or not owned by the caller. code=invalid_token."
                 )
             ),
-            401: OpenApiResponse(description="Access token missing or invalid."),
+            401: OpenApiResponse(description="Body mode: access token missing or invalid."),
+            403: ORIGIN_REJECTED_RESPONSE,
             429: OpenApiResponse(description="Too Many Requests (rate limit hit)."),
         },
     )
     def post(self, request):
+        if (rejected := refresh_cookie.cookie_origin_guard(request)) is not None:
+            return rejected
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        raw = serializer.validated_data["refresh"]
+        raw = serializer.validated_data.get("refresh", "")
+
+        if refresh_cookie.wants_cookie(request):
+            # Idempotent: whatever the token's state, the browser ends up signed out.
+            raw = raw or refresh_cookie.read_refresh_cookie(request)
+            if raw:
+                try:
+                    token = RefreshToken(raw)
+                    user = request.user
+                    if not user.is_authenticated or str(token.get("user_id")) == str(user.pk):
+                        token.blacklist()
+                except TokenError:
+                    pass
+            response = Response(status=status.HTTP_204_NO_CONTENT)
+            refresh_cookie.clear_refresh_cookie(response)
+            return response
+
+        if not raw:
+            raise drf_serializers.ValidationError(
+                {"refresh": [_("This field is required.")]}, code="required"
+            )
 
         try:
             token = RefreshToken(raw)
@@ -266,3 +330,57 @@ class LogoutView(APIView):
             )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    summary="Refresh a token",
+    description=(
+        "Generates a new access token from a refresh token and rotates the refresh "
+        "token (the presented one is blacklisted). Body mode: `{refresh}` in, "
+        "`{access, refresh}` out. Cookie mode (`X-Auth-Mode: cookie`): the body "
+        "`refresh` is optional; when absent the HttpOnly cookie is used (401 "
+        "`refresh_cookie_missing` if there is none); the rotated token is set in "
+        "the cookie and omitted from the body. A body token sent in cookie mode "
+        "is the one-time migration path for SPAs that still hold one in storage."
+    ),
+    request=TokenRefreshSerializer,
+    parameters=[AUTH_MODE_PARAMETER],
+    responses={
+        200: TokenRefreshSerializer,
+        400: OpenApiResponse(description="Body mode without `refresh`."),
+        401: OpenApiResponse(
+            description=(
+                "Refresh token invalid, expired or blacklisted (code=token_not_valid), "
+                "or no refresh cookie in cookie mode (code=refresh_cookie_missing)."
+            )
+        ),
+        403: ORIGIN_REJECTED_RESPONSE,
+    },
+)
+class CookieAwareTokenRefreshView(TokenRefreshView):
+    """POST /api/v1/auth/token/refresh/ — simplejwt's refresh + cookie mode."""
+
+    def post(self, request, *args, **kwargs):
+        if not refresh_cookie.wants_cookie(request):
+            return super().post(request, *args, **kwargs)
+
+        if (rejected := refresh_cookie.cookie_origin_guard(request)) is not None:
+            return rejected
+        body_token = request.data.get("refresh") if hasattr(request.data, "get") else None
+        token = body_token or refresh_cookie.read_refresh_cookie(request)
+        if not token:
+            return Response(
+                {
+                    "code": "refresh_cookie_missing",
+                    "detail": _("No refresh cookie: sign in again."),
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = SimpleJWTRefreshSerializer(data={"refresh": token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as exc:
+            raise InvalidToken(exc.args[0]) from exc
+        return refresh_cookie.deliver_tokens(
+            request, Response(serializer.validated_data, status=status.HTTP_200_OK)
+        )

@@ -9,6 +9,7 @@ from tools.exceptions import EmailNotVerified
 
 from .entitlements import user_quota
 from .models import CustomUser
+from .refresh_cookie import REFRESH_COOKIE_NOTE
 
 
 class CustomUserPublicSerializer(serializers.ModelSerializer):
@@ -316,7 +317,9 @@ class MagicLinkExchangeResponseSerializer(serializers.Serializer):
     pair for the freshly signed-in user."""
 
     access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(
+        read_only=True, required=False, help_text="Refresh token." + REFRESH_COOKIE_NOTE
+    )
 
 
 class LogoutSerializer(serializers.Serializer):
@@ -329,7 +332,34 @@ class LogoutSerializer(serializers.Serializer):
     unilaterally.
     """
 
-    refresh = serializers.CharField(write_only=True)
+    refresh = serializers.CharField(
+        write_only=True,
+        required=False,
+        help_text=(
+            "Refresh token to invalidate. Required in body mode; in cookie mode "
+            "(`X-Auth-Mode: cookie`) the HttpOnly refresh cookie is used when omitted."
+        ),
+    )
+
+
+class TokenRefreshSerializer(serializers.Serializer):
+    """Body of POST /api/v1/auth/token/refresh/ (request and response).
+
+    `refresh` is optional both ways because of the cookie mode.
+    """
+
+    # Schema only: the view validates with simplejwt's TokenRefreshSerializer.
+
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(
+        required=False,
+        help_text=(
+            "In: the refresh token, required in body mode; in cookie mode "
+            "(`X-Auth-Mode: cookie`) the HttpOnly refresh cookie is used when omitted. "
+            "Out: the rotated refresh token (the presented one is blacklisted)."
+            + REFRESH_COOKIE_NOTE
+        ),
+    )
 
 
 class StaffUserSerializer(serializers.ModelSerializer):

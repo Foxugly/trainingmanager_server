@@ -20,6 +20,13 @@ from tools.turnstile import get_remote_ip, verify_turnstile_token
 from ..email_tokens import confirmation_token_is_valid, make_confirmation_key, parse_key
 from ..frontend_urls import get_email_confirmation_url
 from ..models import CustomUser
+from ..refresh_cookie import (
+    AUTH_MODE_PARAMETER,
+    ORIGIN_REJECTED_RESPONSE,
+    REFRESH_COOKIE_NOTE,
+    cookie_origin_guard,
+    deliver_tokens,
+)
 from ..serializers import (
     EmailConfirmSerializer,
     EmailResendSerializer,
@@ -147,13 +154,16 @@ class ConfirmEmailView(APIView):
 
     @extend_schema(
         request=EmailConfirmSerializer,
+        parameters=[AUTH_MODE_PARAMETER],
         responses={
             200: OpenApiResponse(
                 response=inline_serializer(
                     name="EmailConfirmResponse",
                     fields={
                         "access": drf_serializers.CharField(),
-                        "refresh": drf_serializers.CharField(),
+                        "refresh": drf_serializers.CharField(
+                            required=False, help_text="Refresh token." + REFRESH_COOKIE_NOTE
+                        ),
                         "user": inline_serializer(
                             name="EmailConfirmUser",
                             fields={
@@ -175,9 +185,12 @@ class ConfirmEmailView(APIView):
                     "code=invalid_or_expired_token."
                 )
             ),
+            403: ORIGIN_REJECTED_RESPONSE,
         },
     )
     def post(self, request):
+        if (rejected := cookie_origin_guard(request)) is not None:
+            return rejected
         serializer = EmailConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         key = serializer.validated_data["key"]
@@ -202,7 +215,7 @@ class ConfirmEmailView(APIView):
         user.email_confirmed = True
         user.save(update_fields=["email_confirmed"])
 
-        return Response({**_jwt_pair(user), "user": _user_payload(user)})
+        return deliver_tokens(request, Response({**_jwt_pair(user), "user": _user_payload(user)}))
 
 
 class ResendEmailView(APIView):

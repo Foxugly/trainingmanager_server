@@ -3,6 +3,7 @@ from pathlib import Path
 
 import environ
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -240,7 +241,22 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 # allowlist the browser CORS-preflight-blocks EVERY call (login/register/…).
 from corsheaders.defaults import default_headers  # noqa: E402
 
-CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage")
+# `x-auth-mode`: the SPA's opt-in to the HttpOnly refresh cookie (customuser/refresh_cookie.py).
+CORS_ALLOW_HEADERS = (*default_headers, "sentry-trace", "baggage", "x-auth-mode")
+# Credentials (the refresh cookie) are only ever allowed for the explicit list
+# above — never with CORS_ALLOW_ALL_ORIGINS / a wildcard (refused at import).
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+if "*" in CORS_ALLOWED_ORIGINS:
+    raise ImproperlyConfigured(
+        "CORS_ALLOWED_ORIGINS must list explicit origins (credentials are allowed)."
+    )
+# HttpOnly refresh cookie (web SPA only, opt-in via `X-Auth-Mode: cookie`).
+# Host-only on the API (no Domain), scoped to the auth endpoints, SameSite=Lax.
+# Secure stays True in dev too: browsers accept Secure cookies on http://localhost.
+AUTH_REFRESH_COOKIE_NAME = env("AUTH_REFRESH_COOKIE_NAME", default="tm_refresh")
+AUTH_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+AUTH_REFRESH_COOKIE_SECURE = env.bool("AUTH_REFRESH_COOKIE_SECURE", default=True)
 
 # Cache. DRF throttles (login 10/min, reset 3/h, magic link 5/h, ...) keep
 # their counters in the default cache. The local-memory default is per process:
