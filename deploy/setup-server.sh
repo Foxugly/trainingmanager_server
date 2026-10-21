@@ -11,7 +11,10 @@
 #     role foxugly-fleet-ec2 granted ssm:GetParametersByPath on /tm/prod(/*)
 #   - the §3.10 root-only fetch script installed (see "=== 5/8" note)
 #
-#   bash /var/www/django_websites/trainingmanager_server/deploy/setup-server.sh
+# ⚠️ §3.10: run THIS script from a checkout django cannot write — never from
+#    the django-owned app tree (the script runs with ubuntu's sudo). E.g.:
+#      D=$(mktemp -d) && git clone --depth=1 https://github.com/Foxugly/trainingmanager_server.git "$D" \
+#        && bash "$D/deploy/setup-server.sh"
 # =============================================================================
 set -euo pipefail
 umask 027
@@ -52,20 +55,33 @@ sudo -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install --upgrade pip
 sudo -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 
 echo "=== 5/8 Install root-only env-fetch script + systemd units + sudoers ==="
+# §3.10 / §3.11: every file root installs is read from ROOT'S OWN bare mirror
+# (/var/lib/fleet-deploy/trainingmanager_server.git, root:root 700) fetched from GitHub —
+# never from $APP_DIR or its .git, which django owns and could rewrite before
+# root copies them (django -> root escalation).
+MIRROR=/var/lib/fleet-deploy/trainingmanager_server.git
+sudo install -d -m 700 -o root -g root /var/lib/fleet-deploy
+sudo test -d "$MIRROR" || sudo git init --quiet --bare "$MIRROR"
+sudo git --git-dir="$MIRROR" fetch --quiet --depth=1 "https://github.com/Foxugly/trainingmanager_server.git" main
+SHA=$(sudo git --git-dir="$MIRROR" rev-parse FETCH_HEAD)
+root_install() {  # <mode> <path in repo> <destination>
+    sudo git --git-dir="$MIRROR" show "$SHA:$2" | sudo install -o root -g root -m "$1" /dev/stdin "$3"
+}
+
 # §3.10: the env-fetch script runs as ROOT, so it must live OUTSIDE the
 # django-writable tree. Install it root:root 0755 from the committed git blob.
-sudo install -o root -g root -m 0755 "$APP_DIR/deploy/fetch-env-from-ssm.sh" /usr/local/sbin/tm-env-fetch.sh
+root_install 0755 deploy/fetch-env-from-ssm.sh /usr/local/sbin/tm-env-fetch.sh
 
-# Install units by explicit path (NOT a glob): the glob would be expanded by
-# the unprivileged shell, which can't traverse the 750 django tree — only the
-# subsequent `sudo` runs as root. Explicit paths are read by root directly.
-sudo install -o root -g root -m 0644 "$APP_DIR/deploy/systemd/tm-env-fetch.service" /etc/systemd/system/
-sudo install -o root -g root -m 0644 "$APP_DIR/deploy/systemd/tm-gunicorn.service" /etc/systemd/system/
+root_install 0644 deploy/systemd/tm-env-fetch.service /etc/systemd/system/tm-env-fetch.service
+root_install 0644 deploy/systemd/tm-gunicorn.service /etc/systemd/system/tm-gunicorn.service
 sudo systemctl daemon-reload
 
 # sudoers (validate before install so a typo can't break sudo for everyone).
-sudo install -o root -g root -m 0440 "$APP_DIR/deploy/sudoers/tm-deploy" /etc/sudoers.d/tm-deploy
-sudo visudo -c -f /etc/sudoers.d/tm-deploy
+SUDOERS_TMP=$(sudo mktemp)
+sudo git --git-dir="$MIRROR" show "$SHA:deploy/sudoers/tm-deploy" | sudo tee "$SUDOERS_TMP" > /dev/null
+sudo visudo -c -f "$SUDOERS_TMP"
+sudo install -o root -g root -m 0440 "$SUDOERS_TMP" /etc/sudoers.d/tm-deploy
+sudo rm -f "$SUDOERS_TMP"
 
 echo "=== 6/8 Fetch environment from AWS SSM ==="
 sudo systemctl enable tm-env-fetch
@@ -86,8 +102,8 @@ sudo -u "$APP_USER" bash "$APP_DIR/deploy/deploy.sh"
 echo "=== 8/8 nginx vhost (wildcard TLS, no certbot) ==="
 # TLS = existing *.foxugly.com wildcard cert (referenced in tm-api.conf). No
 # per-domain certbot — the vhost already has its 443 block.
-sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-limits.conf" /etc/nginx/conf.d/tm-limits.conf
-sudo install -o root -g root -m 0644 "$APP_DIR/deploy/nginx/tm-api.conf" /etc/nginx/sites-available/tm-api.conf
+root_install 0644 deploy/nginx/tm-limits.conf /etc/nginx/conf.d/tm-limits.conf
+root_install 0644 deploy/nginx/tm-api.conf /etc/nginx/sites-available/tm-api.conf
 sudo ln -sf /etc/nginx/sites-available/tm-api.conf /etc/nginx/sites-enabled/tm-api.conf
 sudo nginx -t
 sudo systemctl reload nginx
