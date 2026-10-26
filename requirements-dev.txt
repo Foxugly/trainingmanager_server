@@ -3,5 +3,5 @@ pytest-django==4.14.0
 pytest-cov==7.1.0
 factory-boy==3.3.3
 pre-commit==4.7.0
-ruff==0.17.1
+ruff==0.17.2
 black==26.10.1
