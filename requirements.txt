@@ -16,7 +16,7 @@ anthropic==0.125.0
 firebase-admin==7.7.0
 boto3==1.43.122               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
 redis==8.1.0                  # shared DRF throttle cache when CACHE_URL is set (settings/base.py)
-psycopg[binary]>=3.3.6,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
+psycopg[binary]>=3.3.8,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
 gunicorn==23.0.0
