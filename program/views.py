@@ -99,6 +99,8 @@ class ProgramViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
+        # Source AND destination team: moving a program requires managing both.
+        self._check_team_write(serializer.instance.team)
         self._check_team_write(serializer.validated_data.get("team", serializer.instance.team))
         serializer.save()
 
