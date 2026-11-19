@@ -24,7 +24,9 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")
 
 INSTALLED_APPS = [
     "modeltranslation",
-    "django.contrib.admin",
+    # admin.site with mandatory TOTP 2FA (admin_2fa/, CLAUDE.md "Admin 2FA"):
+    # replaces "django.contrib.admin", same app label.
+    "admin_2fa.apps.OTPAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -37,6 +39,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     "django_filters",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
+    "admin_2fa",
     "sport",
     "ai",
     "aiusage",
@@ -77,6 +83,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Binds the session's verified OTP device to request.user (admin 2FA). After
+    # AuthenticationMiddleware; JWT API users are untouched (DRF authenticates later).
+    "django_otp.middleware.OTPMiddleware",
     "tools.middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -167,6 +176,12 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 AUTH_USER_MODEL = "customuser.CustomUser"
+
+# --- Admin 2FA (django-otp). Label shown in the authenticator app. Throttling
+# stays on (factor 1 = 1 s, 2 s, 4 s... after each wrong code, per device). ---
+OTP_TOTP_ISSUER = "Training Manager admin (tm-api.foxugly.com)"
+OTP_TOTP_THROTTLE_FACTOR = 1
+OTP_STATIC_THROTTLE_FACTOR = 1
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -148,6 +148,42 @@ Two AI-driven endpoints: `POST /api/v1/programs/{id}/generate-events/` (Claude g
 - Throttle counters are reset between tests by the autouse `reset_throttle_cache` fixture (DRF throttles persist in the local-memory cache otherwise). Tests always use local memory; prod shares the counters across gunicorn workers through Redis when `CACHE_URL` is set (`settings/base.py`).
 - `EMAIL_BACKEND` is forced to `locmem` by an autouse fixture (no real Graph sends in tests).
 
+## Admin 2FA
+
+`/admin/` requires a TOTP second factor for **every** staff account (django-otp 1.7.5 + qrcode 8.2,
+app `admin_2fa/`, ported from the fleet reference in Poker_server). API/JWT users see nothing of it
+(`tests/test_admin_2fa_api_unchanged.py`); the OpenAPI schema is unchanged.
+
+- **Wiring**: `"admin_2fa.apps.OTPAdminConfig"` *replaces* `"django.contrib.admin"` (it makes
+  `admin.site` an `Admin2FASite`, whose `has_permission` also needs `user.is_verified()`); plus
+  `django_otp`, `otp_totp`, `otp_static`, `admin_2fa` in INSTALLED_APPS and
+  `django_otp.middleware.OTPMiddleware` right after `AuthenticationMiddleware`. `OTP_TOTP_ISSUER` is
+  the label in the authenticator app. A missing piece fails `manage.py check` (`admin_2fa.E001-E004`).
+  A custom `AdminSite` subclass must inherit from `admin_2fa.sites.Admin2FASite`.
+- **Flow**: password on `/admin/login/` → `/admin/2fa/setup/` (first time: QR code + key, confirm one
+  code, 10 single-use backup codes shown **once**) or `/admin/2fa/verify/` (TOTP code or a backup
+  code). Server-rendered admin templates, CSRF, `never_cache`, no inline script/style.
+- **Brute force**: django-otp throttles each device (1 s, 2 s, 4 s… after each wrong code) and nginx
+  puts `/admin/2fa/` in the same `tm_admin_login` zone as the login (10 r/min per IP). The vhost is
+  installed by root out-of-band (the deploy does not touch nginx).
+- **Lost phone / locked out** (on the box, as `tm-gunicorn` would run it — the unit sets
+  `DJANGO_SETTINGS_MODULE` itself, `/run/tm/.env` does not):
+
+  ```bash
+  sudo systemd-run --wait --pipe --quiet --uid=django --gid=www-data \
+    -p EnvironmentFile=/run/tm/.env \
+    -p Environment=DJANGO_SETTINGS_MODULE=django-trainingmanager.settings.prod \
+    -p WorkingDirectory=/var/www/django_websites/trainingmanager_server \
+    /var/www/django_websites/trainingmanager_server/.venv/bin/python manage.py admin_2fa_reset <email>
+  ```
+
+  deletes the user's devices (re-enrolment at the next admin login); `--unlock` only clears the delay.
+- **Tests on admin pages**: use `admin_2fa.testing.force_admin_login(client, user)`, not
+  `client.force_login` (the admin would redirect to the second factor). The generic suite lives in
+  `admin_2fa/tests/` (outside the root `tests/` directory, collected by pytest all the same).
+- **Secrets**: never log or send to Sentry the TOTP key, the QR code or a backup code — the views keep
+  them in `Redacted` wrappers and the form field is named `token` (scrubbed by Sentry).
+
 ## Pre-commit
 
 `ruff` (with `--fix`), `ruff-format`, and `black` run on every commit. Target line-length 100, target Python 3.12 (despite Python 3.14 being installed locally — `pyproject.toml` defines the linter targets).
