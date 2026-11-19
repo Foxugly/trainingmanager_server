@@ -195,10 +195,19 @@ class EventViewSet(viewsets.ModelViewSet):
         serializer.save(**overrides)
 
     def perform_update(self, serializer):
+        # Source AND destination: managing the target program's team must not
+        # let a caller pull in an event from a team they only belong to.
+        self._require_event_manager(serializer.instance)
         self._check_program_write(
             serializer.validated_data.get("refer_program", serializer.instance.refer_program)
         )
         serializer.save()
+
+    def perform_destroy(self, instance):
+        # Same write right as an update: athletes may read their team's
+        # events, only the team's owner/managers may delete them.
+        self._require_event_manager(instance)
+        instance.delete()
 
     @extend_schema(
         request=GenerateTrainingRequestSerializer,
