@@ -1,18 +1,18 @@
 Django==6.1.3
 django-environ==0.14.0
-django-debug-toolbar==6.3.0
+django-debug-toolbar==8.0.0
 djangorestframework==3.18.3
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.9.0
 drf-spectacular==0.30.0
 msal==1.39.0
 httpx==0.28.1
-django-filter==25.2
+django-filter==26.2
 drf-nested-routers==0.95.3
 django-modeltranslation==0.20.6
 nh3==0.3.7                   # Rust/ammonia HTML sanitizer (replaced bleach) — tools/html_sanitizer.py
 icalendar==7.3.0             # RFC 5545 .ics generation for the per-user calendar feed
-anthropic==0.125.0
+anthropic==2.11.0
 firebase-admin==7.8.0
 boto3==1.44.2               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
 redis==8.1.0                  # shared DRF throttle cache when CACHE_URL is set (settings/base.py)
@@ -21,5 +21,5 @@ django-otp==1.7.5            # mandatory TOTP 2FA on /admin/ (admin_2fa/)
 qrcode==8.2                  # enrolment QR code, pure SVG (no Pillow)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
-gunicorn==23.0.0
+gunicorn==27.0.1
 sentry-sdk==2.75.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)

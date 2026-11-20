@@ -20,3 +20,8 @@ errorlog = "/var/log/tm/gunicorn-error.log"
 loglevel = "info"
 
 preload_app = True
+
+# gunicorn >= 25.1 opens a control socket by default ($XDG_RUNTIME_DIR or
+# ~/.gunicorn/gunicorn.ctl). Nothing here uses gunicornc; keep the attack surface
+# and the stray socket file out.
+control_socket_disable = True
