@@ -89,8 +89,22 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The lock first (hash-checked), so tests run on the exact versions
+      # production gets; dev tools in a second step, since pip enforces hashes
+      # on a whole install as soon as one line carries one.
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: |
+          pip install --require-hashes -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # Same install as deploy/deploy.sh, in a clean venv: proves the lock is
+      # complete (every dependency pinned and hashed) and consistent.
+      - name: Lock is complete
+        if: matrix.db == 'sqlite'
+        run: |
+          python -m venv /tmp/lock-check
+          /tmp/lock-check/bin/pip install --quiet --require-hashes --no-deps -r requirements.txt
+          /tmp/lock-check/bin/pip check
 
       # Lint with the ruff pinned in .pre-commit-config.yaml (same version as
       # the local hook). Lint only: the formatters are not yet clean repo-wide,
@@ -103,7 +117,7 @@ jobs:
         if: matrix.db == 'sqlite'
         run: |
           pip install pip-audit==2.10.1
-          pip-audit -r requirements.txt
+          pip-audit --require-hashes --disable-pip -r requirements.txt
 
       - name: Run tests (${{ matrix.db }})
         # The settings are fail-loud (no defaults for SECRET_KEY / DEBUG /
@@ -241,7 +255,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: |
+            requirements.in
+            requirements*.txt
 
       - name: Install pip-audit (version figée)
         run: python -m pip install pip-audit==2.10.1
@@ -262,4 +278,8 @@ jobs:
               ignore+=(--ignore-vuln "$id")
             done < .pip-audit-ignore
           fi
-          pip-audit --progress-spinner off -r requirements.txt -r requirements-dev.txt "${ignore[@]}"
+          # The lock (hashes, exactly what production installs) and the dev
+          # tools are audited separately: pip refuses to mix hashed and
+          # unhashed requirements in one resolution.
+          pip-audit --progress-spinner off --require-hashes --disable-pip -r requirements.txt "${ignore[@]}"
+          pip-audit --progress-spinner off -r requirements-dev.txt "${ignore[@]}"

@@ -19,7 +19,14 @@ git fetch origin main
 git reset --hard origin/main
 
 echo ">>> Installing dependencies..."
-"$VENV/bin/pip" install --quiet -r requirements.txt
+# requirements.txt is the hash-pinned lock that CI tests (generated from
+# requirements.in by the uv command in its header). A plain `pip install -r`
+# kept any installed version still inside a range, so prod silently missed
+# patch/security releases. --require-hashes installs exactly those versions and
+# artifacts, nothing resolved on this host; pip check fails the deploy if the
+# lock misses a dependency.
+"$VENV/bin/pip" install --quiet --require-hashes --no-deps -r requirements.txt
+"$VENV/bin/pip" check
 
 # Load the SSM-fetched env so manage.py has SECRET_KEY, DB_*, etc. systemd
 # injects this for the service via EnvironmentFile, but a manual command does
