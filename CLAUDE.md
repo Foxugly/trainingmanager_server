@@ -57,6 +57,24 @@ pytest -k "me and PATCH"                             # by expression
 
 Migrations **are** committed under each app's `migrations/` directory.
 
+## Dependencies (hash-pinned lock)
+
+Direct runtime deps live in **`requirements.in`**; `requirements.txt` is the **hash-pinned lock**
+generated from it (Linux / Python 3.12, what prod runs). Never edit the lock by hand — change
+`requirements.in`, then regenerate with the command in the lock's header:
+
+```bash
+uv pip compile requirements.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu -o requirements.txt
+```
+
+Install in two steps (pip enforces hashes on a whole install as soon as one line has one).
+CI (Linux): `pip install --require-hashes -r requirements.txt` then `pip install -r requirements-dev.txt`.
+Local Windows: the lock is resolved for Linux, so it lacks Windows-only deps (`colorama`, pulled by
+`qrcode`) — use `pip install --require-hashes --no-deps -r requirements.txt` then
+`pip install -r requirements.in -r requirements-dev.txt` (keeps the locked versions, fills the gaps).
+`deploy/deploy.sh` installs the lock with `--require-hashes --no-deps` then runs `pip check`; CI's
+"Lock is complete" step does the same in a clean venv. `requirements-dev.txt` must never `-r requirements.txt`.
+
 ## Environment / settings
 
 `.env` (root, gitignored) is the single source of truth for environment-driven settings. `base.py` calls `environ.Env.read_env(BASE_DIR / ".env", overwrite=True)` — the `overwrite=True` is non-standard but intentional: it ensures `.env` wins over any variable already in `os.environ` (PyCharm Run Config, system env, parent shell). `.env.example` lists the required keys.

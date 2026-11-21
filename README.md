@@ -31,8 +31,8 @@ cd trainingmanager_server
 python -m venv .venv
 source .venv/bin/activate    # Linux/Mac
 .venv\Scripts\activate       # Windows
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+pip install --require-hashes --no-deps -r requirements.txt   # lock hashé : les versions exactes de la prod
+pip install -r requirements.in -r requirements-dev.txt       # outils de dev + dépendances propres à Windows (colorama)
 cp .env.example .env
 # Éditer .env : remplir SECRET_KEY, ANTHROPIC_API_KEY, GRAPH_*, FRONTEND_URL
 python manage.py migrate            # crée le schéma + seed les référentiels (Sport, Modality, EnergySystem/Segment, AttendanceStatus) via data migrations
