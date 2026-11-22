@@ -1,6 +1,6 @@
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
 exclude = [
     "*/migrations/*",
     ".venv/*",
@@ -26,7 +26,7 @@ ignore = [
 
 [tool.black]
 line-length = 100
-target-version = ["py312"]
+target-version = ["py314"]
 extend-exclude = '''
 (
     /migrations/

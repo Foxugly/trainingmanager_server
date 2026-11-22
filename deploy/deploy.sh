@@ -18,6 +18,28 @@ echo ">>> Pulling latest code..."
 git fetch origin main
 git reset --hard origin/main
 
+# The venv must run on $PYTHON (deadsnakes python3.14, root-owned in /usr/bin).
+# A venv on another version is rebuilt at its final path — never built
+# elsewhere and moved, since console-script shebangs (.venv/bin/gunicorn, used
+# by the unit) hard-code the venv path. The old one is kept as .venv.prev and
+# put back if the rebuild fails.
+PYTHON=/usr/bin/python3.14
+PY_WANT="$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+PY_HAVE="$("$VENV/bin/python" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo none)"
+if [ "$PY_HAVE" != "$PY_WANT" ]; then
+    echo ">>> Rebuilding the venv: Python $PY_HAVE -> $PY_WANT..."
+    rm -rf "$VENV.prev"
+    if [ -e "$VENV" ]; then mv "$VENV" "$VENV.prev"; fi
+    if ! { "$PYTHON" -m venv "$VENV" \
+           && "$VENV/bin/pip" install --quiet --require-hashes --no-deps -r requirements.txt \
+           && "$VENV/bin/pip" check; }; then
+        echo "ERROR: venv rebuild failed; restoring the previous venv." >&2
+        rm -rf "$VENV"
+        if [ -e "$VENV.prev" ]; then mv "$VENV.prev" "$VENV"; fi
+        exit 1
+    fi
+fi
+
 echo ">>> Installing dependencies..."
 # requirements.txt is the hash-pinned lock that CI tests (generated from
 # requirements.in by the uv command in its header). A plain `pip install -r`

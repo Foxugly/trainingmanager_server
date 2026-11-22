@@ -60,11 +60,11 @@ Migrations **are** committed under each app's `migrations/` directory.
 ## Dependencies (hash-pinned lock)
 
 Direct runtime deps live in **`requirements.in`**; `requirements.txt` is the **hash-pinned lock**
-generated from it (Linux / Python 3.12, what prod runs). Never edit the lock by hand — change
+generated from it (Linux / Python 3.14, what prod runs — deadsnakes `/usr/bin/python3.14` on the box). Never edit the lock by hand — change
 `requirements.in`, then regenerate with the command in the lock's header:
 
 ```bash
-uv pip compile requirements.in --generate-hashes --python-version 3.12 --python-platform x86_64-unknown-linux-gnu -o requirements.txt
+uv pip compile requirements.in --generate-hashes --python-version 3.14 --python-platform x86_64-unknown-linux-gnu -o requirements.txt
 ```
 
 Install in two steps (pip enforces hashes on a whole install as soon as one line has one).
@@ -72,7 +72,7 @@ CI (Linux): `pip install --require-hashes -r requirements.txt` then `pip install
 Local Windows: the lock is resolved for Linux, so it lacks Windows-only deps (`colorama`, pulled by
 `qrcode`) — use `pip install --require-hashes --no-deps -r requirements.txt` then
 `pip install -r requirements.in -r requirements-dev.txt` (keeps the locked versions, fills the gaps).
-`deploy/deploy.sh` installs the lock with `--require-hashes --no-deps` then runs `pip check`; CI's
+`deploy/deploy.sh` first rebuilds `.venv` in place on `/usr/bin/python3.14` if it runs another version (old one kept as `.venv.prev`, restored on failure), then installs the lock with `--require-hashes --no-deps` and runs `pip check`; CI's
 "Lock is complete" step does the same in a clean venv. `requirements-dev.txt` must never `-r requirements.txt`.
 
 ## Environment / settings
@@ -204,7 +204,7 @@ app `admin_2fa/`, ported from the fleet reference in Poker_server). API/JWT user
 
 ## Pre-commit
 
-`ruff` (with `--fix`), `ruff-format`, and `black` run on every commit. Target line-length 100, target Python 3.12 (despite Python 3.14 being installed locally — `pyproject.toml` defines the linter targets).
+`ruff` (with `--fix`), `ruff-format`, and `black` run on every commit. Target line-length 100, target Python 3.14 (same as prod and CI — `pyproject.toml` defines the linter targets).
 
 ## Known gotchas
 
