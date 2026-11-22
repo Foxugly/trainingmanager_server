@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project
 
-Django **6.0.4 + DRF 3.17 API-only** training manager (originally for swim training, sport-agnostic now). The working trunk is **`main`** (default branch; it auto-deploys via GitHub Actions → AWS SSM). The old `refactor/api-only` / `master` lineage is historical and not deployed.
+Django **6.1 + DRF 3.18 API-only** training manager (originally for swim training, sport-agnostic now). The working trunk is **`main`** (default branch; it auto-deploys via GitHub Actions → AWS SSM). The old `refactor/api-only` / `master` lineage is historical and not deployed.
 
 Domain hierarchy: `Team` (the top-level scope) owns `Program`s, each schedules `Event`s, each made of ordered `Round`s, each containing `Exercise`s with a `Modality` (a sport-specific stroke / discipline) and `EnergySegment`/`EnergySystem`. `Member`s are attached to teams via `TeamMembership`; their attendance to events is tracked via `Attendance` rows pointing at an `AttendanceStatus` (referential).
 

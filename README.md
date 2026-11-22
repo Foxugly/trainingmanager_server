@@ -5,10 +5,10 @@ Backend API REST pour TrainingManager — application de planification d'entraî
 ## Stack
 
 - Python 3.12+ (testé sur 3.14)
-- Django 6.0
+- Django 6.1
 - Django REST Framework + drf-spectacular (OpenAPI)
 - JWT auth (djangorestframework-simplejwt)
-- django-allauth (signup + email verification + headless mode)
+- Inscription / confirmation d'email / reset de mot de passe maison (`customuser/views/`) — allauth a été retiré
 - Anthropic API (Claude Haiku 4.5 par défaut)
 - PostgreSQL (dev et prod ; convention `DB_*` 6 variables — voir `.env.example`)
 - Email backend : Microsoft Graph API
@@ -106,7 +106,7 @@ dashboard/    # Endpoint agrégat /api/v1/dashboard/summary/
 ai/ aiusage/  # Endpoints IA + suivi de consommation
 tools/        # i18n, throttling, exceptions, ai client, middleware, email
 tests/        # pytest + factory_boy
-locale/       # Translations (fr complet, nl/it/es à compléter)
+locale/       # Translations (fr / nl / it / es complets)
 ```
 
 ## Endpoints principaux
@@ -140,9 +140,9 @@ Détail complet sur `/api/v1/docs/` (Swagger UI).
 
 ### Flux signup classique (Flux A)
 
-1. `POST /api/v1/_allauth/app/v1/auth/signup/` — créer compte
+1. `POST /api/v1/auth/register/` — créer compte
 2. Email de vérification envoyé via Graph
-3. `POST /api/v1/_allauth/app/v1/auth/email/verify/` — confirmer
+3. `POST /api/v1/auth/email/confirm/` — confirmer (renvoi : `POST /api/v1/auth/email/resend/`)
 4. `POST /api/v1/auth/token/` — JWT access+refresh
 5. Optionnel : `POST /api/v1/join-requests/` pour rejoindre une team publique
 
@@ -183,7 +183,7 @@ pytest --tb=short
 - **`LANGUAGE_CODE = 'en'`** (fallback technique). `Team.language` et `CustomUser.language` ont `default='fr'`.
 - **Résolution langue requête** : `user.language` > `Accept-Language` > `LANGUAGE_CODE`. Le middleware `tools.middleware.UserLanguageMiddleware` force la langue de l'utilisateur authentifié sur tout le cycle de la requête.
 - **Format erreur** : `{"code": "snake_case", "detail": "<localisé>"}`. Le frontend peut matcher sur `code` (identifiant stable) ou afficher `detail` (déjà localisé).
-- **Traductions** : `locale/<lang>/LC_MESSAGES/django.po`. `fr.po` est complet ; `nl/it/es` sont des stubs (header seul, fallback EN).
+- **Traductions** : `locale/<lang>/LC_MESSAGES/django.po` — `fr`, `nl`, `it`, `es` complets (fallback EN).
 
 ```bash
 # Après install gettext :
@@ -197,7 +197,7 @@ django-admin compilemessages
 ### Fait
 
 - DRF API-only refactor
-- JWT + allauth headless
+- JWT (simplejwt) ; inscription maison (allauth retiré)
 - Teams + permissions (owner / manager / athlete)
 - Lock + Clone sur catalogue d'exercices et de rounds
 - Self-signup et trainer invitation
