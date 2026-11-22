@@ -4,7 +4,7 @@ Backend API REST pour TrainingManager — application de planification d'entraî
 
 ## Stack
 
-- Python 3.12+ (testé sur 3.14)
+- Python 3.14 (CI et prod ; deadsnakes `/usr/bin/python3.14` sur le box)
 - Django 6.1
 - Django REST Framework + drf-spectacular (OpenAPI)
 - JWT auth (djangorestframework-simplejwt)
@@ -18,7 +18,7 @@ Backend API REST pour TrainingManager — application de planification d'entraî
 
 ### Prérequis
 
-- Python 3.12+
+- Python 3.14
 - gettext (pour i18n) — sur Windows : https://mlocati.github.io/articles/gettext-iconv-windows.html ou `choco install gettext`
 - Une API key Anthropic (https://console.anthropic.com/)
 - Un app registration Azure AD pour Microsoft Graph (envoi d'emails)
