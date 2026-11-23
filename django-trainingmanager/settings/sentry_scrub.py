@@ -4,9 +4,9 @@ sentry-sdk 3.0 removed ``EventScrubber`` (and its ``DEFAULT_DENYLIST``), which
 2.x ran on every event. This module re-applies the same denylist, plus the
 2.x PII keys, everywhere the old scrubber looked (request headers, cookies,
 data and env, ``extra``, ``user``, breadcrumb data, stack-frame variables,
-spans), and also to ``contexts`` (e.g. response headers, trace data), log
-messages, exception messages, and span names and attributes for
-``before_send_span``.
+spans), and also to ``contexts`` (e.g. response headers, trace data),
+``tags``, ``transaction``, ``culprit``, log messages, exception and thread
+values and types, and span names and attributes for ``before_send_span``.
 
 It only ever removes data: a key is sensitive when it is one of the 2.x
 denylist keys, or when it *contains* one of a few fragments (``password``,
@@ -262,6 +262,9 @@ def _scrub_event(event: dict[str, Any]) -> None:
         "spans",
         "logentry",
         "message",
+        "tags",
+        "transaction",
+        "culprit",
     ):
         if key in event:
             event[key] = scrub_data(event[key])
@@ -272,8 +275,10 @@ def _scrub_event(event: dict[str, Any]) -> None:
         container = event.get(section)
         if isinstance(container, dict):
             for item in container.get("values") or ():
-                if isinstance(item, dict) and "value" in item:
-                    item["value"] = scrub_data(item["value"])
+                if isinstance(item, dict):
+                    for key in ("value", "type"):
+                        if key in item:
+                            item[key] = scrub_data(item[key])
     for frame in _iter_frames(event):
         if "vars" in frame:
             frame["vars"] = scrub_data(frame["vars"])

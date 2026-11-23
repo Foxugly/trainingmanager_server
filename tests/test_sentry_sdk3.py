@@ -5,6 +5,7 @@ transport collects the envelopes instead of sending them.
 """
 
 import importlib
+import json
 import logging
 import warnings
 
@@ -442,6 +443,51 @@ def test_scrub_span_scrubs_non_string_fields():
     out = scrub_span(span, {})
     assert out["name"] == "GET /x?token=[Filtered]"
     assert out["attributes"] == {"tags": ("secret=[Filtered]",), "n": 3}
+
+
+_PLANTED = "PlantedSecretValue"
+
+
+def test_planted_token_appears_in_no_field():
+    """Every event field the SDK may send: the same token, planted in each,
+    must appear nowhere in the serialized event."""
+    secret = f"token={_PLANTED}"
+    frames = {"frames": [{"vars": {"token": _PLANTED, "note": secret}}]}
+    event = {
+        "request": {
+            "url": f"https://example.test/x?{secret}",
+            "query_string": secret.encode(),
+            "headers": {"Authorization": _PLANTED, "X-Note": secret},
+            "cookies": {"sessionid": _PLANTED},
+            "data": {"password": _PLANTED, "note": secret},
+            "env": {"REMOTE_ADDR": _PLANTED, "NOTE": secret},
+        },
+        "message": secret,
+        "logentry": {"message": secret, "formatted": secret, "params": [secret, (secret,)]},
+        "exception": {"values": [{"type": secret, "value": secret, "stacktrace": frames}]},
+        "threads": {"values": [{"type": secret, "value": secret, "stacktrace": frames}]},
+        "breadcrumbs": {"values": [{"message": secret, "data": {"token": _PLANTED}}]},
+        "extra": {"token": _PLANTED, "note": secret},
+        "tags": {"api_key": _PLANTED, "note": secret},
+        "contexts": {"response": {"headers": {"Set-Cookie": _PLANTED}}, "x": {"y": [secret]}},
+        "user": {"id": "1", "ip_address": _PLANTED, "note": secret},
+        "transaction": f"GET /x?{secret}",
+        "culprit": f"app.views in reset {secret}",
+        "spans": [
+            {
+                "description": secret,
+                "name": secret,
+                "data": {"password": _PLANTED, "note": secret},
+                "attributes": {"secret": _PLANTED, "note": secret},
+            }
+        ],
+    }
+    out = json.dumps(scrub_event(event, {}), default=str)
+    assert _PLANTED not in out
+    assert "frames" in out and "transaction" in out  # scrubbed, not stripped
+
+    span = {"name": secret, "attributes": {"secret": _PLANTED, "note": [secret]}}
+    assert _PLANTED not in json.dumps(scrub_span(span, {}), default=str)
 
 
 def test_before_send_scrubs_then_drops_disallowed_host():
