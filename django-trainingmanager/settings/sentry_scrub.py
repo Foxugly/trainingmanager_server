@@ -17,7 +17,8 @@ values whose name is sensitive or whose value looks opaque (16+ URL-safe
 characters), URL fragments, the secret segment of this repo's token-bearing
 routes (``SECRET_PATH_PREFIXES``, taken from its ``urls.py``) and any long
 opaque path segment (letters + digits, 24+ characters). Containers deeper
-than the depth cap become ``[Filtered]`` (fail closed).
+than the depth cap, bytes and unknown objects are scrubbed or replaced
+whole: nothing is skipped because of its type (fail closed).
 
 Self-contained on purpose: no SDK internals, so a future SDK release cannot
 break it at import time. Nothing here may raise into the SDK — in 3.0 an
@@ -27,9 +28,10 @@ unscrubbed original) — so both entry points fall back to stripping.
 
 from __future__ import annotations
 
+import datetime
 import re
 from typing import Any
-from urllib.parse import parse_qsl
+from urllib.parse import unquote_plus
 
 FILTERED = "[Filtered]"
 
@@ -84,6 +86,11 @@ _PATHLIKE_RE = re.compile(r"(?<![\w/.:\]-])/[^\s'\"<>]*")
 _HOSTPORT_RE = re.compile(r"(?:\[[0-9A-Fa-f:.]*\]|[^:@\[\]]*)(?::\d{0,5})?")
 #: A query value that looks like a token (no digit required).
 _OPAQUE_VALUE_RE = re.compile(r"[A-Za-z0-9_\-.~+/=%:]{16,}")
+#: A query name (or a value-less chunk) that looks like a token: same, with
+#: at least one letter and one digit, so long plain-word names survive.
+_OPAQUE_NAME_RE = re.compile(r"(?=.*\d)(?=.*[A-Za-z])[A-Za-z0-9_\-.~+/=%:]{16,}")
+#: A bare parameter / header name (not a sentence, not a ``k=v`` pair).
+_NAME_RE = re.compile(r"[\w.\-]{1,64}")
 _SECRET_WORD_RE = re.compile(r"(?i)" + _SECRET_WORDS)
 _SEGMENT = r"[^/\s?#'\"<>]+"
 #: ``/<prefix>/<secret>`` for this repo's token-bearing routes.
@@ -106,6 +113,9 @@ _OPAQUE_SEGMENT_RE = re.compile(
 
 _MAX_DEPTH = 12
 
+#: Values that cannot carry a secret (breadcrumb timestamps are datetimes).
+_SAFE_SCALARS = (bool, int, float, datetime.date, datetime.time, datetime.timedelta)
+
 #: Event sections stripped when scrubbing itself fails (never leak on error).
 _RISKY_SECTIONS = ("request", "extra", "user", "breadcrumbs", "contexts", "spans")
 
@@ -119,21 +129,34 @@ def is_sensitive_key(key: Any) -> bool:
     return any(fragment in norm for fragment in _KEY_FRAGMENTS)
 
 
+def _secret_name(name: str) -> bool:
+    return is_sensitive_key(name) or bool(_SECRET_WORD_RE.search(name))
+
+
 def scrub_query(query: str) -> str:
-    """Mask query values whose (decoded) name is sensitive or whose raw value
-    looks opaque; names and the other values are kept as they were."""
+    """Scrub a query string chunk by chunk. Names and values are checked both
+    raw and percent-decoded (``unquote_plus``), so encoding cannot hide a
+    secret: a sensitive or opaque name, or a value-less opaque chunk, becomes
+    ``[Filtered]``; a value that is opaque, or that contains anything
+    ``scrub_text`` would mask once decoded, becomes ``name=[Filtered]``."""
     parts = []
     for part in query.split("&"):
-        raw_key, sep, raw_value = part.partition("=")
-        if sep and raw_value:
-            pairs = parse_qsl(part, keep_blank_values=True)
-            key = pairs[0][0] if pairs else raw_key
-            if (
-                is_sensitive_key(key)
-                or _SECRET_WORD_RE.search(key)
-                or _OPAQUE_VALUE_RE.fullmatch(raw_value)
-            ):
-                part = raw_key + "=" + FILTERED
+        raw_name, sep, raw_value = part.partition("=")
+        name, value = unquote_plus(raw_name), unquote_plus(raw_value)
+        if raw_name and (_OPAQUE_NAME_RE.fullmatch(raw_name) or _OPAQUE_NAME_RE.fullmatch(name)):
+            part = FILTERED
+        elif raw_name and (_secret_name(raw_name) or _secret_name(name)):
+            part = raw_name + "=" + FILTERED if sep else FILTERED
+        elif (
+            sep
+            and raw_value
+            and (
+                _OPAQUE_VALUE_RE.fullmatch(raw_value)
+                or _OPAQUE_VALUE_RE.fullmatch(value)
+                or scrub_text(value) != value
+            )
+        ):
+            part = raw_name + "=" + FILTERED
         parts.append(part)
     return "&".join(parts)
 
@@ -172,13 +195,27 @@ def scrub_text(text: str) -> str:
     return _OPAQUE_SEGMENT_RE.sub(FILTERED, text)
 
 
+def _mask_pair(items: list[Any]) -> None:
+    """``(name, value)`` pairs (e.g. a parsed query string or header list):
+    mask the value when the name is sensitive."""
+    name = items[0] if len(items) == 2 else None
+    if isinstance(name, str) and _NAME_RE.fullmatch(name) and _secret_name(name):
+        items[1] = FILTERED
+
+
 def scrub_data(value: Any, depth: int = 0) -> Any:
-    """Scrub dicts / lists in place, tuples and sets by copy (sensitive keys,
-    sensitive content in strings) and return the scrubbed value. A container
-    nested deeper than the cap is replaced whole (fail closed)."""
+    """Scrub anything and return the scrubbed value: dicts and lists in
+    place, tuples and sets by copy, strings and bytes through ``scrub_text``.
+    Nothing is skipped because of its type (fail closed): a container nested
+    deeper than the cap, or an object of an unknown type, becomes
+    ``[Filtered]``."""
     if isinstance(value, str):
         return scrub_text(value)
-    if isinstance(value, (dict, list, tuple, set, frozenset)) and depth >= _MAX_DEPTH:
+    if isinstance(value, (bytes, bytearray)):
+        return scrub_text(bytes(value).decode("utf-8", "replace"))
+    if value is None or isinstance(value, _SAFE_SCALARS):
+        return value
+    if not isinstance(value, (dict, list, tuple, set, frozenset)) or depth >= _MAX_DEPTH:
         return FILTERED
     if isinstance(value, dict):
         for key, item in value.items():
@@ -187,10 +224,12 @@ def scrub_data(value: Any, depth: int = 0) -> Any:
     if isinstance(value, list):
         for index, item in enumerate(value):
             value[index] = scrub_data(item, depth + 1)
+        _mask_pair(value)
         return value
-    if isinstance(value, (tuple, set, frozenset)):
-        return type(value)(scrub_data(item, depth + 1) for item in value)
-    return value
+    items = [scrub_data(item, depth + 1) for item in value]
+    if isinstance(value, tuple):
+        _mask_pair(items)
+    return type(value)(items)
 
 
 def _iter_frames(event: dict[str, Any]):
@@ -210,46 +249,31 @@ def _iter_frames(event: dict[str, Any]):
 
 
 def _scrub_event(event: dict[str, Any]) -> None:
-    request = event.get("request")
-    if isinstance(request, dict):
-        for key in ("headers", "cookies", "data", "env"):
-            if key in request:
-                request[key] = scrub_data(request[key])
-        if isinstance(request.get("url"), str):
-            request["url"] = scrub_text(request["url"])
-        if isinstance(request.get("query_string"), str):
-            request["query_string"] = scrub_query(scrub_text(request["query_string"]))
-    for key in ("extra", "contexts"):
-        if key in event:
-            event[key] = scrub_data(event[key])
     user = event.get("user")
     if isinstance(user, dict):
         user.pop("ip_address", None)
-        scrub_data(user)
-    breadcrumbs = event.get("breadcrumbs")
-    if isinstance(breadcrumbs, dict):
-        for crumb in breadcrumbs.get("values") or ():
-            if isinstance(crumb, dict):
-                if "data" in crumb:
-                    crumb["data"] = scrub_data(crumb["data"])
-                if isinstance(crumb.get("message"), str):
-                    crumb["message"] = scrub_text(crumb["message"])
-    for span in event.get("spans") or ():
-        if isinstance(span, dict):
-            _scrub_span(span)
-    logentry = event.get("logentry")
-    if isinstance(logentry, dict):
-        for key in ("message", "formatted", "params"):
-            if key in logentry:
-                logentry[key] = scrub_data(logentry[key])
-    if isinstance(event.get("message"), str):
-        event["message"] = scrub_text(event["message"])
+    # Whole sections, whatever their type: scrub_data fails closed.
+    for key in (
+        "request",
+        "extra",
+        "contexts",
+        "user",
+        "breadcrumbs",
+        "spans",
+        "logentry",
+        "message",
+    ):
+        if key in event:
+            event[key] = scrub_data(event[key])
+    request = event.get("request")
+    if isinstance(request, dict) and isinstance(request.get("query_string"), str):
+        request["query_string"] = scrub_query(request["query_string"])
     for section in ("exception", "threads"):
         container = event.get(section)
         if isinstance(container, dict):
             for item in container.get("values") or ():
-                if isinstance(item, dict) and isinstance(item.get("value"), str):
-                    item["value"] = scrub_text(item["value"])
+                if isinstance(item, dict) and "value" in item:
+                    item["value"] = scrub_data(item["value"])
     for frame in _iter_frames(event):
         if "vars" in frame:
             frame["vars"] = scrub_data(frame["vars"])
@@ -274,20 +298,11 @@ def scrub_event(event: dict[str, Any], hint: dict[str, Any] | None = None) -> di
 
 
 def _scrub_span(span: dict[str, Any]) -> None:
-    for key in ("name", "description"):
-        if isinstance(span.get(key), str):
-            span[key] = scrub_text(span[key])
-    attributes = span.get("attributes")
-    if isinstance(attributes, dict):
-        for key, value in attributes.items():
-            if is_sensitive_key(key):
-                attributes[key] = FILTERED
-            elif isinstance(value, str):
-                attributes[key] = scrub_text(value)
-            elif isinstance(value, list):
-                attributes[key] = [scrub_text(v) if isinstance(v, str) else v for v in value]
-    if "data" in span:
-        span["data"] = scrub_data(span["data"])
+    for key in ("name", "description", "attributes", "data"):
+        if key in span:
+            span[key] = scrub_data(span[key])
+    if not isinstance(span.get("name"), str):
+        span["name"] = FILTERED
 
 
 def scrub_span(span: dict[str, Any], hint: dict[str, Any] | None = None) -> dict[str, Any]:

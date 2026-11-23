@@ -150,7 +150,7 @@ def test_scrub_event_masks_request_data_headers_user_and_breadcrumbs():
     assert request["url"] == "https://example.test/reset?token=[Filtered]&page=2"
     assert request["query_string"] == "password=[Filtered]&page=2"
     assert request["headers"] == {"Authorization": FILTERED, "Accept": "*/*"}
-    assert request["cookies"] == {"sessionid": FILTERED}
+    assert request["cookies"] == FILTERED
     assert request["data"]["password"] == FILTERED
     assert request["data"]["nested"]["api_key"] == FILTERED
     assert request["data"]["title"] == "ok"
@@ -386,6 +386,62 @@ def test_scrub_event_fails_closed_on_tuples_sets_and_depth():
     while isinstance(node, dict):
         node = node["child"]
     assert node == FILTERED
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("/x?abcdefghij0123456789&page=2", "/x?[Filtered]&page=2"),
+        ("/x?abcdefghijklmnop0123=1&page=2", "/x?[Filtered]&page=2"),
+        ("/x?token&page=2", "/x?[Filtered]&page=2"),
+        ("/x?t%6Fken=abc&page=2", "/x?t%6Fken=[Filtered]&page=2"),
+        ("/x?next=%2Freset%3Ftoken%3Dabc&page=2", "/x?next=[Filtered]&page=2"),
+        ("/x?q=Bearer+abc&page=2", "/x?q=[Filtered]&page=2"),
+        ("/x?utm_campaign_name=spring&page=2", "/x?utm_campaign_name=spring&page=2"),
+    ],
+)
+def test_scrub_query_masks_opaque_names_valueless_chunks_and_encoded_secrets(text, expected):
+    assert scrub_text(text) == expected
+
+
+def test_scrub_event_never_skips_a_value_because_of_its_type():
+    class Opaque:
+        def __repr__(self):
+            return "token=abc"
+
+    event = {
+        "request": {
+            "query_string": b"token=abc&page=2",
+            "url": ["https://u:p@example.test/?secret=s"],
+        },
+        "extra": {
+            "raw": b"Bearer abc",
+            "obj": Opaque(),
+            "pairs": [("token", "abc"), ("page", "2")],
+            "pair_list": ["api_key", "k"],
+            "when": __import__("datetime").datetime(2026, 11, 23),
+        },
+        "exception": {"values": [{"value": ["password=pw"]}]},
+        "message": b"secret=s",
+    }
+    out = scrub_event(event, {})
+    assert out["request"]["query_string"] == "token=[Filtered]&page=2"
+    assert out["request"]["url"] == ["https://example.test/?secret=[Filtered]"]
+    extra = out["extra"]
+    assert extra["raw"] == "Bearer [Filtered]"
+    assert extra["obj"] == FILTERED
+    assert extra["pairs"] == [("token", FILTERED), ("page", "2")]
+    assert extra["pair_list"] == ["api_key", FILTERED]
+    assert extra["when"].year == 2026
+    assert out["exception"]["values"][0]["value"] == ["password=[Filtered]"]
+    assert out["message"] == "secret=[Filtered]"
+
+
+def test_scrub_span_scrubs_non_string_fields():
+    span = {"name": b"GET /x?token=abc", "attributes": {"tags": ("secret=s",), "n": 3}}
+    out = scrub_span(span, {})
+    assert out["name"] == "GET /x?token=[Filtered]"
+    assert out["attributes"] == {"tags": ("secret=[Filtered]",), "n": 3}
 
 
 def test_before_send_scrubs_then_drops_disallowed_host():
