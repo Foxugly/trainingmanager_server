@@ -474,38 +474,24 @@ FCM_SERVICE_ACCOUNT_PATH = env("FCM_SERVICE_ACCOUNT_PATH", default="")
 
 # --- Sentry (error tracking / performance) — OPERATIONS.md §3.8 -------------
 # Only active under prod (STATE=PROD): even with a DSN present in dev/test we
-# never send DEV/INT/TEST events (they would pollute the dashboard). The SDK
-# auto-enables its Django integration when importable, so a bare init suffices.
+# never send DEV/INT/TEST events (they would pollute the dashboard). Django and
+# logging integrations are configured in settings/sentry.py.
 # DSN + STATE come from SSM /tm/prod/*.
 _SENTRY_PROD_ACTIVE = STATE.strip().upper() == "PROD"
 SENTRY_DSN = env("SENTRY_DSN", default="")
 if SENTRY_DSN and _SENTRY_PROD_ACTIVE:
     import sentry_sdk
-    from django.core.exceptions import DisallowedHost
 
-    # Underscored: a star-import of this module must not turn them into settings.
-    from .sentry import DATA_COLLECTION as _SENTRY_DATA_COLLECTION
-    from .sentry import scrub_event as _sentry_scrub_event
+    # Underscored: a star-import of this module must not turn it into a setting.
+    from .sentry import sentry_options as _sentry_options
 
-    def _sentry_before_send(event, hint):
-        _sentry_scrub_event(event, hint)
-        # Drop public-endpoint noise: bots hitting the API with a bad Host header
-        # raise DisallowedHost (a handled 400, not a real bug).
-        exc = (hint.get("exc_info") or (None, None, None))[1]
-        if isinstance(exc, DisallowedHost):
-            return None
-        if str(event.get("logger", "")).startswith("django.security.DisallowedHost"):
-            return None
-        return event
-
+    # No PII, cookies or request bodies; scrubbing, DisallowedHost noise and
+    # integrations: see settings/sentry.py.
     sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        environment=STATE,
-        release=env("SENTRY_RELEASE", default=""),
-        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
-        profiles_sample_rate=env.float("SENTRY_PROFILES_SAMPLE_RATE", default=0.0),
-        # No PII, cookies or request bodies: see settings/sentry.py.
-        data_collection=_SENTRY_DATA_COLLECTION,
-        before_send=_sentry_before_send,
-        before_send_transaction=_sentry_scrub_event,
+        **_sentry_options(
+            dsn=SENTRY_DSN,
+            environment=STATE,
+            release=env("SENTRY_RELEASE", default=""),
+            traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        )
     )
