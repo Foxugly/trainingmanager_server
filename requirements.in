@@ -14,7 +14,7 @@ nh3==0.3.8                   # Rust/ammonia HTML sanitizer (replaced bleach) —
 icalendar==7.3.2             # RFC 5545 .ics generation for the per-user calendar feed
 anthropic==2.13.0
 firebase-admin==7.8.0
-boto3==1.44.9               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
+boto3==1.44.10              # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
 redis==8.2.0                  # shared DRF throttle cache when CACHE_URL is set (settings/base.py)
 psycopg[binary]>=3.3.9,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 django-otp==1.7.5            # mandatory TOTP 2FA on /admin/ (admin_2fa/)
