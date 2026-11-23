@@ -22,4 +22,5 @@ qrcode==8.2                  # enrolment QR code, pure SVG (no Pillow)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
 gunicorn==27.0.1
-sentry-sdk==2.76.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
+# hold: sentry-sdk 3.0 is a day-0 major (2026-11-23); migrate after it stabilises — revisit 2026-12-07
+sentry-sdk>=2.76,<3           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
