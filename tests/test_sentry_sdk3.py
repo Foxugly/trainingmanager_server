@@ -292,8 +292,12 @@ def test_scrub_event_masks_messages():
         ("https://user:pass@example.test/a?b=1", "https://example.test/a?b=1"),
         ("redis://:secretpw@127.0.0.1:6379/2", "redis://127.0.0.1:6379/2"),
         ("postgres://app@db.internal:5432/app", "postgres://db.internal:5432/app"),
-        ("https://example.test:99999999/x@y", "https://example.test:99999999/x@y"),
-        ("https://u:p@[::1/x", "https://[::1/x"),  # unparseable: urlsplit raises
+        ("https://example.test:99999999/x@y", "https://[Filtered]/x@y"),  # bad port: fail closed
+        ("https://u:p@[::1/x", "https://[Filtered]/x"),
+        ("https://user:pass/x", "https://[Filtered]/x"),
+        ("https://user:pass@host?q=1", "https://host?q=1"),
+        ("https://user@host#frag", "https://host#[Filtered]"),
+        ("https://[::1]:8000/x", "https://[::1]:8000/x"),
         ("see https://example.test/plain", "see https://example.test/plain"),
     ],
 )
@@ -321,6 +325,67 @@ def test_scrub_text_masks_long_opaque_path_segments(text, expected):
 @pytest.mark.parametrize(("text", "expected"), _SECRET_ROUTE_EXAMPLES)
 def test_scrub_text_masks_secret_route_segments(text, expected):
     assert scrub_text(text) == expected
+
+
+def test_scrub_event_masks_exception_and_thread_values():
+    event = {
+        "exception": {"values": [{"value": "GET https://example.test/?api_key=k failed"}]},
+        "threads": {"values": [{"value": "token=abc"}]},
+    }
+    out = scrub_event(event, {})
+    value = out["exception"]["values"][0]["value"]
+    assert value == "GET https://example.test/?api_key=[Filtered] failed"
+    assert out["threads"]["values"][0]["value"] == "token=[Filtered]"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            "https://example.test/cb?state=abcdefghijklmnopqrstuv&page=2",
+            "https://example.test/cb?state=[Filtered]&page=2",
+        ),
+        (
+            "GET /cb?X-Access=k&x-Auth-Token=t&lang=fr",
+            "GET /cb?X-Access=k&x-Auth-Token=[Filtered]&lang=fr",
+        ),
+        ("/cb?api%5Fkey=v", "/cb?api%5Fkey=[Filtered]"),
+        ("https://example.test/app#access_token=abc", "https://example.test/app#[Filtered]"),
+        ("'/reset#k'", "'/reset#[Filtered]'"),
+        ("/x?page=2&sort=name", "/x?page=2&sort=name"),
+        ("issue #12 on /x", "issue #12 on /x"),
+    ],
+)
+def test_scrub_text_masks_query_values_and_fragments(text, expected):
+    assert scrub_text(text) == expected
+
+
+def test_scrub_event_masks_opaque_query_string_values():
+    event = {"request": {"query_string": "state=abcdefghijklmnopqrstuv&page=2&code=c"}}
+    out = scrub_event(event, {})
+    assert out["request"]["query_string"] == "state=[Filtered]&page=2&code=[Filtered]"
+
+
+def test_scrub_event_fails_closed_on_tuples_sets_and_depth():
+    deep = {"n": 1}
+    for _ in range(20):
+        deep = {"child": deep}
+    event = {
+        "extra": {
+            "pair": ("token=abc", {"password": "p"}),
+            "tags": {"secret=s", "ok"},
+            "frozen": frozenset({"Bearer x"}),
+            "deep": deep,
+        }
+    }
+    extra = scrub_event(event, {})["extra"]
+    assert extra["pair"] == ("token=[Filtered]", {"password": FILTERED})
+    assert extra["tags"] == {"secret=[Filtered]", "ok"}
+    assert extra["frozen"] == frozenset({"Bearer [Filtered]"})
+    node = extra["deep"]
+    while isinstance(node, dict):
+        node = node["child"]
+    assert node == FILTERED
 
 
 def test_before_send_scrubs_then_drops_disallowed_host():

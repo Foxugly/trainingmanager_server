@@ -11,10 +11,13 @@ messages, exception messages, and span names and attributes for
 It only ever removes data: a key is sensitive when it is one of the 2.x
 denylist keys, or when it *contains* one of a few fragments (``password``,
 ``token``, ``secret``…), which is stricter than 2.x. In strings it masks
-``key=value`` pairs, ``Bearer`` credentials, URL userinfo (``user:pass@``),
-the secret segment of this repo's token-bearing routes
-(``SECRET_PATH_PREFIXES``, taken from its ``urls.py``) and any long opaque
-path segment (letters + digits, 24+ characters).
+``key=value`` pairs, ``Bearer`` credentials, URL userinfo (``user:pass@``;
+an authority with a ``:`` that is not ``host:port`` is masked whole), query
+values whose name is sensitive or whose value looks opaque (16+ URL-safe
+characters), URL fragments, the secret segment of this repo's token-bearing
+routes (``SECRET_PATH_PREFIXES``, taken from its ``urls.py``) and any long
+opaque path segment (letters + digits, 24+ characters). Containers deeper
+than the depth cap become ``[Filtered]`` (fail closed).
 
 Self-contained on purpose: no SDK internals, so a future SDK release cannot
 break it at import time. Nothing here may raise into the SDK — in 3.0 an
@@ -26,7 +29,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl
 
 FILTERED = "[Filtered]"
 
@@ -73,8 +76,15 @@ _SECRET_WORDS = (
 _PAIR_RE = re.compile(r"(?i)(\b[\w.\-\[\]]*(?:" + _SECRET_WORDS + r")[\w.\-\[\]]*=)[^&\s#;,'\"]+")
 #: ``Bearer <credential>`` / ``Basic <credential>``.
 _SCHEME_RE = re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]+")
-#: Absolute URLs (any scheme), for the userinfo check.
+#: Absolute URLs (any scheme).
 _URL_RE = re.compile(r"(?i)\b[a-z][a-z0-9+.\-]*://[^\s'\"<>]+")
+#: Relative URLs / paths standing on their own (``GET /x?y#z``, ``'/x'``).
+_PATHLIKE_RE = re.compile(r"(?<![\w/.:\]-])/[^\s'\"<>]*")
+#: ``host``, ``host:port``, ``[ipv6]``, ``[ipv6]:port``.
+_HOSTPORT_RE = re.compile(r"(?:\[[0-9A-Fa-f:.]*\]|[^:@\[\]]*)(?::\d{0,5})?")
+#: A query value that looks like a token (no digit required).
+_OPAQUE_VALUE_RE = re.compile(r"[A-Za-z0-9_\-.~+/=%:]{16,}")
+_SECRET_WORD_RE = re.compile(r"(?i)" + _SECRET_WORDS)
 _SEGMENT = r"[^/\s?#'\"<>]+"
 #: ``/<prefix>/<secret>`` for this repo's token-bearing routes.
 _SECRET_PATH_RE = (
@@ -109,23 +119,52 @@ def is_sensitive_key(key: Any) -> bool:
     return any(fragment in norm for fragment in _KEY_FRAGMENTS)
 
 
-def _strip_userinfo(match: re.Match[str]) -> str:
-    url = match.group(0)
-    try:
-        parts = urlsplit(url)
-    except ValueError:
-        # Unparseable (e.g. a bad port): drop anything before an "@".
+def scrub_query(query: str) -> str:
+    """Mask query values whose (decoded) name is sensitive or whose raw value
+    looks opaque; names and the other values are kept as they were."""
+    parts = []
+    for part in query.split("&"):
+        raw_key, sep, raw_value = part.partition("=")
+        if sep and raw_value:
+            pairs = parse_qsl(part, keep_blank_values=True)
+            key = pairs[0][0] if pairs else raw_key
+            if (
+                is_sensitive_key(key)
+                or _SECRET_WORD_RE.search(key)
+                or _OPAQUE_VALUE_RE.fullmatch(raw_value)
+            ):
+                part = raw_key + "=" + FILTERED
+        parts.append(part)
+    return "&".join(parts)
+
+
+def _scrub_url(url: str, absolute: bool) -> str:
+    prefix, tail = "", url
+    if absolute:
         scheme, _, rest = url.partition("://")
-        return scheme + "://" + rest.rpartition("@")[2]
-    if "@" not in parts.netloc:
-        return url
-    return urlunsplit(parts._replace(netloc=parts.netloc.rpartition("@")[2]))
+        end = min((i for i in (rest.find(c) for c in "/?#") if i >= 0), default=len(rest))
+        authority, tail = rest[:end], rest[end:]
+        # Userinfo: anything before an "@" in the authority goes.
+        authority = authority.rpartition("@")[2]
+        if not _HOSTPORT_RE.fullmatch(authority):
+            authority = FILTERED
+        prefix = scheme + "://" + authority
+    tail, hash_sep, fragment = tail.partition("#")
+    path, query_sep, query = tail.partition("?")
+    out = prefix + path
+    if query_sep:
+        out += "?" + scrub_query(query)
+    if hash_sep:
+        out += "#" + (FILTERED if fragment else "")
+    return out
 
 
 def scrub_text(text: str) -> str:
-    """Mask URL userinfo, sensitive ``name=value`` pairs, ``Bearer``
-    credentials, secret route segments and long opaque path segments."""
-    text = _URL_RE.sub(_strip_userinfo, text)
+    """Mask URL userinfo, sensitive or opaque query values, URL fragments,
+    sensitive ``name=value`` pairs, ``Bearer`` credentials, secret route
+    segments and long opaque path segments."""
+    text = _URL_RE.sub(lambda m: _scrub_url(m.group(0), absolute=True), text)
+    text = _PATHLIKE_RE.sub(lambda m: _scrub_url(m.group(0), absolute=False), text)
     text = _PAIR_RE.sub(lambda m: m.group(1) + FILTERED, text)
     text = _SCHEME_RE.sub(lambda m: m.group(1) + " " + FILTERED, text)
     if _SECRET_PATH_RE is not None:
@@ -134,12 +173,13 @@ def scrub_text(text: str) -> str:
 
 
 def scrub_data(value: Any, depth: int = 0) -> Any:
-    """Scrub dicts / lists in place (sensitive keys, sensitive content in
-    strings) and return the scrubbed value."""
+    """Scrub dicts / lists in place, tuples and sets by copy (sensitive keys,
+    sensitive content in strings) and return the scrubbed value. A container
+    nested deeper than the cap is replaced whole (fail closed)."""
     if isinstance(value, str):
         return scrub_text(value)
-    if depth >= _MAX_DEPTH:
-        return value
+    if isinstance(value, (dict, list, tuple, set, frozenset)) and depth >= _MAX_DEPTH:
+        return FILTERED
     if isinstance(value, dict):
         for key, item in value.items():
             value[key] = FILTERED if is_sensitive_key(key) else scrub_data(item, depth + 1)
@@ -148,6 +188,8 @@ def scrub_data(value: Any, depth: int = 0) -> Any:
         for index, item in enumerate(value):
             value[index] = scrub_data(item, depth + 1)
         return value
+    if isinstance(value, (tuple, set, frozenset)):
+        return type(value)(scrub_data(item, depth + 1) for item in value)
     return value
 
 
@@ -173,9 +215,10 @@ def _scrub_event(event: dict[str, Any]) -> None:
         for key in ("headers", "cookies", "data", "env"):
             if key in request:
                 request[key] = scrub_data(request[key])
-        for key in ("url", "query_string"):
-            if isinstance(request.get(key), str):
-                request[key] = scrub_text(request[key])
+        if isinstance(request.get("url"), str):
+            request["url"] = scrub_text(request["url"])
+        if isinstance(request.get("query_string"), str):
+            request["query_string"] = scrub_query(scrub_text(request["query_string"]))
     for key in ("extra", "contexts"):
         if key in event:
             event[key] = scrub_data(event[key])
@@ -201,11 +244,12 @@ def _scrub_event(event: dict[str, Any]) -> None:
                 logentry[key] = scrub_data(logentry[key])
     if isinstance(event.get("message"), str):
         event["message"] = scrub_text(event["message"])
-    exception = event.get("exception")
-    if isinstance(exception, dict):
-        for item in exception.get("values") or ():
-            if isinstance(item, dict) and isinstance(item.get("value"), str):
-                item["value"] = scrub_text(item["value"])
+    for section in ("exception", "threads"):
+        container = event.get(section)
+        if isinstance(container, dict):
+            for item in container.get("values") or ():
+                if isinstance(item, dict) and isinstance(item.get("value"), str):
+                    item["value"] = scrub_text(item["value"])
     for frame in _iter_frames(event):
         if "vars" in frame:
             frame["vars"] = scrub_data(frame["vars"])
