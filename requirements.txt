@@ -482,9 +482,9 @@ google-cloud-firestore==2.34.1 \
     --hash=sha256:6279f049336e49181e8c1d2dbf14e9c0cfb75ddf03c70971adc88fb272cdae29 \
     --hash=sha256:d403b12375e4f68176bb638451417330a7a66d11c9cace98f7778109b884d9ab
     # via firebase-admin
-google-cloud-storage==3.17.1 \
-    --hash=sha256:287c7919d7bcda710eae6f6b60c756e89140475d9a4daec01b6174e737488ca8 \
-    --hash=sha256:b24df37900f5e0a93518bd7d3a2a7b7b48d8a1e72add8eb57d53a38b8b2b0640
+google-cloud-storage==3.17.2 \
+    --hash=sha256:5d5a1d0c9d6a4f96180a35a958bbfe81bf57ad2fab87e4ee9f78117b8d5f5f68 \
+    --hash=sha256:ef92d6520abd37c757a962f8702c72786ff833f8d5aa6ebeb528a0688189f64c
     # via firebase-admin
 google-crc32c==1.9.0 \
     --hash=sha256:0568b17ed90ac596f29400d99e243fd0cc6276766183def888d1bf8d1dc13827 \
