@@ -483,7 +483,12 @@ if SENTRY_DSN and _SENTRY_PROD_ACTIVE:
     import sentry_sdk
     from django.core.exceptions import DisallowedHost
 
+    # Underscored: a star-import of this module must not turn them into settings.
+    from .sentry import DATA_COLLECTION as _SENTRY_DATA_COLLECTION
+    from .sentry import scrub_event as _sentry_scrub_event
+
     def _sentry_before_send(event, hint):
+        _sentry_scrub_event(event, hint)
         # Drop public-endpoint noise: bots hitting the API with a bad Host header
         # raise DisallowedHost (a handled 400, not a real bug).
         exc = (hint.get("exc_info") or (None, None, None))[1]
@@ -499,6 +504,8 @@ if SENTRY_DSN and _SENTRY_PROD_ACTIVE:
         release=env("SENTRY_RELEASE", default=""),
         traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
         profiles_sample_rate=env.float("SENTRY_PROFILES_SAMPLE_RATE", default=0.0),
-        send_default_pii=env.bool("SENTRY_SEND_PII", default=False),
+        # No PII, cookies or request bodies: see settings/sentry.py.
+        data_collection=_SENTRY_DATA_COLLECTION,
         before_send=_sentry_before_send,
+        before_send_transaction=_sentry_scrub_event,
     )

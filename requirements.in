@@ -15,11 +15,11 @@ icalendar==7.3.2             # RFC 5545 .ics generation for the per-user calenda
 anthropic==2.12.0
 firebase-admin==7.8.0
 boto3==1.44.9               # AWS SDK — S3 presigned URLs for file attachments (instance role creds)
-redis==8.1.0                  # shared DRF throttle cache when CACHE_URL is set (settings/base.py)
+redis==8.2.0                  # shared DRF throttle cache when CACHE_URL is set (settings/base.py)
 psycopg[binary]>=3.3.9,<4      # PostgreSQL driver (prod; sqlite/dev needs nothing)
 django-otp==1.7.5            # mandatory TOTP 2FA on /admin/ (admin_2fa/)
 qrcode==8.2                  # enrolment QR code, pure SVG (no Pillow)
 
 # --- prod serving / observability (OPERATIONS.md §3.3 / §3.8) ---
 gunicorn==27.0.1
-sentry-sdk==2.75.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
+sentry-sdk==2.76.0           # opt-in error tracking (enabled when SENTRY_DSN set + STATE=PROD)
