@@ -597,9 +597,9 @@ grpcio==1.85.4 \
     #   google-api-core
     #   google-cloud-firestore
     #   grpcio-status
-grpcio-status==1.85.3 \
-    --hash=sha256:136632e7ac60a133e5299cd970426690200b3dbda370eca407e259b28de0f4a2 \
-    --hash=sha256:8b839a050917958ba7d21c2319a8797fe2b494a8e5d9109452dd68214d3e46b6
+grpcio-status==1.85.4 \
+    --hash=sha256:146374bfd7ec75b34927cb0ca1e6253fa6cf0f7a0de276870f27c44651c7bdfd \
+    --hash=sha256:fbb3daafed3adba6ca2429508625a92b1b8ba35231788a6399c8c16661a8e997
     # via google-api-core
 gunicorn==27.0.1 \
     --hash=sha256:378b26b9a38adcf4592f28828233c1716acc55e833ea06bf48719782efaa0d10 \
